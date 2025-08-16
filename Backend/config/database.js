@@ -53,15 +53,7 @@ class Database {
             throw error;
         }
     }
-getConnectionStatus() {
-        const states = {
-            0: 'disconnected',
-            1: 'connected',
-            2: 'connecting',
-            3: 'disconnecting'
-        };
-        return states[mongoose.connection.readyState] || 'unknown';
-    }
+
     async disconnect() {
         try {
             await mongoose.connection.close();
@@ -69,15 +61,6 @@ getConnectionStatus() {
         } catch (error) {
             console.error('❌ Error disconnecting from MongoDB:', error);
         }
-    }
-getConnectionStatus() {
-        const states = {
-            0: 'disconnected',
-            1: 'connected',
-            2: 'connecting',
-            3: 'disconnecting'
-        };
-        return states[mongoose.connection.readyState] || 'unknown';
     }
 
     // Get connection status
