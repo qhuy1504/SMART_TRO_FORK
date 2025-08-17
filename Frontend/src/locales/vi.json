@@ -3,6 +3,8 @@
     "dashboard": "Bảng điều khiển",
     "rooms": "Quản lý phòng trọ",
     "users": "Quản lý người dùng",
+    "tenants": "Quản lý khách thuê",
+  "contracts": "Quản lý hợp đồng",
     "posts": "Quản lý bài đăng",
     "reports": "Báo cáo doanh thu",
     "vouchers": "Quản lý khuyến mãi",
@@ -78,7 +80,8 @@
     "types": {
       "single": "Phòng đơn",
       "double": "Phòng đôi",
-      "suite": "Phòng suite"
+      "suite": "Phòng suite",
+      "dorm": "Phòng tập thể"
     },
     "priceFrom": "Giá từ (VNĐ)",
     "priceTo": "Giá đến (VNĐ)",
@@ -94,6 +97,7 @@
     "noRoomsDescription": "Thử thay đổi bộ lọc hoặc thêm phòng mới",
     "month": "tháng",
     "floor": "Tầng",
+    "persons": "người",
     "amenities": "tiện ích",
     "actions": {
       "view": "Xem",
@@ -104,6 +108,67 @@
     "pagination": {
       "page": "Trang",
       "rooms": "phòng"
+    },
+    "loadingList": "Đang tải danh sách phòng...",
+    "form": {
+      "modalTitle": "Thêm phòng mới",
+      "property": "Bất động sản",
+      "roomNumber": "Số phòng",
+      "title": "Tiêu đề",
+      "price": "Giá (VND)",
+      "deposit": "Tiền cọc (VND)",
+      "area": "Diện tích (m²)",
+      "floor": "Tầng",
+      "capacity": "Sức chứa",
+      "capacityPlaceholder": "Tự động theo loại phòng",
+      "roomType": "Loại phòng",
+      "description": "Mô tả",
+      "amenities": "Tiện ích",
+      "amenityPlaceholder": "Thêm tiện ích...",
+      "addAmenity": "Thêm",
+      "cancel": "Hủy",
+      "create": "Tạo phòng",
+      "creating": "Đang lưu...",
+      "editModalTitle": "Chỉnh sửa phòng",
+      "update": "Cập nhật",
+      "updating": "Đang cập nhật...",
+      "roomTypes": {
+        "single": "Đơn",
+        "double": "Đôi",
+        "suite": "Suite",
+        "dorm": "Dorm"
+      },
+      "fullFurnitureIncludes": "Đã bao gồm: Máy lạnh, Tủ lạnh, Máy giặt, Máy nước nóng, Tủ quần áo, Giường, Bàn làm việc, Wi-Fi",
+      "imagesLabel": "Hình ảnh (tối đa 5)",
+      "imagesCurrent": "Hình ảnh hiện tại",
+      "imagesAddNew": "Thêm ảnh mới (tối đa {{count}})",
+      "deleteImageConfirm": "Xóa ảnh này?",
+      "uploading": "Đang tải lên...",
+      "imagesNone": "Chưa có ảnh"
+    },
+    "validation": {
+      "propertyRequired": "Chọn bất động sản",
+      "roomNumberRequired": "Nhập số phòng",
+      "roomNumberDuplicate": "Số phòng đã tồn tại",
+      "checking": "Đang kiểm tra...",
+      "titleMin": "Tiêu đề >= 3 ký tự",
+      "priceInvalid": "Giá không hợp lệ",
+      "depositInvalid": "Tiền cọc không hợp lệ",
+      "capacityInvalid": "Sức chứa phải >= 1"
+    },
+    "amenityLabels": {
+      "full_furniture": "Full nội thất",
+      "air_conditioner": "Máy lạnh",
+      "refrigerator": "Tủ lạnh",
+      "washing_machine": "Máy giặt",
+      "water_heater": "Máy nước nóng",
+      "wardrobe": "Tủ quần áo",
+      "bed": "Giường",
+      "desk": "Bàn làm việc",
+      "wifi": "Wi-Fi",
+      "parking": "Chỗ để xe",
+      "kitchen": "Khu bếp",
+      "balcony": "Ban công"
     }
   },
   "common": {
@@ -173,11 +238,13 @@
     "administrator": "Quản trị viên"
   },
   "status": {
-    "new": "Mới",
-    "completed": "Hoàn thành",
-    "pending": "Chờ xử lý",
-    "warning": "Cảnh báo",
-    "upcoming": "Sắp tới"
+  "new": "Mới",
+  "completed": "Hoàn thành",
+  "pending": "Chờ xử lý",
+  "warning": "Cảnh báo",
+  "upcoming": "Sắp tới",
+  "active": "Đang thuê",
+  "inactive": "Ngừng"
   },
   "time": {
     "minutesAgo": "phút trước",
@@ -185,5 +252,50 @@
     "daysAgo": "ngày trước",
     "weeksAgo": "tuần trước",
     "monthsAgo": "tháng trước"
+  }
+  ,
+  "tenants": {
+    "title": "Quản lý khách thuê",
+    "addNew": "Thêm khách thuê",
+    "searchPlaceholder": "Tên, email, điện thoại...",
+    "noTenants": "Không có khách thuê",
+    "noTenantsDescription": "Hãy thay đổi bộ lọc hoặc thêm khách thuê mới.",
+    "createTitle": "Thêm khách thuê",
+    "editTitle": "Sửa khách thuê"
+  },
+  "contracts": {
+    "title": "Quản lý hợp đồng",
+    "addNew": "Tạo hợp đồng",
+    "searchPlaceholder": "Phòng, khách thuê...",
+    "empty": "Chưa có hợp đồng",
+    "emptyDescription": "Tạo hợp đồng mới để bắt đầu.",
+    "createTitle": "Tạo hợp đồng",
+    "detailTitle": "Chi tiết hợp đồng",
+    "room": "Phòng",
+    "tenant": "Khách thuê",
+    "startDate": "Ngày bắt đầu",
+    "endDate": "Ngày kết thúc",
+    "monthlyRent": "Tiền thuê hàng tháng",
+    "deposit": "Tiền cọc",
+    "electricPrice": "Giá điện",
+    "waterPrice": "Giá nước",
+    "servicePrice": "Phí dịch vụ",
+    "rules": "Nội quy",
+    "notes": "Ghi chú",
+    "creating": "Đang lưu...",
+    "status": {
+      "label": "Trạng thái",
+      "active": "Hiệu lực",
+      "expired": "Hết hạn",
+      "terminated": "Chấm dứt"
+    }
+  },
+  "form": {
+    "fullName": "Họ và tên",
+    "phone": "Điện thoại",
+    "address": "Địa chỉ"
+  },
+  "validation": {
+    "required": "Bắt buộc"
   }
 }

@@ -15,6 +15,9 @@ router.post('/register',
     userController.register
 );
 
+// Lấy user mặc định (landlord) để hiển thị khi chưa đăng nhập
+router.get('/default', userController.getDefaultUser);
+
 router.post('/login', 
     validationMiddleware.validateLogin,
     userController.login

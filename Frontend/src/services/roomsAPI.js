@@ -112,9 +112,9 @@ export const roomsAPI = {
   },
 
   // Xóa hình ảnh phòng
-  deleteRoomImage: async (roomId, imageId) => {
+  deleteRoomImage: async (roomId, url) => {
     try {
-      const response = await api.delete(`/rooms/${roomId}/images/${imageId}`);
+      const response = await api.delete(`/rooms/${roomId}/images`, { data: { url } });
       return response.data;
     } catch (error) {
       console.error('Lỗi khi xóa hình ảnh:', error);

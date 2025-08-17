@@ -6,6 +6,7 @@ import usersAPI from './usersAPI';
 import bookingsAPI from './bookingsAPI';
 import paymentsAPI from './paymentsAPI';
 import reportsAPI from './reportsAPI';
+import propertiesAPI from './propertiesAPI';
 
 // Export tất cả services để dễ dàng import
 export {
@@ -16,7 +17,8 @@ export {
   usersAPI,
   bookingsAPI,
   paymentsAPI,
-  reportsAPI
+  reportsAPI,
+  propertiesAPI
 };
 
 // Export default object chứa tất cả services
@@ -28,7 +30,8 @@ const apiServices = {
   users: usersAPI,
   bookings: bookingsAPI,
   payments: paymentsAPI,
-  reports: reportsAPI
+  reports: reportsAPI,
+  properties: propertiesAPI
 };
 
 export default apiServices;
@@ -75,14 +78,14 @@ export const getAPIConfig = () => {
 export const API_ENDPOINTS = {
   // Auth endpoints
   AUTH: {
-    LOGIN: '/auth/login',
-    REGISTER: '/auth/register',
-    LOGOUT: '/auth/logout',
-    PROFILE: '/auth/profile',
-    REFRESH_TOKEN: '/auth/refresh-token',
-    FORGOT_PASSWORD: '/auth/forgot-password',
-    RESET_PASSWORD: '/auth/reset-password',
-    VERIFY_EMAIL: '/auth/verify-email'
+  LOGIN: '/users/login',
+  REGISTER: '/users/register',
+  LOGOUT: '/users/logout',
+  PROFILE: '/users/profile',
+  REFRESH_TOKEN: '/users/refresh-token',
+  FORGOT_PASSWORD: '/users/forgot-password',
+  RESET_PASSWORD: '/users/reset-password',
+  VERIFY_EMAIL: '/users/verify-email'
   },
   
   // Rooms endpoints

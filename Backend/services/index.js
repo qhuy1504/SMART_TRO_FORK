@@ -4,18 +4,20 @@
 import express from 'express';
 import userRoutes from './user-service/routes/userRoutes.js';
 import propertyRoutes from './property-service/routes/propertyRoutes.js';
-// import roomRoutes from './room-service/routes/roomRoutes.js';
+import roomRoutes from './room-service/routes/roomRoutes.js';
+import tenantRoutes from './tenant-service/routes/tenantRoutes.js';
 // import paymentRoutes from './payment-service/routes/paymentRoutes.js';
-// import contractRoutes from './contract-service/routes/contractRoutes.js';
+import contractRoutes from './contract-service/routes/contractRoutes.js';
 
 const router = express.Router();
 
 // Service routes
 router.use('/api/users', userRoutes);
 router.use('/api/properties', propertyRoutes);
-// router.use('/api/rooms', roomRoutes);
+router.use('/api/rooms', roomRoutes);
+router.use('/api/tenants', tenantRoutes);
 // router.use('/api/payments', paymentRoutes);
-// router.use('/api/contracts', contractRoutes);
+router.use('/api/contracts', contractRoutes);
 
 // API documentation route
 router.get('/api', (req, res) => {
@@ -26,6 +28,7 @@ router.get('/api', (req, res) => {
             users: '/api/users',
             properties: '/api/properties',
             rooms: '/api/rooms',
+            tenants: '/api/tenants',
             payments: '/api/payments',
             contracts: '/api/contracts'
         },
@@ -46,6 +49,22 @@ router.get('/api', (req, res) => {
                 'PUT /api/properties/:id': 'Cập nhật property (owner only)',
                 'DELETE /api/properties/:id': 'Xóa property (owner only)',
                 'POST /api/properties/:id/rate': 'Đánh giá property (require auth)'
+            }
+            ,tenants: {
+                'GET /api/tenants': 'Danh sách tenants (landlord)',
+                'POST /api/tenants': 'Tạo tenant (gắn phòng + user)',
+                'GET /api/tenants/:id': 'Chi tiết tenant',
+                'PUT /api/tenants/:id': 'Cập nhật tenant',
+                'POST /api/tenants/:id/payments': 'Thêm thanh toán',
+                'POST /api/tenants/:id/end': 'Kết thúc hợp đồng',
+                'DELETE /api/tenants/:id': 'Archive tenant'
+            }
+            ,contracts: {
+                'GET /api/contracts': 'Danh sách hợp đồng',
+                'POST /api/contracts': 'Tạo hợp đồng',
+                'GET /api/contracts/:id': 'Chi tiết hợp đồng',
+                'PUT /api/contracts/:id': 'Cập nhật hợp đồng',
+                'POST /api/contracts/:id/terminate': 'Chấm dứt hợp đồng'
             }
         }
     });

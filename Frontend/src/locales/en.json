@@ -3,6 +3,8 @@
     "dashboard": "Dashboard",
     "rooms": "Room Management",
     "users": "User Management",
+    "tenants": "Tenant Management",
+  "contracts": "Contract Management",
     "posts": "Post Management",
     "reports": "Revenue Reports",
     "vouchers": "Voucher Management",
@@ -77,8 +79,9 @@
     "allTypes": "All Types",
     "types": {
       "single": "Single Room",
-      "double": "Double Room",
-      "suite": "Suite Room"
+  "double": "Double Room",
+  "suite": "Suite Room",
+  "dorm": "Dorm Room"
     },
     "priceFrom": "Price From (VND)",
     "priceTo": "Price To (VND)",
@@ -94,6 +97,7 @@
     "noRoomsDescription": "Try changing filters or add new rooms",
     "month": "month",
     "floor": "Floor",
+    "persons": "persons",
     "amenities": "amenities",
     "actions": {
       "view": "View",
@@ -104,6 +108,67 @@
     "pagination": {
       "page": "Page",
       "rooms": "rooms"
+    },
+    "loadingList": "Loading room list...",
+    "form": {
+      "modalTitle": "Add New Room",
+      "property": "Property",
+      "roomNumber": "Room Number",
+      "title": "Title",
+      "price": "Price (VND)",
+      "deposit": "Deposit (VND)",
+      "area": "Area (m²)",
+      "floor": "Floor",
+      "capacity": "Capacity",
+      "capacityPlaceholder": "Auto by room type",
+      "roomType": "Room Type",
+      "description": "Description",
+      "amenities": "Amenities",
+      "amenityPlaceholder": "Add amenity...",
+      "addAmenity": "Add",
+      "cancel": "Cancel",
+      "create": "Create Room",
+      "creating": "Saving...",
+      "editModalTitle": "Edit Room",
+      "update": "Update",
+      "updating": "Updating...",
+      "roomTypes": {
+        "single": "Single",
+        "double": "Double",
+        "suite": "Suite",
+        "dorm": "Dorm"
+      },
+      "fullFurnitureIncludes": "Includes: Air conditioner, Refrigerator, Washing machine, Water heater, Wardrobe, Bed, Desk, Wi-Fi",
+      "imagesLabel": "Images (max 5)",
+      "imagesCurrent": "Current Images",
+      "imagesAddNew": "Add New Images (max {{count}})",
+      "deleteImageConfirm": "Delete this image?",
+      "uploading": "Uploading...",
+      "imagesNone": "No images"
+    },
+    "validation": {
+      "propertyRequired": "Select a property",
+      "roomNumberRequired": "Enter room number",
+  "roomNumberDuplicate": "Room number already exists",
+  "checking": "Checking...",
+      "titleMin": "Title must be at least 3 characters",
+      "priceInvalid": "Invalid price",
+      "depositInvalid": "Invalid deposit"
+  ,"capacityInvalid": "Capacity must be >= 1"
+    },
+    "amenityLabels": {
+      "full_furniture": "Full furniture",
+      "air_conditioner": "Air conditioner",
+      "refrigerator": "Refrigerator",
+      "washing_machine": "Washing machine",
+      "water_heater": "Water heater",
+      "wardrobe": "Wardrobe",
+      "bed": "Bed",
+      "desk": "Desk",
+      "wifi": "Wi-Fi",
+      "parking": "Parking",
+      "kitchen": "Kitchen",
+      "balcony": "Balcony"
     }
   },
   "common": {
@@ -173,11 +238,13 @@
     "administrator": "Administrator"
   },
   "status": {
-    "new": "New",
-    "completed": "Completed",
-    "pending": "Pending",
-    "warning": "Warning",
-    "upcoming": "Upcoming"
+  "new": "New",
+  "completed": "Completed",
+  "pending": "Pending",
+  "warning": "Warning",
+  "upcoming": "Upcoming",
+  "active": "Active",
+  "inactive": "Inactive"
   },
   "time": {
     "minutesAgo": "minutes ago",
@@ -185,5 +252,50 @@
     "daysAgo": "days ago",
     "weeksAgo": "weeks ago",
     "monthsAgo": "months ago"
+  }
+  ,
+  "tenants": {
+    "title": "Tenant Management",
+    "addNew": "Add Tenant",
+    "searchPlaceholder": "Name, email, phone...",
+    "noTenants": "No tenants found",
+    "noTenantsDescription": "Try adjusting filters or add a new tenant.",
+    "createTitle": "Add Tenant",
+    "editTitle": "Edit Tenant"
+  },
+  "contracts": {
+    "title": "Contract Management",
+    "addNew": "New Contract",
+    "searchPlaceholder": "Room, tenant...",
+    "empty": "No contracts",
+    "emptyDescription": "Create a new contract to get started.",
+    "createTitle": "Create Contract",
+    "detailTitle": "Contract Detail",
+    "room": "Room",
+    "tenant": "Tenant",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "monthlyRent": "Monthly Rent",
+    "deposit": "Deposit",
+    "electricPrice": "Electric Price",
+    "waterPrice": "Water Price",
+    "servicePrice": "Service Fee",
+    "rules": "Rules",
+    "notes": "Notes",
+    "creating": "Saving...",
+    "status": {
+      "label": "Status",
+      "active": "Active",
+      "expired": "Expired",
+      "terminated": "Terminated"
+    }
+  },
+  "form": {
+    "fullName": "Full Name",
+    "phone": "Phone",
+    "address": "Address"
+  },
+  "validation": {
+    "required": "Required"
   }
 }

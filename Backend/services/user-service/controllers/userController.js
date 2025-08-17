@@ -151,6 +151,21 @@ class UserController {
         }
     }
 
+    // Lấy user mặc định theo DEFAULT_LANDLORD_ID (public)
+    async getDefaultUser(req, res) {
+        try {
+            const id = process.env.DEFAULT_LANDLORD_ID;
+            if (!id) {
+                return res.status(404).json({ success: false, message: 'Chưa cấu hình DEFAULT_LANDLORD_ID' });
+            }
+            const user = await userRepository.findById(id);
+            if (!user) return res.status(404).json({ success: false, message: 'Không tìm thấy user mặc định' });
+            res.json({ success: true, data: user });
+        } catch (error) {
+            res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+        }
+    }
+
     // Cập nhật thông tin user
     async updateProfile(req, res) {
         try {

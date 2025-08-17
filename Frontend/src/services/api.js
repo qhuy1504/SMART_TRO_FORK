@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Cấu hình base URL cho API
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001/api';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
 
 // Tạo instance axios với cấu hình mặc định
 const api = axios.create({
@@ -20,61 +20,57 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // Debug: log minimal info (can comment out later)
+    if (process.env.NODE_ENV !== 'production' && config.url?.includes('/rooms')) {
+      // eslint-disable-next-line no-console
+      console.log('[API][REQUEST]', config.method?.toUpperCase(), config.url, 'Auth:', !!token);
+    }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Response interceptor để xử lý lỗi chung
 api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
   (error) => {
+    const originalRequest = error.config;
     if (error.response) {
-      // Server responded with error status
       const { status, data } = error.response;
-      
+      const tokenPresent = !!localStorage.getItem('token');
       switch (status) {
-        case 401:
-          // Unauthorized - remove token and redirect to login
-          localStorage.removeItem('token');
-          localStorage.removeItem('userId');
-          localStorage.removeItem('role');
-          window.location.href = '/login';
-          break;
-          
+        case 401: {
+          // Chỉ redirect nếu không có token hoặc lỗi từ endpoint users (login hết hạn) để tránh mất context khi tạo phòng
+            if (!tokenPresent || /\/users\//.test(originalRequest?.url || '')) {
+              localStorage.removeItem('token');
+              localStorage.removeItem('userId');
+              localStorage.removeItem('role');
+              window.location.href = '/login';
+            } else {
+              console.error('Phiên đăng nhập không hợp lệ hoặc hết hạn. Vui lòng đăng nhập lại.');
+            }
+            break;
+        }
         case 403:
-          // Forbidden
           console.error('Bạn không có quyền truy cập tài nguyên này');
           break;
-          
         case 404:
           console.error('Không tìm thấy tài nguyên');
           break;
-          
         case 422:
-          // Validation errors
           console.error('Dữ liệu không hợp lệ:', data.errors || data.message);
           break;
-          
         case 500:
           console.error('Lỗi máy chủ nội bộ');
           break;
-          
         default:
-          console.error('Có lỗi xảy ra:', data.message || error.message);
+          console.error('Có lỗi xảy ra:', data?.message || error.message);
       }
     } else if (error.request) {
-      // Network error
       console.error('Lỗi kết nối mạng. Vui lòng kiểm tra kết nối internet của bạn.');
     } else {
-      // Something else happened
       console.error('Có lỗi xảy ra:', error.message);
     }
-    
     return Promise.reject(error);
   }
 );
@@ -127,16 +123,16 @@ export const apiMethods = {
 // Auth helper methods
 export const authAPI = {
   // Login
-  login: (credentials) => api.post('/auth/login', credentials),
+  login: (credentials) => api.post('/users/login', credentials),
   
   // Register
-  register: (userData) => api.post('/auth/register', userData),
+  register: (userData) => api.post('/users/register', userData),
   
   // Logout
   logout: () => api.post('/auth/logout'),
   
   // Get user profile
-  getProfile: () => api.get('/auth/profile'),
+  getProfile: () => api.get('/users/profile'),
   
   // Update profile
   updateProfile: (userData) => api.put('/auth/profile', userData),

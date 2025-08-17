@@ -191,6 +191,7 @@ async function startServer() {
             console.log(`\n🔗 API Endpoints:`);
             console.log(`   👤 Users: http://localhost:${PORT}/api/users`);
             console.log(`   🏠 Properties: http://localhost:${PORT}/api/properties`);
+            console.log(`   🚪 Rooms: http://localhost:${PORT}/api/rooms`);
             console.log(`\n💡 Ready to handle requests!`);
         });
         

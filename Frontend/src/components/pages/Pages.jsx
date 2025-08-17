@@ -13,6 +13,8 @@ import Register from "../auth/Register"
 import ForgotPassword from "../auth/ForgotPassword"
 import Dashboard from "../admin/dashboard/Dashboard"
 import RoomsManagement from "../admin/rooms/RoomsManagement"
+import Tenants from "../admin/tenants/TenantsManagement"
+import Contracts from "../admin/contracts/ContractsManagement"
 import Settings from "../admin/settings/Settings"
 import PageTitleWrapper from "../common/PageTitleWrapper"
 
@@ -91,6 +93,8 @@ const Pages = () => {
           <Route path='/admin/dashboard' element={<Dashboard />} />
           <Route path='/admin/rooms' element={<RoomsManagement />} />
           <Route path='/admin/settings' element={<Settings />} />
+          <Route path='/admin/tenants' element={<Tenants />} />
+          <Route path='/admin/contracts' element={<Contracts />} />
         </Routes>
         </PageTitleWrapper>
       </Router>

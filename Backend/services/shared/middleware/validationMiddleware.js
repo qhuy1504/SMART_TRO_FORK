@@ -1,6 +1,7 @@
 /**
  * Validation Middleware - Validate request data
  */
+import { AMENITY_VALUES } from '../../../schemas/Room.js';
 class ValidationMiddleware {
     // Validate user registration
     validateRegister(req, res, next) {
@@ -176,6 +177,62 @@ class ValidationMiddleware {
             });
         }
 
+        next();
+    }
+
+    // Validate room creation
+    async validateRoom(req, res, next) {
+    const { property, roomNumber, price, deposit, area, roomType, amenities, capacity } = req.body;
+        const errors = [];
+
+        // property không bắt buộc nữa
+        if (!roomNumber || roomNumber.trim().length === 0) errors.push('Số phòng là bắt buộc');
+        if (price == null || price < 0) errors.push('Giá phòng không hợp lệ');
+        if (deposit == null || deposit < 0) errors.push('Tiền cọc không hợp lệ');
+        if (area != null && area < 0) errors.push('Diện tích không hợp lệ');
+        if (roomType && !['single','double','suite','dorm'].includes(roomType)) errors.push('Loại phòng không hợp lệ');
+        if (amenities) {
+            const invalid = amenities.filter(a => !AMENITY_VALUES.includes(a));
+            if (invalid.length) errors.push('Tiện ích không hợp lệ: ' + invalid.join(', '));
+        }
+
+        if (errors.length) {
+            return res.status(400).json({ success: false, message: 'Dữ liệu không hợp lệ', errors });
+        }
+        // Gán capacity theo roomType nếu không truyền
+        if (req.body.capacity == null) {
+            const map = { single: 1, double: 2, suite: 3, dorm: 4 };
+            req.body.capacity = map[roomType] || 1;
+        }
+        next();
+    }
+
+    // Validate room update
+    async validateRoomUpdate(req, res, next) {
+    const { price, deposit, area, roomType, status, amenities, capacity } = req.body;
+        const errors = [];
+        if (price != null && price < 0) errors.push('Giá phòng không hợp lệ');
+        if (deposit != null && deposit < 0) errors.push('Tiền cọc không hợp lệ');
+        if (area != null && area < 0) errors.push('Diện tích không hợp lệ');
+        if (roomType && !['single','double','suite','dorm'].includes(roomType)) errors.push('Loại phòng không hợp lệ');
+        if (status && !['available','rented','maintenance','reserved'].includes(status)) errors.push('Trạng thái phòng không hợp lệ');
+        if (amenities) {
+                const invalid = amenities.filter(a => !AMENITY_VALUES.includes(a));
+                if (invalid.length) errors.push('Tiện ích không hợp lệ: ' + invalid.join(', '));
+            }
+
+            if (errors.length) {
+                return res.status(400).json({ success: false, message: 'Dữ liệu không hợp lệ', errors });
+            }
+        next();
+    }
+
+    // Validate update room status
+    validateRoomStatus(req, res, next) {
+        const { status } = req.body;
+        if (!status || !['available','rented','maintenance','reserved'].includes(status)) {
+            return res.status(400).json({ success: false, message: 'Trạng thái phòng không hợp lệ' });
+        }
         next();
     }
 }

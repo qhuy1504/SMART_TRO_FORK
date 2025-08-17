@@ -259,6 +259,31 @@ pm2 save
 └── package.json    # Dependencies
 ```
 
+### Seed Landlord User
+
+Để tạo sẵn một user chủ trọ mặc định (phục vụ khi BYPASS_AUTH hoặc tạo phòng không gửi owner):
+
+```bash
+node ./scripts/seedLandlord.js
+```
+
+Sau khi chạy sẽ in ra `_id`. Ghi vào `.env`:
+
+```
+DEFAULT_LANDLORD_ID=<id in ra>
+```
+
+Có thể tùy chỉnh thông tin:
+
+```
+SEED_LANDLORD_EMAIL=landlord@example.com
+SEED_LANDLORD_PHONE=0900000000
+SEED_LANDLORD_PASSWORD=123456
+SEED_LANDLORD_NAME=Owner Default
+```
+
+Khi tạo phòng, controller sẽ tự gán `owner` bằng `req.user.userId` (nếu có) hoặc `DEFAULT_LANDLORD_ID`.
+
 ### Available Scripts
 ```bash
 npm start           # Start production server

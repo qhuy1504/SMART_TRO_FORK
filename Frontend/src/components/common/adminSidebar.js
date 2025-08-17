@@ -14,19 +14,15 @@ import {
 } from "@mui/material";
 import {
   Dashboard,
-  People,
-  ShoppingCart,
-  Receipt,
-  BarChart,
   ExpandLess,
   ExpandMore,
   ArrowRight,
   Settings,
-  Room,
-  RoomService,
   House,
+  People,
+  DocumentScanner,
+  EditDocument
 } from "@mui/icons-material";
-import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
@@ -34,22 +30,24 @@ import { useTranslation } from 'react-i18next';
 // Import Google Fonts for Vietnamese and English support
 const fontFamily = "'Inter', 'Segoe UI', 'Roboto', 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif";
 
+// Simple module-level cache so profile only fetched once per token during session
+let __cachedUserProfile = null; // { fullName, avatar, role, token }
+
 const SideBar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
   const [openMenus, setOpenMenus] = useState({});
-  // eslint-disable-next-line no-unused-vars
-  const [fullName, setFullName] = useState("Admin User");
-  // eslint-disable-next-line no-unused-vars
+  const [fullName, setFullName] = useState("...");
   const [avatar, setAvatar] = useState("");
-  // eslint-disable-next-line no-unused-vars
-  const [role, setRole] = useState(t('auth.administrator'));
+  const [role, setRole] = useState("");
+  const [loadingUser, setLoadingUser] = useState(true);
 
   const menuItems = useMemo(() => [
     { text: t('sidebar.dashboard'), icon: <Dashboard />, path: "/admin/dashboard" },
     { text: t('sidebar.rooms'), icon: <House />, path: "/admin/rooms" },
-    // { text: t('sidebar.users'), icon: <People />, path: "/admin/users" },
+    { text: t('sidebar.tenants'), icon: <People />, path: "/admin/tenants" },
+    { text: t('sidebar.contracts'), icon: <EditDocument />, path: "/admin/contracts" },
     // {
     //   text: t('sidebar.posts'),
     //   icon: <Receipt />,
@@ -70,33 +68,76 @@ const SideBar = () => {
     { text: t('sidebar.settings'), icon: <Settings />, path: "/admin/settings" }
   ], [t]);
 
-//   useEffect(() => {
-//     const fetchUserData = async () => {
-//       try {
-//         const token = localStorage.getItem("token");
-
-//         if (!token) {
-//           console.error("Chưa có token, vui lòng đăng nhập!");
-//           return;
-//         }
-
-//         const response = await api.get("/auth/profile", {
-//           headers: { Authorization: `Bearer ${token}` },
-//         });
-//         setFullName(response.data.fullName);
-//         if (response.data.avatar) {
-//           setAvatar(response.data.avatar);
-//         }
-//       } catch (error) {
-//         console.error(
-//           "Lỗi khi lấy thông tin user:",
-//           error.response?.data || error
-//         );
-//       }
-//     };
-
-//     fetchUserData();
-//   }, []);
+  // Load current user profile
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const token = localStorage.getItem('token') || null;
+      // Serve from cache if same token and cached data exists
+      if (__cachedUserProfile && __cachedUserProfile.token === token) {
+        const { fullName: cName, avatar: cAvatar, role: cRole } = __cachedUserProfile;
+        setFullName(cName);
+        setAvatar(cAvatar);
+        setRole(cRole);
+        setLoadingUser(false);
+        return; // skip fetch
+      }
+      try {
+        if (!token) {
+          // default / fallback only once
+            const defRes = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/users/default`);
+            if (defRes.ok) {
+              const defData = await defRes.json();
+              if (defData.success && defData.data && !cancelled) {
+                const u = {
+                  fullName: defData.data.fullName || 'Landlord',
+                  avatar: defData.data.avatar || '',
+                  role: defData.data.role || 'landlord',
+                  token: null
+                };
+                __cachedUserProfile = u;
+                setFullName(u.fullName);
+                setAvatar(u.avatar);
+                setRole(u.role);
+              }
+            } else {
+              const fallbackName = localStorage.getItem('fallbackFullName') || 'Landlord';
+              const fallbackRole = localStorage.getItem('role') || 'landlord';
+              if (!cancelled) {
+                setFullName(fallbackName);
+                setRole(fallbackRole);
+              }
+            }
+          return;
+        }
+        const res = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/users/profile`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed profile');
+        const data = await res.json();
+        if (data.success && data.data && !cancelled) {
+          const u = {
+            fullName: data.data.fullName || 'User',
+            avatar: data.data.avatar || '',
+            role: data.data.role || '',
+            token
+          };
+          __cachedUserProfile = u;
+          setFullName(u.fullName);
+          setAvatar(u.avatar);
+          setRole(u.role);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setFullName(prev => prev === '...' ? 'User' : prev);
+          setRole(r => r || '');
+        }
+      } finally {
+        if (!cancelled) setLoadingUser(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Auto expand menu based on current path
   useEffect(() => {
@@ -221,7 +262,7 @@ const SideBar = () => {
               fontSize: "1.1rem"
             }}
           >
-            {fullName}
+            {loadingUser ? t('common.loading') : fullName}
           </Typography>
           <Box sx={{
             background: "rgba(255,255,255,0.15)",
@@ -242,7 +283,7 @@ const SideBar = () => {
                 fontSize: "0.65rem"
               }}
             >
-              {role}
+              {loadingUser ? '...' : (role ? t(`roles.${role}`, { defaultValue: role }) : t('auth.administrator'))}
             </Typography>
           </Box>
         </Box>
