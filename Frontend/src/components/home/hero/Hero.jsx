@@ -91,14 +91,14 @@ const Hero = () => {
 
 
       // Đánh dấu hostel
-      hostels.forEach((hostel) => {
+      // hostels.forEach((hostel) => {
       
-        if (hostel.lat && hostel.lng) {
-          L.marker([hostel.lat, hostel.lng])
-            .addTo(map)
-            .bindPopup(`<strong>${hostel.name}</strong><br>${hostel.address}<br>⭐ ${hostel.rating || "N/A"}`)
-        }
-      })
+      //   if (hostel.lat && hostel.lng) {
+      //     L.marker([hostel.lat, hostel.lng])
+      //       .addTo(map)
+      //       .bindPopup(`<strong>${hostel.name}</strong><br>${hostel.address}<br>⭐ ${hostel.rating || "N/A"}`)
+      //   }
+      // })
 
       mapInstance.current = map
     }

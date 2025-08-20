@@ -7,6 +7,7 @@ const Login = () => {
     const navigate = useNavigate();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [remember, setRemember] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
@@ -18,7 +19,7 @@ const Login = () => {
             const res = await authAPI.login({ email, password });
             if (res.data && res.data.success) {
                 const { token, user } = res.data.data;
-                apiUtils.setAuthData(token, user._id, user.role);
+                apiUtils.setAuthData(token, user._id, user.role, remember);
                 navigate("/admin/rooms");
             } else {
                 setError(res.data?.message || "Đăng nhập thất bại");
@@ -33,7 +34,7 @@ const Login = () => {
     return (
         <section className="auth">
             <div className="container">
-                <div className="form-box">
+                <div className="form-box modern-card">
                     <h2>Đăng nhập</h2>
                     <form onSubmit={handleSubmit}>
                         <input
@@ -50,7 +51,19 @@ const Login = () => {
                             onChange={(e) => setPassword(e.target.value)}
                             required
                         />
-                        {error && <div style={{color:'#dc2626',fontSize:'14px',marginBottom:'8px'}}>{error}</div>}
+
+                        <div className="remember-box">
+                            <label>
+                                <input
+                                    type="checkbox"
+                                    checked={remember}
+                                    onChange={(e) => setRemember(e.target.checked)}
+                                /> Ghi nhớ đăng nhập
+                            </label>
+                        </div>
+
+                        {error && <div className="error-message">{error}</div>}
+
                         <button type="submit" className="btn-primary" disabled={loading}>
                             {loading ? "Đang xử lý..." : "Đăng nhập"}
                         </button>

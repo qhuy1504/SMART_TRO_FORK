@@ -44,7 +44,9 @@ const Register = () => {
                         <input type="email" placeholder="Email của bạn" value={email} onChange={e=>setEmail(e.target.value)} required />
                         <input type="tel" placeholder="Số điện thoại" value={phone} onChange={e=>setPhone(e.target.value)} required />
                         <input type="password" placeholder="Mật khẩu" value={password} onChange={e=>setPassword(e.target.value)} required />
-                        <select value={role} onChange={e=>setRole(e.target.value)} style={{marginBottom:'12px'}}>
+                        <select value={role} onChange={e => setRole(e.target.value)} style={{ marginBottom: '12px' }}
+                            className="form-select"
+                        >
                             <option value="tenant">Khách thuê</option>
                             <option value="landlord">Chủ trọ</option>
                             <option value="admin">Admin</option>

@@ -35,7 +35,8 @@ class UserController {
                 email,
                 phone,
                 password,
-                role
+                role,
+                isActive: true, // Mặc định là active
             };
 
             const user = await userRepository.create(userData);
@@ -82,7 +83,7 @@ class UserController {
             }
 
             // Kiểm tra trạng thái account
-            if (user.status !== 'active') {
+            if (user.isActive === false) {
                 return res.status(401).json({
                     success: false,
                     message: 'Tài khoản đã bị vô hiệu hóa'
