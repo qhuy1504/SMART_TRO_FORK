@@ -1,3 +1,76 @@
+/* Avatar upload custom style */
+.avatar-upload-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.avatar-input {
+  display: none;
+}
+
+.avatar-upload-label {
+  background: #27ae60;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  border: none;
+  outline: none;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.avatar-upload-label:hover {
+  background: #007430;
+}
+
+.avatar-preview {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #eee;
+}
+
+/* Password input with toggle button */
+.password-input-container {
+  position: relative;
+  width: 100%;
+}
+
+.password-input-container input {
+  width: 100%;
+  padding-right: 40px !important;
+}
+
+.password-input-container button {
+  position: absolute;
+  right: 10px;
+  top: 40%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: #666;
+  z-index: 1;
+  padding: 0;
+  margin: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.password-input-container button:hover {
+  color: #333;
+}
+
 .auth {
   background: #f8f8f8;
   padding: 80px 0;
@@ -19,15 +92,7 @@
   color: #2d3436;
 }
 
-.form-box form input {
-  width: 100%;
-  padding: 14px;
-  margin-bottom: 18px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  outline: none;
-  font-size: 16px;
-}
+
 
 .btn-primary {
   width: 100%;
@@ -39,6 +104,7 @@
   font-weight: bold;
   cursor: pointer;
   transition: 0.3s;
+  font-size: 16px;
 }
 
 .btn-primary:hover {
@@ -54,39 +120,86 @@
   color: #27ae60;
   font-weight: 500;
 }
+
+/* Áp dụng chung cho input & select để đồng bộ */
+.form-box form input,
 .form-box form select {
   width: 100%;
   padding: 14px;
   margin-bottom: 18px;
-  border: 3px solid #008e0c;
+  border: 1px solid #ccc;
   border-radius: 8px;
   outline: none;
   font-size: 16px;
   background-color: #fff;
-  appearance: none; /* Ẩn mũi tên mặc định */
-  background-image: url("data:image/svg+xml;utf8,<svg fill='%23666' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 18px;
-  cursor: pointer;
-  transition: border 0.2s ease;
+  transition: all 0.3s ease;
+  appearance: none; /* Ẩn style mặc định của trình duyệt */
+  -webkit-appearance: none;
+  -moz-appearance: none;
 }
 
+/* Hiệu ứng focus */
+.form-box form input:focus,
 .form-box form select:focus {
   border-color: #27ae60;
-  box-shadow: 0 0 0 2px rgba(39, 174, 96, 0.2);
+  box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.2);
 }
 
+/* Custom mũi tên dropdown */
+.form-box form select {
+  background-image: url("data:image/svg+xml;utf8,<svg fill='%2327ae60' height='20' viewBox='0 0 24 24' width='20' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px; /* chừa chỗ cho icon */
+  cursor: pointer;
+}
+
+
+
+/* Container */
 .remember-box {
   display: flex;
-  align-items: center; /* căn giữa theo trục dọc */
-  margin-bottom: 15px;
+  align-items: center;
+  margin-bottom: 12px;
   font-size: 14px;
   color: #555;
+  cursor: pointer;
 }
 
+/* label hiển thị flex để chứa checkbox + text */
+.remember-box label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Ẩn checkbox gốc */
 .remember-box input[type="checkbox"] {
-  margin-right: 8px;
-  vertical-align: middle; /* chỉnh vị trí input */
-  transform: translateY(-1px); /* tinh chỉnh cho thẳng hàng */
+  display: none;
+}
+
+/* Custom checkbox */
+.remember-box label::before {
+  content: "";
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #27ae60;
+  border-radius: 4px;   /* bo tròn góc (đổi thành 50% nếu muốn tròn hoàn toàn) */
+  background: #fff;
+  transition: all 0.2s ease;
+}
+
+/* Khi checked */
+
+.remember-box input[type="checkbox"]:checked ~ label::before {
+  background-color: #27ae60;
+  border-color: #27ae60;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M20.285 6.709a1 1 0 0 0-1.414-1.418l-9.192 9.193-4.242-4.243a1 1 0 1 0-1.414 1.414l5 5a1 1 0 0 0 1.414 0l10-10z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 14px;
 }

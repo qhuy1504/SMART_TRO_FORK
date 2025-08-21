@@ -290,6 +290,28 @@
       "terminated": "Terminated"
     }
   },
+  "header": {
+    "myList": "My List",
+    "signIn": "Sign In",
+    "register": "Register",
+    "profile": "Profile",
+    "settings": "Settings",
+    "admin": "Admin",
+    "logout": "Logout",
+    "nav": {
+      "home": "Home",
+      "about": "About",
+      "services": "Services",
+      "blog": "Blog",
+      "pricing": "Pricing",
+      "contact": "Contact"
+    }
+  },
+  "roles": {
+    "tenant": "Tenant",
+    "landlord": "Landlord",
+    "admin": "Administrator"
+  },
   "form": {
     "fullName": "Full Name",
     "phone": "Phone",
@@ -297,5 +319,169 @@
   },
   "validation": {
     "required": "Required"
+  },
+  "profile": {
+    "layout": {
+      "sidebar": {
+        "newPost": "New Post",
+        "myPosts": "My Posts",
+        "paymentHistory": "Payment History",
+        "pricing": "Pricing",
+        "account": "Account Management",
+        "logout": "Logout"
+      },
+      "breadcrumb": {
+        "home": "Home",
+        "account": "Account Management"
+      },
+      "logoutModal": {
+        "title": "Confirm Logout",
+        "message": "Are you sure you want to logout from the system?",
+        "cancel": "Cancel",
+        "confirm": "Logout"
+      }
+    },
+    "account": {
+      "title": "Account Management",
+      "subtitle": "Update personal information and account security",
+      "profileInfo": {
+        "title": "Personal Information",
+        "avatar": {
+          "title": "Avatar",
+          "description": "Upload JPG, PNG or GIF image. Maximum size 5MB."
+        },
+        "fullName": "Full Name",
+        "email": "Email",
+        "emailNote": "Email cannot be changed",
+        "phone": "Phone Number",
+        "saveChanges": "Save Changes",
+        "saving": "Saving...",
+        "success": "Profile updated successfully!",
+        "error": "An error occurred!"
+      },
+      "security": {
+        "title": "Account Security",
+        "password": {
+          "title": "Password",
+          "description": "Change password to secure your account",
+          "changeButton": "Change Password",
+          "currentPassword": "Current Password",
+          "newPassword": "New Password",
+          "confirmPassword": "Confirm New Password",
+          "passwordRequirement": "Password must have at least 8 characters, including uppercase, lowercase, numbers and special characters",
+          "cancel": "Cancel",
+          "save": "Change Password",
+          "saving": "Saving...",
+          "success": "Password changed successfully!",
+          "error": "Password confirmation does not match!"
+        },
+        "accountStatus": {
+          "title": "Account Status",
+          "verified": "Verified",
+          "unverified": "Unverified"
+        },
+        "lastLogin": {
+          "title": "Last Login",
+          "noInfo": "No information available"
+        },
+        "activeSessions": {
+          "title": "Login Sessions",
+          "description": "Manage devices that are logged into your account",
+          "viewSessions": "View Sessions",
+          "hideSessions": "Hide Sessions",
+          "currentSession": "Current Session",
+          "logoutSession": "Logout",
+          "logoutAllOthers": "Logout All Other Devices",
+          "loading": "Loading...",
+          "loginTime": "Login:",
+          "duration": "Duration:",
+          "ip": "IP:",
+          "noSessions": "No active sessions"
+        }
+      }
+    },
+    "newPost": {
+      "title": "New Post",
+      "subtitle": "Post rental listings for rooms and houses",
+      "comingSoon": {
+        "title": "Feature Under Development",
+        "message": "The new post feature will be updated soon. Please come back later!"
+      }
+    },
+    "myPosts": {
+      "title": "My Posts",
+      "subtitle": "Manage your rental posts",
+      "comingSoon": {
+        "title": "Feature Under Development",
+        "message": "My posts feature will be updated soon. Please come back later!"
+      }
+    },
+    "paymentHistory": {
+      "title": "Payment History",
+      "subtitle": "View payment transaction history",
+      "comingSoon": {
+        "title": "Feature Under Development",
+        "message": "Payment history will be updated soon. Please come back later!"
+      }
+    },
+    "pricing": {
+      "title": "Service Pricing",
+      "subtitle": "View pricing for posting packages",
+      "plans": {
+        "regular": {
+          "name": "Regular Post",
+          "duration": "30 days",
+          "features": [
+            "Basic post display",
+            "No search priority",
+            "Basic customer support"
+          ]
+        },
+        "vip1": {
+          "name": "VIP 1 Post",
+          "duration": "30 days",
+          "features": [
+            "Priority display in listings",
+            "\"VIP Post\" badge",
+            "Priority customer support",
+            "Automatic post refresh"
+          ]
+        },
+        "vip2": {
+          "name": "VIP 2 Post",
+          "duration": "30 days",
+          "popular": "Popular",
+          "features": [
+            "Display at top of listings",
+            "\"HOT Post\" badge",
+            "Highlighted border",
+            "Push to top every 3h",
+            "24/7 support"
+          ]
+        },
+        "vip3": {
+          "name": "VIP 3 Post",
+          "duration": "30 days",
+          "features": [
+            "Homepage banner display",
+            "\"SUPER HOT\" badge",
+            "Maximum search priority",
+            "Push to top every hour",
+            "Dedicated support",
+            "Detailed analytics"
+          ]
+        }
+      },
+      "selectPlan": "Choose This Plan",
+      "notes": {
+        "title": "Important Notes",
+        "items": [
+          "Price includes VAT",
+          "Posts will automatically expire after specified time",
+          "Can extend posts before expiration",
+          "Support contact: 1900-xxxx"
+        ]
+      }
+    }
   }
 }

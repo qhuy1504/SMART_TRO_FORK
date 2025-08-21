@@ -2,26 +2,39 @@
  * Validation Middleware - Validate request data
  */
 import { AMENITY_VALUES } from '../../../schemas/Room.js';
+
+// Regex pattern cho mật khẩu mạnh
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
 class ValidationMiddleware {
     // Validate user registration
     validateRegister(req, res, next) {
         const { fullName, email, phone, password } = req.body;
         const errors = [];
 
-        if (!fullName || fullName.trim().length < 2) {
-            errors.push('Họ tên phải có ít nhất 2 ký tự');
+        // Không được để trống
+        if (!fullName || fullName.trim() === '') {
+            errors.push('Họ tên không được để trống');
+        } else if (!/^[\p{L} ]{2,}$/u.test(fullName.trim())) {
+            errors.push('Họ tên chỉ được chứa chữ cái và khoảng trắng, tối thiểu 2 ký tự');
         }
 
-        if (!email || !/\S+@\S+\.\S+/.test(email)) {
+        if (!email || email.trim() === '') {
+            errors.push('Email không được để trống');
+        } else if (!/^[\w-.]+@[\w-]+\.[a-zA-Z]{2,}$/.test(email)) {
             errors.push('Email không hợp lệ');
         }
 
-        if (!phone || !/^[0-9]{10,11}$/.test(phone)) {
+        if (!phone || phone.trim() === '') {
+            errors.push('Số điện thoại không được để trống');
+        } else if (!/^[0-9]{10,11}$/.test(phone)) {
             errors.push('Số điện thoại phải có 10-11 số');
         }
 
-        if (!password || password.length < 6) {
-            errors.push('Mật khẩu phải có ít nhất 6 ký tự');
+        if (!password || password === '') {
+            errors.push('Mật khẩu không được để trống');
+        } else if (!PASSWORD_REGEX.test(password)) {
+            errors.push('Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt (@$!%*?&)');
         }
 
         if (errors.length > 0) {
@@ -40,12 +53,18 @@ class ValidationMiddleware {
         const { email, password } = req.body;
         const errors = [];
 
-        if (!email || !/\S+@\S+\.\S+/.test(email)) {
+        // Email validation
+        if (!email || email.trim() === '') {
+            errors.push('Email không được để trống');
+        } else if (!/^[\w-.]+@[\w-]+\.[a-zA-Z]{2,}$/.test(email)) {
             errors.push('Email không hợp lệ');
         }
 
-        if (!password) {
-            errors.push('Mật khẩu là bắt buộc');
+        // Password validation
+        if (!password || password === '') {
+            errors.push('Mật khẩu không được để trống');
+        } else if (!PASSWORD_REGEX.test(password)) {
+            errors.push('Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt (@$!%*?&)');
         }
 
         if (errors.length > 0) {
@@ -64,17 +83,14 @@ class ValidationMiddleware {
         const { fullName, phone, dateOfBirth } = req.body;
         const errors = [];
 
-        if (fullName && fullName.trim().length < 2) {
-            errors.push('Họ tên phải có ít nhất 2 ký tự');
+        if (fullName && !/^[\p{L} ]{2,}$/u.test(fullName.trim())) {
+            errors.push('Họ tên chỉ được chứa chữ cái và khoảng trắng, tối thiểu 2 ký tự');
         }
 
         if (phone && !/^[0-9]{10,11}$/.test(phone)) {
             errors.push('Số điện thoại phải có 10-11 số');
         }
 
-        if (dateOfBirth && new Date(dateOfBirth) > new Date()) {
-            errors.push('Ngày sinh không hợp lệ');
-        }
 
         if (errors.length > 0) {
             return res.status(400).json({

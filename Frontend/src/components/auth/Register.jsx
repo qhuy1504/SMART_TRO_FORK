@@ -2,6 +2,9 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./auth.css";
 import { authAPI } from "../../services/api";
+import { toast } from 'react-toastify';
+import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai';
+import 'react-toastify/dist/ReactToastify.css';
 
 const Register = () => {
     const navigate = useNavigate();
@@ -9,10 +12,13 @@ const Register = () => {
     const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
     const [password, setPassword] = useState("");
-    const [role, setRole] = useState("landlord");
+    const [role, setRole] = useState("tenant");
+    const [avatar, setAvatar] = useState(null);
+    const [avatarPreview, setAvatarPreview] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -20,17 +26,49 @@ const Register = () => {
         setSuccess("");
         setLoading(true);
         try {
-            const res = await authAPI.register({ fullName, email, phone, password, role });
+            const formData = new FormData();
+            formData.append("fullName", fullName);
+            formData.append("email", email);
+            formData.append("phone", phone);
+            formData.append("password", password);
+            formData.append("role", role);
+            if (avatar) formData.append("avatar", avatar);
+            const res = await authAPI.register(formData);
             if (res.data && res.data.success) {
-                setSuccess("Đăng ký thành công. Chuyển sang đăng nhập...");
-                setTimeout(() => navigate('/login'), 1200);
+                toast.success("Đăng ký thành công! Chuyển sang đăng nhập...");
+                setTimeout(() => navigate('/login'), 1500);
             } else {
-                setError(res.data?.message || "Đăng ký thất bại");
+                // Hiển thị từng lỗi dưới dạng toast
+                if (res.data?.errors && Array.isArray(res.data.errors)) {
+                    res.data.errors.forEach(error => {
+                        toast.error(error);
+                    });
+                } else {
+                    toast.error(res.data?.message || "Đăng ký thất bại");
+                }
             }
         } catch (err) {
-            setError(err.response?.data?.message || "Đăng ký thất bại");
+            // Xử lý lỗi từ backend
+            if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+                err.response.data.errors.forEach(error => {
+                    toast.error(error);
+                });
+            } else {
+                toast.error(err.response?.data?.message || "Đăng ký thất bại");
+            }
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleAvatarChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setAvatar(file);
+            setAvatarPreview(URL.createObjectURL(file));
+        } else {
+            setAvatar(null);
+            setAvatarPreview(null);
         }
     };
 
@@ -39,12 +77,47 @@ const Register = () => {
             <div className="container">
                 <div className="form-box">
                     <h2>Đăng ký</h2>
-                    <form onSubmit={handleSubmit}>
+                    <form onSubmit={handleSubmit} encType="multipart/form-data">
                         <input type="text" placeholder="Họ và tên" value={fullName} onChange={e=>setFullName(e.target.value)} required />
                         <input type="email" placeholder="Email của bạn" value={email} onChange={e=>setEmail(e.target.value)} required />
                         <input type="tel" placeholder="Số điện thoại" value={phone} onChange={e=>setPhone(e.target.value)} required />
-                        <input type="password" placeholder="Mật khẩu" value={password} onChange={e=>setPassword(e.target.value)} required />
-                        <select value={role} onChange={e => setRole(e.target.value)} style={{ marginBottom: '12px' }}
+                        
+                        <div className="password-input-container">
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                placeholder="Mật khẩu"
+                                value={password}
+                                onChange={e=>setPassword(e.target.value)}
+                                required
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                            >
+                                {showPassword ? <AiOutlineEyeInvisible /> : <AiOutlineEye />}
+                            </button>
+                        </div>
+
+                        <div className="avatar-upload-box">
+                            <input
+                                id="avatar-upload"
+                                type="file"
+                                accept="image/*"
+                                onChange={handleAvatarChange}
+                                className="avatar-input"
+                            />
+                            <label htmlFor="avatar-upload" className="avatar-upload-label">
+                                Chọn ảnh đại diện
+                            </label>
+                            {avatarPreview && (
+                                <img
+                                    src={avatarPreview}
+                                    alt="avatar preview"
+                                    className="avatar-preview"
+                                />
+                            )}
+                        </div>
+                        <select value={role} onChange={e => setRole(e.target.value)} style={{ marginBottom: '12px', fontWeight: 'bold' }}
                             className="form-select"
                         >
                             <option value="tenant">Khách thuê</option>

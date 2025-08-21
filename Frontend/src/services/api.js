@@ -16,10 +16,16 @@ const api = axios.create({
 // Request interceptor để thêm token vào header
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = apiUtils.getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Không set Content-Type khi gửi FormData (để axios tự động set)
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
+    
     // Debug: log minimal info (can comment out later)
     if (process.env.NODE_ENV !== 'production' && config.url?.includes('/rooms')) {
       // eslint-disable-next-line no-console
@@ -37,19 +43,18 @@ api.interceptors.response.use(
     const originalRequest = error.config;
     if (error.response) {
       const { status, data } = error.response;
-      const tokenPresent = !!localStorage.getItem('token');
+      const tokenPresent = !!apiUtils.getToken();
       switch (status) {
         case 401: {
-          // Chỉ redirect nếu không có token hoặc lỗi từ endpoint users (login hết hạn) để tránh mất context khi tạo phòng
-            if (!tokenPresent || /\/users\//.test(originalRequest?.url || '')) {
-              localStorage.removeItem('token');
-              localStorage.removeItem('userId');
-              localStorage.removeItem('role');
-              window.location.href = '/login';
-            } else {
-              console.error('Phiên đăng nhập không hợp lệ hoặc hết hạn. Vui lòng đăng nhập lại.');
-            }
-            break;
+          // Chỉ redirect nếu không có token hoặc lỗi từ endpoint users (login hết hạn) và không phải đang ở trang login
+          const isLoginPage = window.location.pathname === '/login';
+          if (!isLoginPage && (!tokenPresent || /\/users\//.test(originalRequest?.url || ''))) {
+            apiUtils.clearAuthData();
+            window.location.href = '/login';
+          } else if (!isLoginPage) {
+            console.error('Phiên đăng nhập không hợp lệ hoặc hết hạn. Vui lòng đăng nhập lại.');
+          }
+          break;
         }
         case 403:
           console.error('Bạn không có quyền truy cập tài nguyên này');
@@ -140,17 +145,54 @@ export const authAPI = {
   // Change password
   changePassword: (passwordData) => api.put('/auth/change-password', passwordData),
   
-  // Forgot password
-  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  // === FORGOT PASSWORD FLOW (OTP qua email) ===
+  // Gửi OTP qua email để quên mật khẩu
+  sendOTP: (email) => api.post('/auth/send-otp', { email }),
   
-  // Reset password
-  resetPassword: (token, newPassword) => api.post('/auth/reset-password', { token, newPassword }),
+  // Xác minh OTP cho quên mật khẩu
+  verifyOTP: (email, otp) => api.post('/auth/verify-otp', { email, otp }),
+  
+  // Đặt lại mật khẩu với OTP (khi quên mật khẩu)
+  resetPasswordWithOTP: (email, otp, newPassword) => api.post('/auth/reset-password', { email, otp, newPassword }),
+  
+  // === AUTHENTICATED PASSWORD RESET (dành cho user đã login) ===
+  // Đổi mật khẩu khi đã đăng nhập (cần old password)
+  changePasswordAuthenticated: (oldPassword, newPassword) => api.put('/users/change-password', { oldPassword, newPassword }),
+  
+  // === EMAIL VERIFICATION ===
+  // Xác thực email với token
+  verifyEmail: (token) => api.get(`/users/verify-email?token=${token}`),
   
   // Refresh token
   refreshToken: () => api.post('/auth/refresh-token'),
+};
+
+// Users API
+export const usersAPI = {
+  // Get user profile
+  getProfile: () => api.get('/users/profile'),
   
-  // Verify email
-  verifyEmail: (token) => api.post('/auth/verify-email', { token }),
+  // Update user profile
+  updateProfile: (formData) => api.put('/users/profile', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  }),
+  
+  // Change password (authenticated user)
+  changePassword: (data) => api.put('/users/change-password', data),
+  
+  // Session Management
+  getActiveSessions: () => api.get('/users/sessions/active'),
+  getLoginHistory: (limit = 20) => api.get(`/users/sessions/history?limit=${limit}`),
+  logoutSession: (sessionId) => api.delete(`/users/sessions/${sessionId}`),
+  logoutAllOtherSessions: () => api.post('/users/sessions/logout-others'),
+  
+  // Get all users (admin only)
+  getAllUsers: (params) => api.get('/users', { params }),
+  
+  // Get user by ID (admin only)
+  getUserById: (id) => api.get(`/users/${id}`),
 };
 
 // Utility functions
@@ -171,7 +213,7 @@ export const apiUtils = {
     return localStorage.getItem('userId');
   },
   
-  // Set auth data
+  // Set auth data - luôn lưu token vào localStorage
   setAuthData: (token, userId, role) => {
     localStorage.setItem('token', token);
     localStorage.setItem('userId', userId);
@@ -183,6 +225,31 @@ export const apiUtils = {
     localStorage.removeItem('token');
     localStorage.removeItem('userId');
     localStorage.removeItem('role');
+ 
+
+  },
+  
+  // Get token from storage
+  getToken: () => {
+    return localStorage.getItem('token');
+  },
+
+  // Remember login functions
+  saveRememberedLogin: (email, password) => {
+    localStorage.setItem('rememberedEmail', email);
+    localStorage.setItem('rememberedPassword', password);
+  },
+
+  getRememberedLogin: () => {
+    return {
+      email: localStorage.getItem('rememberedEmail') || '',
+      password: localStorage.getItem('rememberedPassword') || ''
+    };
+  },
+
+  clearRememberedLogin: () => {
+    localStorage.removeItem('rememberedEmail');
+    localStorage.removeItem('rememberedPassword');
   },
   
   // Format error message

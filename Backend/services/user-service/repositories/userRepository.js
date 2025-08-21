@@ -23,6 +23,15 @@ class UserRepository {
         }
     }
 
+    // Lấy user theo ID với password (dành cho authentication)
+    async findByIdWithPassword(id) {
+        try {
+            return await User.findById(id);
+        } catch (error) {
+            throw new Error(`Error finding user by ID with password: ${error.message}`);
+        }
+    }
+
     // Lấy user theo email
     async findByEmail(email) {
         try {

@@ -290,6 +290,28 @@
       "terminated": "Chấm dứt"
     }
   },
+  "header": {
+    "myList": "Danh sách của tôi",
+    "signIn": "Đăng nhập",
+    "register": "Đăng ký",
+    "profile": "Quản lý tài khoản",
+    "settings": "Cài đặt",
+    "admin": "Quản trị",
+    "logout": "Đăng xuất",
+    "nav": {
+      "home": "Trang chủ",
+      "about": "Giới thiệu",
+      "services": "Dịch vụ",
+      "blog": "Tin tức",
+      "pricing": "Giá cả",
+      "contact": "Liên hệ"
+    }
+  },
+  "roles": {
+    "tenant": "Khách thuê",
+    "landlord": "Chủ trọ",
+    "admin": "Quản trị viên"
+  },
   "form": {
     "fullName": "Họ và tên",
     "phone": "Điện thoại",
@@ -297,5 +319,169 @@
   },
   "validation": {
     "required": "Bắt buộc"
+  },
+  "profile": {
+    "layout": {
+      "sidebar": {
+        "newPost": "Đăng tin mới",
+        "myPosts": "Danh sách tin đăng",
+        "paymentHistory": "Lịch sử thanh toán",
+        "pricing": "Bảng giá dịch vụ",
+        "account": "Quản lý tài khoản",
+        "logout": "Đăng xuất"
+      },
+      "breadcrumb": {
+        "home": "Trang chủ",
+        "account": "Quản lý tài khoản"
+      },
+      "logoutModal": {
+        "title": "Xác nhận đăng xuất",
+        "message": "Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?",
+        "cancel": "Hủy",
+        "confirm": "Đăng xuất"
+      }
+    },
+    "account": {
+      "title": "Quản lý tài khoản",
+      "subtitle": "Cập nhật thông tin cá nhân và bảo mật tài khoản",
+      "profileInfo": {
+        "title": "Thông tin cá nhân",
+        "avatar": {
+          "title": "Ảnh đại diện",
+          "description": "Tải lên ảnh JPG, PNG hoặc GIF. Kích thước tối đa 5MB."
+        },
+        "fullName": "Họ và tên",
+        "email": "Email",
+        "emailNote": "Email không thể thay đổi",
+        "phone": "Số điện thoại",
+        "saveChanges": "Lưu thay đổi",
+        "saving": "Đang lưu...",
+        "success": "Cập nhật thông tin thành công!",
+        "error": "Có lỗi xảy ra!"
+      },
+      "security": {
+        "title": "Bảo mật tài khoản",
+        "password": {
+          "title": "Mật khẩu",
+          "description": "Đổi mật khẩu để bảo mật tài khoản",
+          "changeButton": "Đổi mật khẩu",
+          "currentPassword": "Mật khẩu hiện tại",
+          "newPassword": "Mật khẩu mới",
+          "confirmPassword": "Xác nhận mật khẩu mới",
+          "passwordRequirement": "Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt",
+          "cancel": "Hủy",
+          "save": "Đổi mật khẩu",
+          "saving": "Đang lưu...",
+          "success": "Đổi mật khẩu thành công!",
+          "error": "Mật khẩu xác nhận không khớp!"
+        },
+        "accountStatus": {
+          "title": "Trạng thái tài khoản",
+          "verified": "Đã xác thực",
+          "unverified": "Chưa xác thực"
+        },
+        "lastLogin": {
+          "title": "Đăng nhập gần nhất",
+          "noInfo": "Chưa có thông tin"
+        },
+        "activeSessions": {
+          "title": "Phiên đăng nhập",
+          "description": "Quản lý các thiết bị đã đăng nhập vào tài khoản của bạn",
+          "viewSessions": "Xem phiên đăng nhập",
+          "hideSessions": "Ẩn phiên đăng nhập",
+          "currentSession": "Phiên hiện tại",
+          "logoutSession": "Đăng xuất",
+          "logoutAllOthers": "Đăng xuất tất cả thiết bị khác",
+          "loading": "Đang tải...",
+          "loginTime": "Đăng nhập:",
+          "duration": "Thời gian:",
+          "ip": "IP:",
+          "noSessions": "Không có phiên đăng nhập nào"
+        }
+      }
+    },
+    "newPost": {
+      "title": "Đăng tin mới",
+      "subtitle": "Đăng tin cho thuê phòng trọ, nhà ở",
+      "comingSoon": {
+        "title": "Tính năng đang phát triển",
+        "message": "Tính năng đăng tin mới sẽ sớm được cập nhật. Vui lòng quay lại sau!"
+      }
+    },
+    "myPosts": {
+      "title": "Danh sách tin đăng",
+      "subtitle": "Quản lý các tin đăng của bạn",
+      "comingSoon": {
+        "title": "Tính năng đang phát triển",
+        "message": "Danh sách tin đăng sẽ sớm được cập nhật. Vui lòng quay lại sau!"
+      }
+    },
+    "paymentHistory": {
+      "title": "Lịch sử thanh toán",
+      "subtitle": "Xem lịch sử các giao dịch thanh toán",
+      "comingSoon": {
+        "title": "Tính năng đang phát triển",
+        "message": "Lịch sử thanh toán sẽ sớm được cập nhật. Vui lòng quay lại sau!"
+      }
+    },
+    "pricing": {
+      "title": "Bảng giá dịch vụ",
+      "subtitle": "Xem bảng giá các gói dịch vụ đăng tin",
+      "plans": {
+        "regular": {
+          "name": "Tin thường",
+          "duration": "30 ngày",
+          "features": [
+            "Hiển thị tin đăng cơ bản",
+            "Không ưu tiên trong tìm kiếm",
+            "Hỗ trợ khách hàng cơ bản"
+          ]
+        },
+        "vip1": {
+          "name": "Tin VIP 1",
+          "duration": "30 ngày",
+          "features": [
+            "Hiển thị ưu tiên trong danh sách",
+            "Đánh dấu \"Tin VIP\"",
+            "Hỗ trợ khách hàng ưu tiên",
+            "Làm mới tin tự động"
+          ]
+        },
+        "vip2": {
+          "name": "Tin VIP 2",
+          "duration": "30 ngày",
+          "popular": "Phổ biến",
+          "features": [
+            "Hiển thị đầu danh sách",
+            "Đánh dấu \"Tin HOT\"",
+            "Khung viền màu nổi bật",
+            "Push tin lên top mỗi 3h",
+            "Hỗ trợ 24/7"
+          ]
+        },
+        "vip3": {
+          "name": "Tin VIP 3",
+          "duration": "30 ngày",
+          "features": [
+            "Hiển thị banner đầu trang",
+            "Đánh dấu \"SIÊU HOT\"",
+            "Ưu tiên tối đa trong tìm kiếm",
+            "Push tin lên top mỗi giờ",
+            "Hỗ trợ riêng biệt",
+            "Thống kê chi tiết"
+          ]
+        }
+      },
+      "selectPlan": "Chọn gói này",
+      "notes": {
+        "title": "Lưu ý quan trọng",
+        "items": [
+          "Giá đã bao gồm VAT",
+          "Tin đăng sẽ tự động hết hạn sau thời gian quy định",
+          "Có thể gia hạn tin đăng trước khi hết hạn",
+          "Liên hệ hỗ trợ: 1900-xxxx"
+        ]
+      }
+    }
   }
 }

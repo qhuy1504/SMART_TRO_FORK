@@ -11,14 +11,25 @@ import Contact from "../contact/Contact"
 import Login from "../auth/Login"
 import Register from "../auth/Register"
 import ForgotPassword from "../auth/ForgotPassword"
+import VerifyEmail from "../auth/VerifyEmail"
 import Dashboard from "../admin/dashboard/Dashboard"
 import RoomsManagement from "../admin/rooms/RoomsManagement"
 import Tenants from "../admin/tenants/TenantsManagement"
 import Contracts from "../admin/contracts/ContractsManagement"
 import Settings from "../admin/settings/Settings"
+import ProfileLayout from "../profile/ProfileLayout"
+import AccountManagement from "../profile/AccountManagement"
+import NewPost from "../profile/NewPost"
+import MyPosts from "../profile/MyPosts"
+import PaymentHistory from "../profile/PaymentHistory"
+import PricingProfile from "../profile/Pricing"
 import PageTitleWrapper from "../common/PageTitleWrapper"
+import { ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
 const Pages = () => {
+
+
   return (
     <>
       <Router>
@@ -88,6 +99,28 @@ const Pages = () => {
               <Footer />
             </>
           } />
+          <Route path='/verify-email' element={
+            <>
+              <Header />
+              <VerifyEmail />
+              <Footer />
+            </>
+          } />
+
+          {/* Profile pages with Header */}
+          <Route path='/profile' element={
+            <>
+              <Header />
+              <ProfileLayout />
+            </>
+          }>
+            <Route path='account' element={<AccountManagement />} />
+            <Route path='new-post' element={<NewPost />} />
+            <Route path='my-posts' element={<MyPosts />} />
+            <Route path='payment-history' element={<PaymentHistory />} />
+            <Route path='pricing' element={<PricingProfile />} />
+            <Route index element={<AccountManagement />} />
+          </Route>
 
           {/* Admin pages without Header and Footer */}
           <Route path='/admin/dashboard' element={<Dashboard />} />
@@ -98,6 +131,18 @@ const Pages = () => {
         </Routes>
         </PageTitleWrapper>
       </Router>
+      
+      {/* Global ToastContainer */}
+      <ToastContainer 
+        position="top-right"
+        autoClose={2000}
+        hideProgressBar={false}
+        closeOnClick
+        pauseOnHover
+        draggable
+        theme="light"
+        style={{ zIndex: 9999, marginTop: '70px' }}
+      />
     </>
   )
 }

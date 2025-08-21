@@ -8,6 +8,7 @@ import roomRoutes from './room-service/routes/roomRoutes.js';
 import tenantRoutes from './tenant-service/routes/tenantRoutes.js';
 // import paymentRoutes from './payment-service/routes/paymentRoutes.js';
 import contractRoutes from './contract-service/routes/contractRoutes.js';
+import authRoutes from './auth-service/routes/authRoutes.js';
 
 const router = express.Router();
 
@@ -18,6 +19,7 @@ router.use('/api/rooms', roomRoutes);
 router.use('/api/tenants', tenantRoutes);
 // router.use('/api/payments', paymentRoutes);
 router.use('/api/contracts', contractRoutes);
+router.use('/api/auth', authRoutes);
 
 // API documentation route
 router.get('/api', (req, res) => {
@@ -30,7 +32,8 @@ router.get('/api', (req, res) => {
             rooms: '/api/rooms',
             tenants: '/api/tenants',
             payments: '/api/payments',
-            contracts: '/api/contracts'
+            contracts: '/api/contracts',
+            forgotPassword: '/api/forgot-password'
         },
         documentation: {
             users: {
@@ -40,6 +43,11 @@ router.get('/api', (req, res) => {
                 'PUT /api/users/profile': 'Cập nhật profile (require auth)',
                 'GET /api/users': 'Lấy danh sách users (admin only)',
                 'GET /api/users/:id': 'Lấy user theo ID (admin only)'
+            },
+            authRoutes: {
+                'POST /api/auth/send-otp': 'Gửi mã OTP qua email',
+                'POST /api/auth/verify-otp': 'Xác minh mã OTP',
+                'POST /api/auth/reset-password': 'Đặt lại mật khẩu với OTP'
             },
             properties: {
                 'GET /api/properties/search': 'Tìm kiếm properties',

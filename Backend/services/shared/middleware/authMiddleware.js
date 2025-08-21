@@ -2,14 +2,10 @@
  * Auth Middleware - Xác thực JWT token
  */
 import jwt from 'jsonwebtoken';
+import LoginSession from '../../../schemas/LoginSession.js';
 
-const authMiddleware = (req, res, next) => {
+const authMiddleware = async (req, res, next) => {
     try {
-        if (process.env.BYPASS_AUTH === 'true') {
-            const defaultId = process.env.DEFAULT_LANDLORD_ID || null;
-            req.user = { userId: defaultId, role: 'landlord', bypass: true };
-            return next();
-        }
         const token = req.header('Authorization')?.replace('Bearer ', '');
 
         if (!token) {
@@ -19,8 +15,18 @@ const authMiddleware = (req, res, next) => {
             });
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.user = decoded;
+        
+        // Cập nhật last activity nếu có sessionToken
+        if (decoded.sessionToken) {
+            // Cập nhật last activity (không await để không làm chậm request)
+            LoginSession.updateOne(
+                { sessionToken: decoded.sessionToken, isActive: true },
+                { $set: { lastActivity: new Date() } }
+            ).catch(err => console.error('Failed to update last activity:', err));
+        }
+        
         next();
 
     } catch (error) {

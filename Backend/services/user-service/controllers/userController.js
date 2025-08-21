@@ -4,12 +4,60 @@
 import userRepository from '../repositories/userRepository.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import cloudinary from '../../../config/cloudinary.js';
+import crypto from 'crypto';
+import { EmailVerification } from '../../../schemas/index.js';
+import { sendVerificationEmail } from '../../emailService.js';
+import LoginSession from '../../../schemas/LoginSession.js';
+import DeviceInfoService from '../../shared/utils/deviceInfoService.js';
 
 class UserController {
     // Đăng ký user mới
     async register(req, res) {
         try {
-            const { fullName, email, phone, password, role = 'tenant' } = req.body;
+            
+            const { fullName, email, phone, password, role } = req.body;
+            
+            // Basic validation
+            if (!fullName || !email || !phone || !password) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Vui lòng điền đầy đủ thông tin'
+                });
+            }
+            
+            let avatarUrl = undefined;
+            
+            if (req.file) {
+                console.log('File received, uploading to Cloudinary...');
+                try {
+                    // Upload avatar lên Cloudinary
+                    const uploadResult = await new Promise((resolve, reject) => {
+                        cloudinary.uploader.upload_stream(
+                            { folder: 'user_avatars', resource_type: 'image' },
+                            (error, result) => {
+                                if (error) {
+                                    console.error('Cloudinary upload error:', error);
+                                    reject(error);
+                                } else {
+                                    console.log('Cloudinary upload success:', result.secure_url);
+                                    resolve(result);
+                                }
+                            }
+                        ).end(req.file.buffer);
+                    });
+                    avatarUrl = uploadResult.secure_url;
+                    console.log('Avatar uploaded to Cloudinary:', avatarUrl);
+                } catch (uploadError) {
+                    console.error('Error uploading to Cloudinary:', uploadError);
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Lỗi khi upload ảnh'
+                    });
+                }
+            } else {
+                console.log('No file received in request');
+            }
 
             // Kiểm tra email đã tồn tại
             const existingUser = await userRepository.findByEmail(email);
@@ -36,18 +84,45 @@ class UserController {
                 phone,
                 password,
                 role,
-                isActive: true, // Mặc định là active
+                isActive: false, // Mặc định là inactive
+                avatar: avatarUrl
             };
 
+            console.log('Creating user with data:', userData);
             const user = await userRepository.create(userData);
+            console.log('User created successfully:', user._id);
+
+            // Tạo verification token
+            const verificationToken = crypto.randomBytes(32).toString('hex');
+            
+            // Lưu verification token vào database
+            const emailVerification = new EmailVerification({
+                userId: user._id,
+                email: user.email,
+                token: verificationToken
+            });
+            await emailVerification.save();
+
+            // Gửi email xác thực
+            const emailResult = await sendVerificationEmail(user.email, user.fullName, verificationToken);
+            
+            if (emailResult.success) {
+                console.log('Verification email sent successfully');
+            } else {
+                console.error('Failed to send verification email:', emailResult.error);
+            }
 
             // Không trả về password
             const { password: _, ...userResponse } = user.toObject();
 
             res.status(201).json({
                 success: true,
-                message: 'Đăng ký thành công',
-                data: userResponse
+                message: 'Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.',
+                data: {
+                    ...userResponse,
+                    emailSent: emailResult.success,
+                    requiresVerification: true
+                }
             });
 
         } catch (error) {
@@ -86,22 +161,62 @@ class UserController {
             if (user.isActive === false) {
                 return res.status(401).json({
                     success: false,
-                    message: 'Tài khoản đã bị vô hiệu hóa'
+                    message: 'Tài khoản chưa được xác thực. Vui lòng kiểm tra email để xác thực tài khoản.',
+                    data: {
+                        requiresVerification: true,
+                        email: user.email
+                    }
                 });
             }
 
             // Cập nhật last login
             await userRepository.updateLastLogin(user._id);
 
-            // Tạo JWT token
+            // Tạo session ID
+            const sessionId = crypto.randomUUID();
+
+            // Lấy thông tin thiết bị và IP
+            const userAgent = req.headers['user-agent'] || '';
+            const clientIP = DeviceInfoService.getClientIP(req);
+            const deviceInfo = DeviceInfoService.parseUserAgent(userAgent);
+            const locationInfo = await DeviceInfoService.getLocationFromIP(clientIP);
+
+            // Lưu session information
+            const loginSession = new LoginSession({
+                userId: user._id,
+                deviceInfo: {
+                    userAgent: userAgent,
+                    browser: deviceInfo.browser,
+                    browserVersion: deviceInfo.browserVersion,
+                    os: deviceInfo.os,
+                    osVersion: deviceInfo.osVersion,
+                    deviceType: deviceInfo.deviceType,
+                    platform: deviceInfo.platform
+                },
+                location: {
+                    ip: locationInfo.ip,
+                    country: locationInfo.country,
+                    region: locationInfo.region,
+                    city: locationInfo.city,
+                    timezone: locationInfo.timezone,
+                    isp: locationInfo.isp
+                },
+                sessionToken: sessionId,
+                loginMethod: 'password'
+            });
+
+            await loginSession.save();
+
+            // Tạo JWT token với sessionId
             const token = jwt.sign(
                 { 
                     userId: user._id, 
                     email: user.email, 
-                    role: user.role 
+                    role: user.role,
+                    sessionToken: sessionId
                 },
-                process.env.JWT_SECRET || 'your_jwt_secret',
-                { expiresIn: '24h' }
+                process.env.JWT_SECRET,
+                { expiresIn: process.env.JWT_EXPIRES_IN || '4h' }
             );
 
             // Không trả về password
@@ -178,6 +293,38 @@ class UserController {
             delete updateData.email;
             delete updateData.role;
 
+            let avatarUrl = undefined;
+            
+            // Xử lý upload avatar nếu có
+            if (req.file) {
+                console.log('File received for profile update, uploading to Cloudinary...');
+                try {
+                    const uploadResult = await new Promise((resolve, reject) => {
+                        cloudinary.uploader.upload_stream(
+                            { folder: 'user_avatars', resource_type: 'image' },
+                            (error, result) => {
+                                if (error) {
+                                    console.error('Cloudinary upload error:', error);
+                                    reject(error);
+                                } else {
+                                    console.log('Cloudinary upload success:', result.secure_url);
+                                    resolve(result);
+                                }
+                            }
+                        ).end(req.file.buffer);
+                    });
+                    avatarUrl = uploadResult.secure_url;
+                    updateData.avatar = avatarUrl;
+                    console.log('Avatar updated:', avatarUrl);
+                } catch (uploadError) {
+                    console.error('Error uploading avatar to Cloudinary:', uploadError);
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Lỗi khi upload ảnh đại diện'
+                    });
+                }
+            }
+
             const user = await userRepository.update(userId, updateData);
 
             if (!user) {
@@ -194,6 +341,7 @@ class UserController {
             });
 
         } catch (error) {
+            console.error('Update profile error:', error);
             res.status(500).json({
                 success: false,
                 message: 'Lỗi server',
@@ -248,6 +396,326 @@ class UserController {
             });
 
         } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: 'Lỗi server',
+                error: error.message
+            });
+        }
+    }
+
+    // Đổi mật khẩu cho user đã đăng nhập
+    async changePassword(req, res) {
+        try {
+            const { oldPassword, newPassword } = req.body;
+            const userId = req.user.userId; // Từ auth middleware
+            console.log('Changing password for user:', userId);
+
+            // Validate input
+            if (!oldPassword || !newPassword) {
+                return res.status(400).json({
+                    success: false,
+                    errors: ['Mật khẩu cũ và mật khẩu mới là bắt buộc']
+                });
+            }
+
+            // Regex pattern cho mật khẩu mạnh
+            const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+            
+            if (!PASSWORD_REGEX.test(newPassword)) {
+                return res.status(400).json({
+                    success: false,
+                    errors: ['Mật khẩu mới phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt (@$!%*?&)']
+                });
+            }
+
+            // Tìm user
+            const user = await userRepository.findByIdWithPassword(userId);
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    errors: ['Không tìm thấy user']
+                });
+            }
+
+            // Kiểm tra mật khẩu cũ
+            const isOldPasswordValid = await bcrypt.compare(oldPassword, user.password);
+            if (!isOldPasswordValid) {
+                return res.status(400).json({
+                    success: false,
+                    errors: ['Mật khẩu cũ không chính xác']
+                });
+            }
+
+            // Kiểm tra mật khẩu mới không trùng với mật khẩu cũ
+            const isSamePassword = await bcrypt.compare(newPassword, user.password);
+            if (isSamePassword) {
+                return res.status(400).json({
+                    success: false,
+                    errors: ['Mật khẩu mới phải khác mật khẩu cũ']
+                });
+            }
+
+            // Hash mật khẩu mới
+            const saltRounds = 12;
+            const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
+
+            // Cập nhật mật khẩu
+            await userRepository.update(userId, {
+                password: hashedNewPassword,
+                updatedAt: new Date()
+            });
+
+            res.status(200).json({
+                success: true,
+                message: 'Đổi mật khẩu thành công',
+                data: {
+                    email: user.email,
+                    fullName: user.fullName,
+                    updatedAt: new Date()
+                }
+            });
+
+        } catch (error) {
+            console.error('Change password error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Lỗi server',
+                error: error.message
+            });
+        }
+    }
+
+    // Xác thực email với token
+    async verifyEmail(req, res) {
+        try {
+            const { token } = req.query; // Lấy từ query string
+
+            if (!token) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Token xác thực là bắt buộc'
+                });
+            }
+
+            // Tìm verification record
+            const verification = await EmailVerification.findOne({
+                token,
+                verified: false
+            });
+
+            if (!verification) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Token xác thực không hợp lệ hoặc đã hết hạn'
+                });
+            }
+
+            // Tìm user và update isActive
+            const user = await userRepository.findById(verification.userId);
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Không tìm thấy user'
+                });
+            }
+
+            // Cập nhật user thành active
+            await userRepository.update(user._id, {
+                isActive: true,
+                emailVerifiedAt: new Date(),
+                updatedAt: new Date()
+            });
+
+            // Đánh dấu verification đã hoàn thành
+            await EmailVerification.findByIdAndUpdate(verification._id, {
+                verified: true,
+                verifiedAt: new Date()
+            });
+
+            // Tạo JWT token để auto login
+            const authToken = jwt.sign(
+                { 
+                    userId: user._id, 
+                    email: user.email, 
+                    role: user.role 
+                },
+                process.env.JWT_SECRET,
+                { expiresIn: process.env.JWT_EXPIRES_IN || '4h' }
+            );
+
+            // Response với auto login
+            res.status(200).json({
+                success: true,
+                message: 'Xác thực email thành công! Tài khoản đã được kích hoạt.',
+                data: {
+                    user: {
+                        _id: user._id,
+                        fullName: user.fullName,
+                        email: user.email,
+                        phone: user.phone,
+                        role: user.role,
+                        isActive: true,
+                        avatar: user.avatar
+                    },
+                    token: authToken,
+                    autoLogin: true
+                }
+            });
+
+        } catch (error) {
+            console.error('Email verification error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Lỗi server',
+                error: error.message
+            });
+        }
+    }
+
+    // Lấy danh sách phiên đăng nhập hiện tại
+    async getActiveSessions(req, res) {
+        try {
+            const userId = req.user.userId;
+            const sessions = await LoginSession.getActiveSessions(userId);
+
+            const formattedSessions = sessions.map(session => ({
+                sessionId: session._id.toString(),
+                deviceInfo: {
+                    deviceString: `${session.deviceInfo.browser || 'Unknown'} ${session.deviceInfo.browserVersion || ''} on ${session.deviceInfo.os || 'Unknown'}`,
+                    deviceType: session.deviceInfo.deviceType || 'desktop',
+                    platform: session.deviceInfo.platform || 'Unknown'
+                },
+                location: {
+                    locationString: `${session.location.city || 'Unknown'}, ${session.location.region || 'Unknown'}, ${session.location.country || 'Unknown'}`,
+                    ip: session.location.ip || 'Unknown',
+                    isp: session.location.isp || 'Unknown'
+                },
+                loginTime: session.loginTime,
+                lastActivity: session.lastActivity,
+                duration: session.getFormattedDuration(),
+                isCurrent: session.sessionToken === req.user.sessionToken
+            }));
+
+            res.status(200).json({
+                success: true,
+                data: formattedSessions
+            });
+
+        } catch (error) {
+            console.error('Get active sessions error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Lỗi server',
+                error: error.message
+            });
+        }
+    }
+
+    // Lấy lịch sử đăng nhập
+    async getLoginHistory(req, res) {
+        try {
+            const userId = req.user.userId;
+            const limit = parseInt(req.query.limit) || 20;
+            const sessions = await LoginSession.getSessionHistory(userId, limit);
+
+            const formattedSessions = sessions.map(session => ({
+                sessionId: session._id.toString(),
+                deviceInfo: {
+                    deviceString: `${session.deviceInfo.browser || 'Unknown'} ${session.deviceInfo.browserVersion || ''} on ${session.deviceInfo.os || 'Unknown'}`,
+                    deviceType: session.deviceInfo.deviceType || 'desktop'
+                },
+                location: {
+                    locationString: `${session.location.city || 'Unknown'}, ${session.location.region || 'Unknown'}, ${session.location.country || 'Unknown'}`,
+                    ip: session.location.ip || 'Unknown'
+                },
+                loginTime: session.loginTime,
+                logoutTime: session.logoutTime,
+                isActive: session.isActive,
+                duration: session.getFormattedDuration()
+            }));
+
+            res.status(200).json({
+                success: true,
+                data: formattedSessions
+            });
+
+        } catch (error) {
+            console.error('Get login history error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Lỗi server',
+                error: error.message
+            });
+        }
+    }
+
+    // Đăng xuất phiên cụ thể
+    async logoutSession(req, res) {
+        try {
+            const userId = req.user.userId;
+            const { sessionId } = req.params;
+
+            const session = await LoginSession.findOne({
+                userId,
+                _id: sessionId,
+                isActive: true
+            });
+
+            if (!session) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Không tìm thấy phiên đăng nhập'
+                });
+            }
+
+            // Đánh dấu session là đã logout
+            session.isActive = false;
+            session.logoutTime = new Date();
+            await session.save();
+
+            res.status(200).json({
+                success: true,
+                message: 'Đã đăng xuất phiên thành công'
+            });
+
+        } catch (error) {
+            console.error('Logout session error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Lỗi server',
+                error: error.message
+            });
+        }
+    }
+
+    // Đăng xuất tất cả phiên khác (trừ phiên hiện tại)
+    async logoutAllOtherSessions(req, res) {
+        try {
+            const userId = req.user.userId;
+            const currentSessionToken = req.user.sessionToken;
+
+            const result = await LoginSession.updateMany(
+                {
+                    userId,
+                    sessionToken: { $ne: currentSessionToken },
+                    isActive: true
+                },
+                {
+                    $set: {
+                        isActive: false,
+                        logoutTime: new Date()
+                    }
+                }
+            );
+
+            res.status(200).json({
+                success: true,
+                message: `Đã đăng xuất ${result.modifiedCount} phiên khác`
+            });
+
+        } catch (error) {
+            console.error('Logout all other sessions error:', error);
             res.status(500).json({
                 success: false,
                 message: 'Lỗi server',
