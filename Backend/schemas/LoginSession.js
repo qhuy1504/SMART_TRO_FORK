@@ -17,7 +17,8 @@ const loginSessionSchema = new mongoose.Schema({
         os: String,                  // Windows, macOS, Linux, etc.
         osVersion: String,           // Phiên bản OS
         deviceType: String,          // desktop, mobile, tablet
-        platform: String             // Win32, MacIntel, etc.
+        platform: String,            // Win32, MacIntel, etc.
+        deviceString: String         // Human readable device string
     },
     // Thông tin địa lý
     location: {
@@ -26,7 +27,8 @@ const loginSessionSchema = new mongoose.Schema({
         region: String,              // Tỉnh/thành
         city: String,                // Thành phố
         timezone: String,            // Múi giờ
-        isp: String                  // Nhà cung cấp internet
+        isp: String,                 // Nhà cung cấp internet
+        locationString: String       // Human readable location string
     },
     // Thông tin phiên
     loginTime: {

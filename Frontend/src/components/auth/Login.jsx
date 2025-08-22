@@ -5,6 +5,7 @@ import { authAPI, apiUtils } from "../../services/api";
 import { toast } from 'react-toastify';
 import { useAuth } from "../../contexts/AuthContext";
 import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai';
+import { GoogleLogin } from '@react-oauth/google';
 import 'react-toastify/dist/ReactToastify.css';
 
 const Login = () => {
@@ -38,9 +39,9 @@ const Login = () => {
           
 
             if (res.data && res.data.success) {
-                const { token, user } = res.data.data;
+                const { token, user, sessionToken } = res.data.data;
                 // Luôn lưu token vào localStorage
-                apiUtils.setAuthData(token, user._id, user.role);
+                apiUtils.setAuthData(token, user._id, user.role, sessionToken);
                 
                 // Xử lý ghi nhớ đăng nhập
                 if (remember) {
@@ -81,6 +82,37 @@ const Login = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleGoogleSuccess = async (credentialResponse) => {
+        try {
+            setLoading(true);
+            const res = await authAPI.googleLogin({ 
+                credential: credentialResponse.credential 
+            });
+
+            if (res.data && res.data.success) {
+                const { token, user, sessionToken } = res.data.data;
+                apiUtils.setAuthData(token, user._id, user.role, sessionToken);
+                
+                toast.success(`Chào mừng ${user.fullName}! Đăng nhập Google thành công.`);
+                setTimeout(() => {
+                    setUserData(user);
+                    navigate("/");
+                }, 2200);
+            } else {
+                toast.error(res.data?.message || "Đăng nhập Google thất bại");
+            }
+        } catch (err) {
+            console.log("Google login error:", err);
+            toast.error(err.response?.data?.message || "Đăng nhập Google thất bại");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGoogleError = () => {
+        toast.error("Đăng nhập Google thất bại");
     };
 
     return (
@@ -130,6 +162,22 @@ const Login = () => {
                             {loading ? "Đang xử lý..." : "Đăng nhập"}
                         </button>
                     </form>
+
+                    <div className="social-divider">
+                        <span>Hoặc</span>
+                    </div>
+
+                    <div className="google-login-wrapper">
+                        <GoogleLogin
+                            onSuccess={handleGoogleSuccess}
+                            onError={handleGoogleError}
+                            size="large"
+                            text="signin_with"
+                            shape="rectangular"
+                            logo_alignment="left"
+                        />
+                    </div>
+
                     <div className="form-links">
                         <p>Bạn chưa có tài khoản? <Link to="/register">Đăng ký</Link></p>
                         <p><Link to="/forgot-password">Quên mật khẩu?</Link></p>

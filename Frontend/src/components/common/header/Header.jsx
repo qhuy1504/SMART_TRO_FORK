@@ -14,6 +14,18 @@ const Header = () => {
   const { user, logout, loading } = useAuth()
   const navigate = useNavigate()
 
+  // Helper function để xử lý URL avatar Google
+  const getAvatarUrl = (avatar) => {
+    if (avatar && avatar.includes('googleusercontent.com')) {
+      // Cải thiện chất lượng ảnh Google
+      const baseUrl = avatar.split('=')[0];
+      const newUrl = `${baseUrl}=s200-c`;
+      console.log('Header: Converting Google avatar URL from', avatar, 'to', newUrl);
+      return newUrl;
+    }
+    return avatar || 'https://res.cloudinary.com/dapvuniyx/image/upload/v1755712519/avatar_gj5yhw.jpg';
+  };
+
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng)
   }
@@ -99,9 +111,15 @@ const Header = () => {
                 <div className="user-profile" onClick={() => setUserMenuOpen(!userMenuOpen)}>
                   <div className="user-info">
                     <img 
-                      src={user.avatar || 'https://res.cloudinary.com/dapvuniyx/image/upload/v1755712519/avatar_gj5yhw.jpg'} 
+                      src={getAvatarUrl(user.avatar)}
                       alt="Avatar" 
                       className="user-avatar"
+                      crossOrigin="anonymous"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        console.log('Header avatar load error:', e.target.src);
+                        e.target.src = 'https://res.cloudinary.com/dapvuniyx/image/upload/v1755712519/avatar_gj5yhw.jpg';
+                      }}
                     />
                     <span className="user-name">{user.fullName}</span>
                     <i className={`fa fa-chevron-${userMenuOpen ? 'up' : 'down'}`}></i>
@@ -110,13 +128,26 @@ const Header = () => {
                     <div className="user-dropdown">
                       <div className="user-dropdown-header">
                         <img 
-                          src={user.avatar || 'https://res.cloudinary.com/dapvuniyx/image/upload/v1755712519/avatar_gj5yhw.jpg'} 
+                          src={getAvatarUrl(user.avatar)}
                           alt="Avatar" 
                           className="dropdown-avatar"
+                          crossOrigin="anonymous"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            console.log('Dropdown avatar load error:', e.target.src);
+                            e.target.src = 'https://res.cloudinary.com/dapvuniyx/image/upload/v1755712519/avatar_gj5yhw.jpg';
+                          }}
                         />
                         <div className="dropdown-user-info">
                           <p className="dropdown-name">{user.fullName}</p>
                           <p className="dropdown-email">{user.email}</p>
+                          {user.phone ? (
+                            <p className="dropdown-phone">SĐT: {user.phone}</p>
+                          ) : user.googleId ? (
+                            <p className="dropdown-phone">Tài khoản Google</p>
+                          ) : (
+                            <p className="dropdown-phone">Chưa có SĐT</p>
+                          )}
                           <span className="dropdown-role">{t(`roles.${user.role}`)}</span>
                         </div>
                       </div>

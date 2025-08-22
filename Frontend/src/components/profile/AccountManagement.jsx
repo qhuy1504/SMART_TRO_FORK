@@ -31,17 +31,38 @@ const AccountManagement = () => {
   const [showSessions, setShowSessions] = useState(false);
   const [loadingSessions, setLoadingSessions] = useState(false);
 
+  // Helper function để xử lý URL avatar Google
+  const getAvatarUrl = () => {
+    if (avatarPreview) return avatarPreview;
+    if (user?.avatar) {
+      // Nếu là avatar Google, cải thiện URL
+      if (user.avatar.includes('googleusercontent.com')) {
+        // Thay đổi kích thước và loại bỏ crop để có chất lượng tốt hơn
+        const baseUrl = user.avatar.split('=')[0];
+        return `${baseUrl}=s200-c`;
+      }
+      return user.avatar;
+    }
+    return 'https://res.cloudinary.com/dapvuniyx/image/upload/v1755712519/avatar_gj5yhw.jpg';
+  };
+
   // Load user data when component mounts
   useEffect(() => {
     if (user) {
+      console.log('User avatar URL:', user.avatar); // Debug log
       setFormData({
         fullName: user.fullName || '',
         phone: user.phone || '',
         avatar: null
       });
-      setAvatarPreview(user.avatar || '');
+      // Ưu tiên avatar từ user context, không cần preview ban đầu nếu không có file mới
+      if (!avatarPreview && user.avatar) {
+        setAvatarPreview(user.avatar);
+      } else if (!avatarPreview) {
+        setAvatarPreview('');
+      }
     }
-  }, [user]);
+  }, [user, avatarPreview]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -87,7 +108,14 @@ const AccountManagement = () => {
     try {
       const updateData = new FormData();
       updateData.append('fullName', formData.fullName);
-      updateData.append('phone', formData.phone);
+      
+      // Chỉ gửi phone nếu có giá trị hoặc không phải tài khoản Google
+      if (formData.phone && formData.phone.trim()) {
+        updateData.append('phone', formData.phone);
+      } else if (!user?.googleId) {
+        // Nếu không phải tài khoản Google thì phone bắt buộc
+        updateData.append('phone', formData.phone);
+      }
       
       if (formData.avatar) {
         updateData.append('avatar', formData.avatar);
@@ -241,9 +269,15 @@ const AccountManagement = () => {
             <div className="avatar-section">
               <div className="avatar-container">
                 <img 
-                  src={avatarPreview || 'https://res.cloudinary.com/dapvuniyx/image/upload/v1755712519/avatar_gj5yhw.jpg'} 
+                  src={getAvatarUrl()}
                   alt="Avatar" 
                   className="avatar-preview"
+                  crossOrigin="anonymous"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    console.log('Avatar load error:', e.target.src);
+                    e.target.src = 'https://res.cloudinary.com/dapvuniyx/image/upload/v1755712519/avatar_gj5yhw.jpg';
+                  }}
                 />
                 <label className="avatar-upload-btn">
                   <i className="fa fa-camera"></i>
@@ -290,15 +324,26 @@ const AccountManagement = () => {
 
             <div className="form-row">
               <div className="form-group">
-                <label>{t('profile.account.profileInfo.phone')} *</label>
+                <label>
+                  {t('profile.account.profileInfo.phone')} 
+                  {!user?.googleId && ' *'}
+                  {user?.googleId && (
+                    <small className="optional-field"> (Tùy chọn cho tài khoản Google)</small>
+                  )}
+                </label>
                 <input
                   type="tel"
                   name="phone"
                   value={formData.phone}
                   onChange={handleInputChange}
-                  placeholder={t('profile.account.profileInfo.phone')}
-                  required
+                  placeholder={user?.googleId ? "Tài khoản Google không yêu cầu SĐT" : t('profile.account.profileInfo.phone')}
+                  required={!user?.googleId}
                 />
+                {user?.googleId && !formData.phone && (
+                  <small style={{color: '#666', marginTop: '5px', display: 'block'}}>
+                    Tài khoản Google có thể không có số điện thoại
+                  </small>
+                )}
               </div>
             </div>
 
@@ -337,18 +382,25 @@ const AccountManagement = () => {
             <div className="security-item">
               <div className="security-info">
                 <h4>{t('profile.account.security.password.title')}</h4>
-                <p>{t('profile.account.security.password.description')}</p>
+                <p>
+                  {user?.googleId ? 
+                    t('profile.account.security.password.googleAccountNote') : 
+                    t('profile.account.security.password.description')
+                  }
+                </p>
               </div>
-              <button 
-                className="btn-secondary"
-                onClick={() => setShowChangePassword(!showChangePassword)}
-              >
-                <i className="fa fa-key"></i>
-                {t('profile.account.security.password.changeButton')}
-              </button>
+              {!user?.googleId && (
+                <button 
+                  className="btn-secondary"
+                  onClick={() => setShowChangePassword(!showChangePassword)}
+                >
+                  <i className="fa fa-key"></i>
+                  {t('profile.account.security.password.changeButton')}
+                </button>
+              )}
             </div>
 
-            {showChangePassword && (
+            {showChangePassword && !user?.googleId && (
               <form onSubmit={handlePasswordSubmit} className="password-form">
                 <div className="form-group">
                   <label>{t('profile.account.security.password.currentPassword')} *</label>
@@ -449,6 +501,25 @@ const AccountManagement = () => {
 
             <div className="security-item">
               <div className="security-info">
+                <h4>{t('profile.account.security.loginMethod.title')}</h4>
+                <p>
+                  {user?.googleId ? (
+                    <span className="login-method-google">
+                      <i className="fab fa-google"></i>
+                      {t('profile.account.security.loginMethod.google')}
+                    </span>
+                  ) : (
+                    <span className="login-method-email">
+                      <i className="fa fa-envelope"></i>
+                      {t('profile.account.security.loginMethod.email')}
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="security-item">
+              <div className="security-info">
                 <h4>{t('profile.account.security.accountStatus.title')}</h4>
                 <p>
                   {user?.isActive ? (
@@ -466,12 +537,7 @@ const AccountManagement = () => {
               </div>
             </div>
 
-            <div className="security-item">
-              <div className="security-info">
-                <h4>{t('profile.account.security.lastLogin.title')}</h4>
-                <p>{user?.lastLogin ? new Date(user.lastLogin).toLocaleString('vi-VN') : t('profile.account.security.lastLogin.noInfo')}</p>
-              </div>
-            </div>
+           
 
             <div className="security-item">
               <div className="security-info">
@@ -517,12 +583,26 @@ const AccountManagement = () => {
                       <div key={session.sessionId} className={`session-item ${session.isCurrent ? 'current' : ''}`}>
                         <div className="session-info">
                           <div className="session-device">
-                            <i className={`fa ${session.deviceInfo.deviceType === 'mobile' ? 'fa-mobile-alt' : session.deviceInfo.deviceType === 'tablet' ? 'fa-tablet-alt' : 'fa-desktop'}`}></i>
+                            <i className={`fa ${
+                              session.deviceInfo?.deviceType === 'mobile' ? 'fa-mobile-alt' : 
+                              session.deviceInfo?.deviceType === 'tablet' ? 'fa-tablet-alt' : 
+                              'fa-desktop'
+                            }`}></i>
                             <div>
-                              <h5>{session.deviceInfo.deviceString}</h5>
-                              <p className="session-location">{session.location.locationString}</p>
+                              <h5>
+                                {session.deviceString || 
+                                 session.deviceInfo?.deviceString || 
+                                 `${session.deviceInfo?.browser || 'Unknown Browser'} ${session.deviceInfo?.browserVersion || ''} trên ${session.deviceInfo?.os || 'Unknown OS'}`
+                                }
+                              </h5>
+                              <p className="session-location">
+                                {session.locationString || 
+                                 session.location?.locationString || 
+                                 `${session.location?.city || 'Unknown'}, ${session.location?.region || 'Unknown'}, ${session.location?.country || 'Unknown'}`
+                                }
+                              </p>
                               <p className="session-details">
-                                {t('profile.account.security.activeSessions.ip')} {session.location.ip} • {session.location.isp}
+                                {t('profile.account.security.activeSessions.ip')} {session.location?.ip || 'N/A'} • {session.location?.isp || 'N/A'}
                               </p>
                               <p className="session-time">
                                 {t('profile.account.security.activeSessions.loginTime')} {new Date(session.loginTime).toLocaleString('vi-VN')}

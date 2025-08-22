@@ -79,6 +79,8 @@
   border-radius: 50%;
   object-fit: cover;
   border: 3px solid #e9ecef;
+  background-color: #f8f9fa;
+  transition: all 0.3s ease;
 }
 
 .avatar-upload-btn {
@@ -202,7 +204,7 @@
   color: #000000;
   line-height: 1.4;
   max-width: 400px;
-  white-space: nowrap;
+
  
 
 }
@@ -605,6 +607,44 @@
 
 .btn-logout-session:hover {
   background: #5a6268;
+}
+
+/* Login Method Styles */
+.login-method-google,
+.login-method-email {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.login-method-google {
+  background: #e8f5e8;
+  color: #2d5a2d;
+}
+
+.login-method-google i {
+  color: #4285f4;
+}
+
+.login-method-email {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.login-method-email i {
+  color: #1976d2;
+}
+
+/* Optional field styling */
+.optional-field {
+  font-size: 12px;
+  color: #666;
+  font-weight: normal;
+  margin-left: 5px;
 }
 
 @media (max-width: 768px) {

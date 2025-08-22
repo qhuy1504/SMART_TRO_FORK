@@ -357,6 +357,7 @@
         "saveChanges": "Save Changes",
         "saving": "Saving...",
         "success": "Profile updated successfully!",
+        "successLogout": "Logged out successfully!",
         "error": "An error occurred!"
       },
       "security": {
@@ -364,6 +365,7 @@
         "password": {
           "title": "Password",
           "description": "Change password to secure your account",
+          "googleAccountNote": "Google accounts don't need passwords. You login through Google.",
           "changeButton": "Change Password",
           "currentPassword": "Current Password",
           "newPassword": "New Password",
@@ -374,6 +376,11 @@
           "saving": "Saving...",
           "success": "Password changed successfully!",
           "error": "Password confirmation does not match!"
+        },
+        "loginMethod": {
+          "title": "Login Method",
+          "google": "Login with Google",
+          "email": "Login with email and password"
         },
         "accountStatus": {
           "title": "Account Status",

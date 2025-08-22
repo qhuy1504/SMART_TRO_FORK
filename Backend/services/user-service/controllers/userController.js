@@ -10,6 +10,35 @@ import { EmailVerification } from '../../../schemas/index.js';
 import { sendVerificationEmail } from '../../emailService.js';
 import LoginSession from '../../../schemas/LoginSession.js';
 import DeviceInfoService from '../../shared/utils/deviceInfoService.js';
+import { OAuth2Client } from 'google-auth-library';
+
+// Helper function tạo device string có ý nghĩa
+function createDeviceString(deviceInfo) {
+    const browser = deviceInfo.browser !== 'Unknown' ? deviceInfo.browser : 'Trình duyệt';
+    const browserVersion = deviceInfo.browserVersion !== 'Unknown' ? deviceInfo.browserVersion : '';
+    const os = deviceInfo.os !== 'Unknown' ? deviceInfo.os : 'Hệ điều hành';
+    
+    if (browserVersion) {
+        return `${browser} ${browserVersion} trên ${os}`;
+    }
+    return `${browser} trên ${os}`;
+}
+
+// Helper function tạo location string có ý nghĩa  
+function createLocationString(locationInfo) {
+    const city = locationInfo.city !== 'Unknown' ? locationInfo.city : '';
+    const region = locationInfo.region !== 'Unknown' ? locationInfo.region : '';
+    const country = locationInfo.country !== 'Unknown' ? locationInfo.country : 'Việt Nam';
+    
+    if (city && region) {
+        return `${city}, ${region}, ${country}`;
+    } else if (region) {
+        return `${region}, ${country}`;
+    } else if (city) {
+        return `${city}, ${country}`;
+    }
+    return country;
+}
 
 class UserController {
     // Đăng ký user mới
@@ -182,6 +211,9 @@ class UserController {
             const locationInfo = await DeviceInfoService.getLocationFromIP(clientIP);
 
             // Lưu session information
+            const deviceString = createDeviceString(deviceInfo);
+            const locationString = createLocationString(locationInfo);
+            
             const loginSession = new LoginSession({
                 userId: user._id,
                 deviceInfo: {
@@ -191,7 +223,8 @@ class UserController {
                     os: deviceInfo.os,
                     osVersion: deviceInfo.osVersion,
                     deviceType: deviceInfo.deviceType,
-                    platform: deviceInfo.platform
+                    platform: deviceInfo.platform,
+                    deviceString: deviceString
                 },
                 location: {
                     ip: locationInfo.ip,
@@ -199,7 +232,8 @@ class UserController {
                     region: locationInfo.region,
                     city: locationInfo.city,
                     timezone: locationInfo.timezone,
-                    isp: locationInfo.isp
+                    isp: locationInfo.isp,
+                    locationString: locationString
                 },
                 sessionToken: sessionId,
                 loginMethod: 'password'
@@ -227,7 +261,8 @@ class UserController {
                 message: 'Đăng nhập thành công',
                 data: {
                     user: userResponse,
-                    token
+                    token,
+                    sessionToken: sessionId
                 }
             });
 
@@ -235,6 +270,132 @@ class UserController {
             res.status(500).json({
                 success: false,
                 message: 'Lỗi server',
+                error: error.message
+            });
+        }
+    }
+
+    // Đăng nhập bằng Google
+    async googleLogin(req, res) {
+        try {
+            const { credential } = req.body;
+
+            // Khởi tạo Google OAuth client
+            const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+            // Verify Google token
+            const ticket = await client.verifyIdToken({
+                idToken: credential,
+                audience: process.env.GOOGLE_CLIENT_ID
+            });
+
+            const payload = ticket.getPayload();
+            const { email, name, picture, sub: googleId } = payload;
+
+            if (!email || !name) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Thông tin từ Google không đầy đủ'
+                });
+            }
+
+            // Tìm hoặc tạo user
+            let user = await userRepository.findByEmail(email);
+
+            if (!user) {
+                // Tạo user mới với thông tin từ Google
+                const userData = {
+                    fullName: name,
+                    email: email,
+                    avatar: picture,
+                    googleId: googleId,
+                    isActive: true, // Google account đã verify sẵn
+                    role: 'tenant'
+                    // Không gán phone để tránh lỗi unique constraint
+                };
+
+                user = await userRepository.create(userData);
+            } else {
+                // Cập nhật googleId nếu chưa có
+                if (!user.googleId) {
+                    user.googleId = googleId;
+                    await user.save();
+                }
+            }
+
+            // Cập nhật last login
+            await userRepository.updateLastLogin(user._id);
+
+            // Tạo session ID
+            const sessionId = crypto.randomUUID();
+
+            // Lấy thông tin thiết bị và IP
+            const userAgent = req.headers['user-agent'] || '';
+            const clientIP = DeviceInfoService.getClientIP(req);
+            const deviceInfo = DeviceInfoService.parseUserAgent(userAgent);
+            const locationInfo = await DeviceInfoService.getLocationFromIP(clientIP);
+
+            // Lưu session information
+            const deviceString = createDeviceString(deviceInfo);
+            const locationString = createLocationString(locationInfo);
+            
+            const loginSession = new LoginSession({
+                userId: user._id,
+                deviceInfo: {
+                    userAgent: userAgent,
+                    browser: deviceInfo.browser,
+                    browserVersion: deviceInfo.browserVersion,
+                    os: deviceInfo.os,
+                    osVersion: deviceInfo.osVersion,
+                    deviceType: deviceInfo.deviceType,
+                    platform: deviceInfo.platform,
+                    deviceString: deviceString
+                },
+                location: {
+                    ip: locationInfo.ip,
+                    country: locationInfo.country,
+                    region: locationInfo.region,
+                    city: locationInfo.city,
+                    timezone: locationInfo.timezone,
+                    isp: locationInfo.isp,
+                    locationString: locationString
+                },
+                sessionToken: sessionId,
+                loginMethod: 'google'
+            });
+
+            await loginSession.save();
+
+            // Tạo JWT token với sessionId
+            const token = jwt.sign(
+                { 
+                    userId: user._id, 
+                    email: user.email, 
+                    role: user.role,
+                    sessionToken: sessionId
+                },
+                process.env.JWT_SECRET,
+                { expiresIn: process.env.JWT_EXPIRES_IN || '4h' }
+            );
+
+            // Không trả về password
+            const { password: _, ...userResponse } = user.toObject();
+
+            res.status(200).json({
+                success: true,
+                message: 'Đăng nhập Google thành công',
+                data: {
+                    user: userResponse,
+                    token,
+                    sessionToken: sessionId
+                }
+            });
+
+        } catch (error) {
+            console.error('Google login error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Lỗi xác thực Google',
                 error: error.message
             });
         }
@@ -288,10 +449,39 @@ class UserController {
             const userId = req.user.userId;
             const updateData = req.body;
 
+            // Lấy thông tin user hiện tại để kiểm tra googleId
+            const currentUser = await userRepository.findById(userId);
+            if (!currentUser) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Không tìm thấy user'
+                });
+            }
+
             // Loại bỏ các field không được phép update
             delete updateData.password;
             delete updateData.email;
             delete updateData.role;
+
+            // Xử lý phone cho tài khoản Google
+            if (currentUser.googleId) {
+                // Nếu là tài khoản Google và phone rỗng, loại bỏ field phone khỏi updateData
+                if (!updateData.phone || updateData.phone.trim() === '') {
+                    delete updateData.phone;
+                }
+            }
+
+            // Kiểm tra số điện thoại đã tồn tại (chỉ khi có phone)
+            if (updateData.phone && updateData.phone.trim()) {
+                const existingUser = await userRepository.findByPhone(updateData.phone);
+                if (existingUser && existingUser._id.toString() !== userId) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Số điện thoại này đã được sử dụng bởi tài khoản khác',
+                        errors: ['Số điện thoại đã tồn tại trong hệ thống, vui lòng nhập SĐT khác']
+                    });
+                }
+            }
 
             let avatarUrl = undefined;
             
@@ -544,6 +734,46 @@ class UserController {
                 { expiresIn: process.env.JWT_EXPIRES_IN || '4h' }
             );
 
+            // Tạo LoginSession cho auto-login sau khi verify email
+            const sessionToken = crypto.randomUUID();
+            
+            // Lấy thông tin thiết bị và IP
+            const userAgent = req.headers['user-agent'] || '';
+            const clientIP = DeviceInfoService.getClientIP(req);
+            const deviceInfo = DeviceInfoService.parseUserAgent(userAgent);
+            const locationInfo = await DeviceInfoService.getLocationFromIP(clientIP);
+            
+            // Tạo device string có ý nghĩa
+            const deviceString = createDeviceString(deviceInfo);
+            const locationString = createLocationString(locationInfo);
+            
+            const loginSession = await LoginSession.create({
+                sessionToken,
+                userId: user._id,
+                loginMethod: 'email_verification',
+                deviceInfo: {
+                    userAgent: userAgent,
+                    browser: deviceInfo.browser,
+                    browserVersion: deviceInfo.browserVersion,
+                    os: deviceInfo.os,
+                    osVersion: deviceInfo.osVersion,
+                    deviceType: deviceInfo.deviceType,
+                    platform: deviceInfo.platform,
+                    deviceString: deviceString
+                },
+                location: {
+                    ip: locationInfo.ip,
+                    country: locationInfo.country,
+                    region: locationInfo.region,
+                    city: locationInfo.city,
+                    timezone: locationInfo.timezone,
+                    isp: locationInfo.isp,
+                    locationString: locationString
+                },
+                loginTime: new Date(),
+                isActive: true
+            });
+
             // Response với auto login
             res.status(200).json({
                 success: true,
@@ -559,6 +789,7 @@ class UserController {
                         avatar: user.avatar
                     },
                     token: authToken,
+                    sessionToken: sessionToken,
                     autoLogin: true
                 }
             });

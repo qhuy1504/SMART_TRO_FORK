@@ -1,5 +1,13 @@
 import axios from 'axios';
 
+// Global logout handler
+let globalLogoutHandler = null;
+
+// Set global logout handler
+export const setGlobalLogoutHandler = (handler) => {
+  globalLogoutHandler = handler;
+};
+
 // Cấu hình base URL cho API
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
 
@@ -48,8 +56,25 @@ api.interceptors.response.use(
         case 401: {
           // Chỉ redirect nếu không có token hoặc lỗi từ endpoint users (login hết hạn) và không phải đang ở trang login
           const isLoginPage = window.location.pathname === '/login';
-          if (!isLoginPage && (!tokenPresent || /\/users\//.test(originalRequest?.url || ''))) {
-            apiUtils.clearAuthData();
+          const sessionExpiredMessage = data?.message;
+          
+          // Kiểm tra xem có phải lỗi do session bị logout từ thiết bị khác
+          if (sessionExpiredMessage && sessionExpiredMessage.includes('phiên đăng nhập')) {
+            console.warn('Session đã bị đăng xuất từ thiết bị khác');
+            if (!isLoginPage && globalLogoutHandler) {
+              globalLogoutHandler();
+              // Hiển thị thông báo cho user
+              if (window.showLogoutNotification) {
+                window.showLogoutNotification('Phiên đăng nhập của bạn đã bị đăng xuất từ thiết bị khác');
+              }
+              window.location.href = '/login?reason=session_logout';
+            }
+          } else if (!isLoginPage && (!tokenPresent || /\/users\//.test(originalRequest?.url || ''))) {
+            if (globalLogoutHandler) {
+              globalLogoutHandler();
+            } else {
+              apiUtils.clearAuthData();
+            }
             window.location.href = '/login';
           } else if (!isLoginPage) {
             console.error('Phiên đăng nhập không hợp lệ hoặc hết hạn. Vui lòng đăng nhập lại.');
@@ -129,6 +154,9 @@ export const apiMethods = {
 export const authAPI = {
   // Login
   login: (credentials) => api.post('/users/login', credentials),
+  
+  // Google Login
+  googleLogin: (googleData) => api.post('/users/google-login', googleData),
   
   // Register
   register: (userData) => api.post('/users/register', userData),
@@ -214,10 +242,13 @@ export const apiUtils = {
   },
   
   // Set auth data - luôn lưu token vào localStorage
-  setAuthData: (token, userId, role) => {
+  setAuthData: (token, userId, role, sessionToken = null) => {
     localStorage.setItem('token', token);
     localStorage.setItem('userId', userId);
     localStorage.setItem('role', role);
+    if (sessionToken) {
+      localStorage.setItem('sessionToken', sessionToken);
+    }
   },
   
   // Clear auth data
@@ -225,8 +256,7 @@ export const apiUtils = {
     localStorage.removeItem('token');
     localStorage.removeItem('userId');
     localStorage.removeItem('role');
- 
-
+    localStorage.removeItem('sessionToken');
   },
   
   // Get token from storage

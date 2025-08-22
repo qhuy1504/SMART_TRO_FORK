@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { authAPI, apiUtils } from '../services/api';
+import { authAPI, apiUtils, setGlobalLogoutHandler } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -14,6 +14,16 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const logout = () => {
+    apiUtils.clearAuthData();
+    setUser(null);
+  };
+
+  // Set up global logout handler
+  useEffect(() => {
+    setGlobalLogoutHandler(logout);
+  }, []);
 
   // Kiểm tra trạng thái đăng nhập khi khởi tạo
   useEffect(() => {
@@ -59,11 +69,6 @@ export const AuthProvider = ({ children }) => {
 
   const setUserData = (userData) => {
     setUser(userData);
-  };
-
-  const logout = () => {
-    apiUtils.clearAuthData();
-    setUser(null);
   };
 
   const value = {

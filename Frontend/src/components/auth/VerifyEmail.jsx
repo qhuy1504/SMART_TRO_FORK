@@ -39,10 +39,11 @@ const VerifyEmail = () => {
                
                 
                 if (response.data && response.data.success) {
-                    const { user, token: authToken } = response.data.data;
+                    const { user, token: authToken, sessionToken } = response.data.data;
                     
                     // Auto login sau khi verify thành công
-                    apiUtils.setAuthData(authToken, user._id, user.role);
+                    apiUtils.setAuthData(authToken, user._id, user.role, sessionToken);
+                    
                     setUserData(user);
                     
                     setStatus('success');

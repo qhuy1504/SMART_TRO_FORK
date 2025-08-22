@@ -28,6 +28,10 @@ router.post('/login',
     userController.login
 );
 
+router.post('/google-login', 
+    userController.googleLogin
+);
+
 // Protected routes (require authentication)
 router.get('/profile', 
     authMiddleware,

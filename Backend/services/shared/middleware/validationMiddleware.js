@@ -15,8 +15,8 @@ class ValidationMiddleware {
         // Không được để trống
         if (!fullName || fullName.trim() === '') {
             errors.push('Họ tên không được để trống');
-        } else if (!/^[\p{L} ]{2,}$/u.test(fullName.trim())) {
-            errors.push('Họ tên chỉ được chứa chữ cái và khoảng trắng, tối thiểu 2 ký tự');
+        } else if (!/^[\p{L}\p{M}\s]{2,}$/u.test(fullName.trim())) {
+            errors.push('Họ tên chỉ được chứa chữ cái tiếng Việt và khoảng trắng, tối thiểu 2 ký tự');
         }
 
         if (!email || email.trim() === '') {
@@ -27,8 +27,8 @@ class ValidationMiddleware {
 
         if (!phone || phone.trim() === '') {
             errors.push('Số điện thoại không được để trống');
-        } else if (!/^[0-9]{10,11}$/.test(phone)) {
-            errors.push('Số điện thoại phải có 10-11 số');
+        } else if (!/^[0-9]{10}$/.test(phone)) {
+            errors.push('Số điện thoại phải có 10 số');
         }
 
         if (!password || password === '') {
@@ -83,12 +83,12 @@ class ValidationMiddleware {
         const { fullName, phone, dateOfBirth } = req.body;
         const errors = [];
 
-        if (fullName && !/^[\p{L} ]{2,}$/u.test(fullName.trim())) {
-            errors.push('Họ tên chỉ được chứa chữ cái và khoảng trắng, tối thiểu 2 ký tự');
+        if (fullName && !/^[\p{L}\p{M}\s]{2,}$/u.test(fullName.trim())) {
+            errors.push('Họ tên chỉ được chứa chữ cái tiếng Việt và khoảng trắng, tối thiểu 2 ký tự');
         }
 
-        if (phone && !/^[0-9]{10,11}$/.test(phone)) {
-            errors.push('Số điện thoại phải có 10-11 số');
+        if (phone && !/^[0-9]{10}$/.test(phone)) {
+            errors.push('Số điện thoại phải có 10 số');
         }
 
 

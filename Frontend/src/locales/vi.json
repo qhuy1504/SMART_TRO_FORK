@@ -357,6 +357,7 @@
         "saveChanges": "Lưu thay đổi",
         "saving": "Đang lưu...",
         "success": "Cập nhật thông tin thành công!",
+        "successLogout": "Đăng xuất thành công!",
         "error": "Có lỗi xảy ra!"
       },
       "security": {
@@ -364,6 +365,7 @@
         "password": {
           "title": "Mật khẩu",
           "description": "Đổi mật khẩu để bảo mật tài khoản",
+          "googleAccountNote": "Tài khoản Google không cần mật khẩu. Bạn đăng nhập thông qua Google.",
           "changeButton": "Đổi mật khẩu",
           "currentPassword": "Mật khẩu hiện tại",
           "newPassword": "Mật khẩu mới",
@@ -374,6 +376,11 @@
           "saving": "Đang lưu...",
           "success": "Đổi mật khẩu thành công!",
           "error": "Mật khẩu xác nhận không khớp!"
+        },
+        "loginMethod": {
+          "title": "Phương thức đăng nhập",
+          "google": "Đăng nhập qua Google",
+          "email": "Đăng nhập bằng email và mật khẩu"
         },
         "accountStatus": {
           "title": "Trạng thái tài khoản",

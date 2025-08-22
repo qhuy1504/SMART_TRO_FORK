@@ -203,3 +203,52 @@
   background-position: center;
   background-size: 14px;
 }
+
+/* Social login styling */
+.social-divider {
+  position: relative;
+  text-align: center;
+  margin: 20px 0;
+}
+
+.social-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #e4e6ea;
+  z-index: 1;
+}
+
+.social-divider span {
+  background: #fff;
+  padding: 0 15px;
+  color: #65676b;
+  font-size: 14px;
+  position: relative;
+  z-index: 2;
+}
+
+.google-login-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+  margin-left: 50px;
+  align-items: center;
+}
+
+.google-login-wrapper > div {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.google-login-wrapper button {
+  width: 100% !important;
+  justify-content: center !important;
+  border-radius: 8px !important;
+  height: 44px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+}

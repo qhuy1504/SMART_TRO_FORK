@@ -12,6 +12,16 @@ const ProfileLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Helper function để xử lý URL avatar Google
+  const getAvatarUrl = (avatar) => {
+    if (avatar && avatar.includes('googleusercontent.com')) {
+      // Cải thiện chất lượng ảnh Google
+      const baseUrl = avatar.split('=')[0];
+      return `${baseUrl}=s150-c`;
+    }
+    return avatar || 'https://res.cloudinary.com/dapvuniyx/image/upload/v1755712519/avatar_gj5yhw.jpg';
+  };
+
   const menuItems = [
     {
       id: 'posts',
@@ -55,7 +65,7 @@ const ProfileLayout = () => {
   };
 
   const confirmLogout = () => {
-    toast.success(t('profile.account.profileInfo.success', 'Đăng xuất thành công!'));
+    toast.success(t('profile.account.profileInfo.successLogout', 'Đăng xuất thành công!'));
     setShowLogoutModal(false);
     setTimeout(() => {
       logout();
@@ -74,13 +84,24 @@ const ProfileLayout = () => {
         <div className="sidebar-header">
           <div className="user-info">
             <img 
-              src={user?.avatar || 'https://res.cloudinary.com/dapvuniyx/image/upload/v1755712519/avatar_gj5yhw.jpg'} 
+              src={getAvatarUrl(user?.avatar)}
               alt="Avatar" 
               className="sidebar-avatar"
+              crossOrigin="anonymous"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                console.log('Sidebar avatar load error:', e.target.src);
+                e.target.src = 'https://res.cloudinary.com/dapvuniyx/image/upload/v1755712519/avatar_gj5yhw.jpg';
+              }}
             />
             <div className="user-details">
               <h4>{user?.fullName}</h4>
-              <p>SĐT: {user?.phone}</p>
+              <p>
+                {user?.phone ? 
+                  `SĐT: ${user.phone}` : 
+                  (user?.googleId ? 'Tài khoản Google' : 'Chưa có SĐT')
+                }
+              </p>
               <span className="user-role">{t(`roles.${user?.role}`)}</span>
             </div>
           </div>

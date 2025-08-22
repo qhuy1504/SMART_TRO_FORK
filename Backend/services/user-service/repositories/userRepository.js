@@ -7,6 +7,11 @@ class UserRepository {
     // Tạo user mới
     async create(userData) {
         try {
+            // Xử lý phone field để tránh lỗi unique constraint
+            if (userData.phone === '' || userData.phone === null) {
+                delete userData.phone; // Xóa field thay vì gán rỗng
+            }
+            
             const user = new User(userData);
             return await user.save();
         } catch (error) {
@@ -53,6 +58,11 @@ class UserRepository {
     // Cập nhật user
     async update(id, updateData) {
         try {
+            // Xử lý phone field để tránh lỗi unique constraint
+            if (updateData.phone === '' || updateData.phone === null) {
+                delete updateData.phone; // Xóa field thay vì gán rỗng
+            }
+            
             return await User.findByIdAndUpdate(
                 id, 
                 updateData, 

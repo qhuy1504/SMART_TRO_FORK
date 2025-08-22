@@ -16,17 +16,27 @@ const authMiddleware = async (req, res, next) => {
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = decoded;
         
-        // Cập nhật last activity nếu có sessionToken
+        // Kiểm tra xem session có còn active không
         if (decoded.sessionToken) {
-            // Cập nhật last activity (không await để không làm chậm request)
-            LoginSession.updateOne(
-                { sessionToken: decoded.sessionToken, isActive: true },
-                { $set: { lastActivity: new Date() } }
-            ).catch(err => console.error('Failed to update last activity:', err));
+            const session = await LoginSession.findOne({
+                sessionToken: decoded.sessionToken,
+                isActive: true
+            });
+
+            if (!session) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Phiên đăng nhập đã hết hạn hoặc bị đăng xuất'
+                });
+            }
+
+            // Cập nhật last activity
+            session.lastActivity = new Date();
+            session.save().catch(err => console.error('Failed to update last activity:', err));
         }
         
+        req.user = decoded;
         next();
 
     } catch (error) {
