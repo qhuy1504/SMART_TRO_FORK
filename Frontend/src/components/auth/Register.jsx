@@ -16,6 +16,7 @@ const Register = () => {
     const [avatar, setAvatar] = useState(null);
     const [avatarPreview, setAvatarPreview] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [uploadingAvatar, setUploadingAvatar] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -25,6 +26,13 @@ const Register = () => {
         setError("");
         setSuccess("");
         setLoading(true);
+        
+        // Hiển thị thông báo upload nếu có avatar
+        if (avatar) {
+            setUploadingAvatar(true);
+            toast.info("Đang upload ảnh đại diện, vui lòng chờ...");
+        }
+        
         try {
             const formData = new FormData();
             formData.append("fullName", fullName);
@@ -33,8 +41,10 @@ const Register = () => {
             formData.append("password", password);
             formData.append("role", role);
             if (avatar) formData.append("avatar", avatar);
+            
             const res = await authAPI.register(formData);
             if (res.data && res.data.success) {
+                setUploadingAvatar(false);
                 toast.success("Đăng ký thành công! Chuyển sang đăng nhập...");
                 setTimeout(() => navigate('/login'), 1500);
             } else {
@@ -58,12 +68,27 @@ const Register = () => {
             }
         } finally {
             setLoading(false);
+            setUploadingAvatar(false);
         }
     };
 
     const handleAvatarChange = (e) => {
         const file = e.target.files[0];
         if (file) {
+            // Validate file size (max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                toast.error('Kích thước ảnh không được vượt quá 5MB');
+                e.target.value = ''; // Clear the input
+                return;
+            }
+            
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                toast.error('Vui lòng chọn file hình ảnh');
+                e.target.value = ''; // Clear the input
+                return;
+            }
+            
             setAvatar(file);
             setAvatarPreview(URL.createObjectURL(file));
         } else {
@@ -127,7 +152,17 @@ const Register = () => {
                         {error && <div style={{color:'#dc2626',fontSize:'14px',marginBottom:'8px'}}>{error}</div>}
                         {success && <div style={{color:'#16a34a',fontSize:'14px',marginBottom:'8px'}}>{success}</div>}
                         <button type="submit" className="btn-primary" disabled={loading}>
-                            {loading ? 'Đang xử lý...' : 'Tạo tài khoản'}
+                            {uploadingAvatar ? (
+                                <>
+                                    <i className="fa fa-cloud-upload" style={{marginRight: '8px'}}></i>
+                                    Đang upload ảnh...
+                                </>
+                            ) : loading ? (
+                                <>
+                                    <i className="fa fa-spinner fa-spin" style={{marginRight: '8px'}}></i>
+                                    Đang xử lý...
+                                </>
+                            ) : 'Tạo tài khoản'}
                         </button>
                     </form>
                     <div className="form-links">

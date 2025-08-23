@@ -207,9 +207,12 @@ const AccountManagement = () => {
   const loadActiveSessions = async () => {
     setLoadingSessions(true);
     try {
+      console.log('Loading active sessions...'); // Debug log
       const response = await usersAPI.getActiveSessions();
+      console.log('Sessions response:', response.data); // Debug log
       if (response.data.success) {
         setSessions(response.data.data);
+        console.log('Sessions loaded:', response.data.data); // Debug log
       }
     } catch (error) {
       console.error('Load sessions error:', error);

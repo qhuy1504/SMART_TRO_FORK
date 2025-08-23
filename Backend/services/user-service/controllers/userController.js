@@ -60,28 +60,49 @@ class UserController {
             if (req.file) {
                 console.log('File received, uploading to Cloudinary...');
                 try {
-                    // Upload avatar lên Cloudinary
-                    const uploadResult = await new Promise((resolve, reject) => {
-                        cloudinary.uploader.upload_stream(
-                            { folder: 'user_avatars', resource_type: 'image' },
-                            (error, result) => {
-                                if (error) {
-                                    console.error('Cloudinary upload error:', error);
-                                    reject(error);
-                                } else {
-                                    console.log('Cloudinary upload success:', result.secure_url);
-                                    resolve(result);
+                    // Upload avatar lên Cloudinary với timeout
+                    const uploadResult = await Promise.race([
+                        new Promise((resolve, reject) => {
+                            cloudinary.uploader.upload_stream(
+                                { 
+                                    folder: 'user_avatars', 
+                                    resource_type: 'image',
+                                    timeout: 30000 // 30 giây timeout
+                                },
+                                (error, result) => {
+                                    if (error) {
+                                        console.error('Cloudinary upload error:', error);
+                                        reject(error);
+                                    } else {
+                                        console.log('Cloudinary upload success:', result.secure_url);
+                                        resolve(result);
+                                    }
                                 }
-                            }
-                        ).end(req.file.buffer);
-                    });
+                            ).end(req.file.buffer);
+                        }),
+                        // Timeout sau 35 giây
+                        new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('Upload timeout after 35 seconds')), 35000)
+                        )
+                    ]);
+                    
                     avatarUrl = uploadResult.secure_url;
                     console.log('Avatar uploaded to Cloudinary:', avatarUrl);
                 } catch (uploadError) {
                     console.error('Error uploading to Cloudinary:', uploadError);
+                    
+                    // Trả về lỗi cụ thể hơn
+                    let errorMessage = 'Lỗi khi upload ảnh';
+                    if (uploadError.message?.includes('timeout')) {
+                        errorMessage = 'Upload ảnh quá lâu, vui lòng thử lại với ảnh nhỏ hơn';
+                    } else if (uploadError.message?.includes('network') || uploadError.message?.includes('connection')) {
+                        errorMessage = 'Lỗi kết nối mạng khi upload ảnh, vui lòng thử lại';
+                    }
+                    
                     return res.status(500).json({
                         success: false,
-                        message: 'Lỗi khi upload ảnh'
+                        message: errorMessage,
+                        error: process.env.NODE_ENV === 'development' ? uploadError.message : undefined
                     });
                 }
             } else {
@@ -365,6 +386,7 @@ class UserController {
             });
 
             await loginSession.save();
+            console.log('Google login - Created session:', sessionId, 'for user:', user._id);
 
             // Tạo JWT token với sessionId
             const token = jwt.sign(
@@ -723,19 +745,20 @@ class UserController {
                 verifiedAt: new Date()
             });
 
-            // Tạo JWT token để auto login
+            // Tạo LoginSession cho auto-login sau khi verify email
+            const sessionToken = crypto.randomUUID();
+            
+            // Tạo JWT token để auto login (sau khi đã có sessionToken)
             const authToken = jwt.sign(
                 { 
                     userId: user._id, 
                     email: user.email, 
-                    role: user.role 
+                    role: user.role,
+                    sessionToken: sessionToken // Thêm sessionToken vào JWT
                 },
                 process.env.JWT_SECRET,
                 { expiresIn: process.env.JWT_EXPIRES_IN || '4h' }
             );
-
-            // Tạo LoginSession cho auto-login sau khi verify email
-            const sessionToken = crypto.randomUUID();
             
             // Lấy thông tin thiết bị và IP
             const userAgent = req.headers['user-agent'] || '';
@@ -808,17 +831,27 @@ class UserController {
     async getActiveSessions(req, res) {
         try {
             const userId = req.user.userId;
+            const currentSessionToken = req.user.sessionToken;
+            
+            console.log('Current session token:', currentSessionToken);
+            
             const sessions = await LoginSession.getActiveSessions(userId);
+            console.log('Found sessions:', sessions.length);
+            sessions.forEach(session => {
+                console.log(`Session ${session._id}: ${session.sessionToken}, isCurrent: ${session.sessionToken === currentSessionToken}`);
+            });
 
             const formattedSessions = sessions.map(session => ({
                 sessionId: session._id.toString(),
+                deviceString: session.deviceString || createDeviceString(session.deviceInfo),
+                locationString: session.locationString || createLocationString(session.location),
                 deviceInfo: {
-                    deviceString: `${session.deviceInfo.browser || 'Unknown'} ${session.deviceInfo.browserVersion || ''} on ${session.deviceInfo.os || 'Unknown'}`,
+                    deviceString: session.deviceString || `${session.deviceInfo.browser || 'Unknown'} ${session.deviceInfo.browserVersion || ''} trên ${session.deviceInfo.os || 'Unknown'}`,
                     deviceType: session.deviceInfo.deviceType || 'desktop',
                     platform: session.deviceInfo.platform || 'Unknown'
                 },
                 location: {
-                    locationString: `${session.location.city || 'Unknown'}, ${session.location.region || 'Unknown'}, ${session.location.country || 'Unknown'}`,
+                    locationString: session.locationString || `${session.location.city || 'Unknown'}, ${session.location.region || 'Unknown'}, ${session.location.country || 'Unknown'}`,
                     ip: session.location.ip || 'Unknown',
                     isp: session.location.isp || 'Unknown'
                 },

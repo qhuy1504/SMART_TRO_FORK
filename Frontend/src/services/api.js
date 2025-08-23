@@ -14,7 +14,7 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:500
 // Tạo instance axios với cấu hình mặc định
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000, // 10 seconds timeout
+  timeout: 45000, // 45 seconds timeout cho upload
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -243,11 +243,15 @@ export const apiUtils = {
   
   // Set auth data - luôn lưu token vào localStorage
   setAuthData: (token, userId, role, sessionToken = null) => {
+    console.log('Setting auth data:', { token: !!token, userId, role, sessionToken }); // Debug log
     localStorage.setItem('token', token);
     localStorage.setItem('userId', userId);
     localStorage.setItem('role', role);
     if (sessionToken) {
       localStorage.setItem('sessionToken', sessionToken);
+      console.log('SessionToken saved:', sessionToken); // Debug log
+    } else {
+      console.log('No sessionToken to save'); // Debug log
     }
   },
   
