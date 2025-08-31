@@ -158,7 +158,7 @@ const Login = () => {
 
                         {error && <div className="error-message">{error}</div>}
 
-                        <button type="submit" className="btn-primary" disabled={loading} onClick={(e) => e.stopPropagation()}>
+                        <button type="submit" className="btn-login-auth" disabled={loading} onClick={(e) => e.stopPropagation()}>
                             {loading ? "Đang xử lý..." : "Đăng nhập"}
                         </button>
                     </form>

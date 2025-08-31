@@ -1,6 +1,7 @@
 {
   "sidebar": {
     "dashboard": "Bảng điều khiển",
+    "properties": "Quản lý tin đăng",
     "rooms": "Quản lý phòng trọ",
     "amenities": "Quản lý tiện ích",
     "users": "Quản lý người dùng",

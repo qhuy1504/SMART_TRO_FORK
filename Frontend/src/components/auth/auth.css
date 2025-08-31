@@ -94,10 +94,10 @@
 
 
 
-.btn-primary {
+.btn-login-auth {
   width: 100%;
   padding: 14px;
-  background-color: #27ae60;
+  background-color: #0daa4f !important;
   color: white;
   border: none;
   border-radius: 8px;
@@ -107,8 +107,8 @@
   font-size: 16px;
 }
 
-.btn-primary:hover {
-  background-color: #219150;
+.btn-login-auth:hover {
+  background-color: #00702f !important;
 }
 
 .form-links {

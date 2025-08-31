@@ -147,7 +147,7 @@ const Register = () => {
                         >
                             <option value="tenant">Khách thuê</option>
                             <option value="landlord">Chủ trọ</option>
-                            <option value="admin">Admin</option>
+                            
                         </select>
                         {error && <div style={{color:'#dc2626',fontSize:'14px',marginBottom:'8px'}}>{error}</div>}
                         {success && <div style={{color:'#16a34a',fontSize:'14px',marginBottom:'8px'}}>{success}</div>}

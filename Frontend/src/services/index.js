@@ -8,6 +8,7 @@ import paymentsAPI from './paymentsAPI';
 import reportsAPI from './reportsAPI';
 import propertiesAPI from './propertiesAPI';
 import amenitiesAPI from './amenitiesAPI';
+import { locationAPI } from './locationAPI';
 
 // Export tất cả services để dễ dàng import
 export {
@@ -20,7 +21,8 @@ export {
   paymentsAPI,
   reportsAPI,
   amenitiesAPI,
-  propertiesAPI
+  propertiesAPI,
+  locationAPI
 };
 
 // Export default object chứa tất cả services
@@ -33,7 +35,8 @@ const apiServices = {
   bookings: bookingsAPI,
   payments: paymentsAPI,
   reports: reportsAPI,
-  properties: propertiesAPI
+  properties: propertiesAPI,
+  locations: locationAPI
 };
 
 export default apiServices;

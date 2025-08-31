@@ -248,6 +248,146 @@ class ValidationMiddleware {
         }
         next();
     }
+
+    // Validate property creation
+    validatePropertyCreation(req, res, next) {
+        const {
+            title, category, description, contactInfo, address, pricing, 
+            basicInfo, amenities, houseRules, media
+        } = req.body;
+        const errors = [];
+
+        // Validate title
+        if (!title || title.trim().length === 0) {
+            errors.push('Tiêu đề không được để trống');
+        } else if (title.trim().length < 10) {
+            errors.push('Tiêu đề phải có ít nhất 10 ký tự');
+        } else if (title.trim().length > 200) {
+            errors.push('Tiêu đề không được vượt quá 200 ký tự');
+        }
+
+        // Validate category
+        const validCategories = ['phong_tro', 'can_ho', 'nha_nguyen_can', 'chung_cu_mini', 'homestay'];
+        if (!category || !validCategories.includes(category)) {
+            errors.push('Danh mục không hợp lệ');
+        }
+
+        // Validate description
+        if (!description || description.trim().length === 0) {
+            errors.push('Mô tả không được để trống');
+        } else if (description.trim().length < 20) {
+            errors.push('Mô tả phải có ít nhất 20 ký tự');
+        }
+
+        // Validate contact info
+        if (!contactInfo || !contactInfo.contactName || contactInfo.contactName.trim().length === 0) {
+            errors.push('Tên người liên hệ không được để trống');
+        }
+        if (!contactInfo || !contactInfo.phoneNumber || !/^0[0-9]{9,10}$/.test(contactInfo.phoneNumber)) {
+            errors.push('Số điện thoại không hợp lệ (phải bắt đầu bằng 0 và có 10-11 số)');
+        }
+
+        // Validate address
+        if (!address || !address.province || address.province.trim().length === 0) {
+            errors.push('Tỉnh/thành phố không được để trống');
+        }
+        if (!address || !address.district || address.district.trim().length === 0) {
+            errors.push('Quận/huyện không được để trống');
+        }
+        if (!address || !address.ward || address.ward.trim().length === 0) {
+            errors.push('Phường/xã không được để trống');
+        }
+        if (!address || !address.street || address.street.trim().length === 0) {
+            errors.push('Địa chỉ chi tiết không được để trống');
+        }
+
+        // Validate pricing
+        if (!pricing || pricing.rent == null || pricing.rent <= 0) {
+            errors.push('Giá thuê phải lớn hơn 0');
+        }
+        if (pricing && pricing.promotionalRent != null && pricing.promotionalRent < 0) {
+            errors.push('Giá thuê khuyến mãi không được âm');
+        }
+        if (pricing && pricing.promotionalRent != null && pricing.promotionalRent >= pricing.rent) {
+            errors.push('Giá thuê khuyến mãi phải nhỏ hơn giá thuê thường');
+        }
+        if (!pricing || pricing.deposit == null || pricing.deposit < 0) {
+            errors.push('Tiền cọc không được âm');
+        }
+        if (!pricing || pricing.electricityPrice == null || pricing.electricityPrice < 0) {
+            errors.push('Giá điện không được âm');
+        }
+        if (!pricing || pricing.waterPrice == null || pricing.waterPrice < 0) {
+            errors.push('Giá nước không được âm');
+        }
+
+        // Validate basic info
+        if (!basicInfo || basicInfo.area == null || basicInfo.area <= 0) {
+            errors.push('Diện tích phải lớn hơn 0');
+        }
+        if (!basicInfo || !basicInfo.maxOccupancy || ![1,2,3,4,5,6].includes(basicInfo.maxOccupancy)) {
+            errors.push('Số người tối đa phải từ 1-6 người');
+        }
+        if (!basicInfo || !basicInfo.availableDate) {
+            errors.push('Ngày có thể vào ở không được để trống');
+        }
+
+        // Validate media
+        if (!media || !media.images || !Array.isArray(media.images) || media.images.length === 0) {
+            errors.push('Phải có ít nhất 1 hình ảnh');
+        } else if (media.images.length > 5) {
+            errors.push('Không được vượt quá 5 hình ảnh');
+        }
+
+        if (errors.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Dữ liệu không hợp lệ',
+                errors
+            });
+        }
+
+        next();
+    }
+
+    // Validate property update  
+    validatePropertyUpdate(req, res, next) {
+        const { title, description, pricing, basicInfo, media } = req.body;
+        const errors = [];
+
+        // Optional validations for update
+        if (title && title.trim().length > 0 && title.trim().length < 10) {
+            errors.push('Tiêu đề phải có ít nhất 10 ký tự');
+        }
+        if (title && title.trim().length > 200) {
+            errors.push('Tiêu đề không được vượt quá 200 ký tự');
+        }
+        if (description && description.trim().length > 0 && description.trim().length < 20) {
+            errors.push('Mô tả phải có ít nhất 20 ký tự');
+        }
+        if (pricing && pricing.rent != null && pricing.rent <= 0) {
+            errors.push('Giá thuê phải lớn hơn 0');
+        }
+        if (pricing && pricing.promotionalRent != null && pricing.promotionalRent < 0) {
+            errors.push('Giá thuê khuyến mãi không được âm');
+        }
+        if (basicInfo && basicInfo.area != null && basicInfo.area <= 0) {
+            errors.push('Diện tích phải lớn hơn 0');
+        }
+        if (media && media.images && media.images.length > 5) {
+            errors.push('Không được vượt quá 5 hình ảnh');
+        }
+
+        if (errors.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Dữ liệu không hợp lệ',
+                errors
+            });
+        }
+
+        next();
+    }
 }
 
 export default new ValidationMiddleware();

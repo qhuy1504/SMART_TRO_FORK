@@ -56,12 +56,13 @@ api.interceptors.response.use(
         case 401: {
           // Chỉ redirect nếu không có token hoặc lỗi từ endpoint users (login hết hạn) và không phải đang ở trang login
           const isLoginPage = window.location.pathname === '/login';
+          const isVerifyEmailPage = window.location.pathname === '/verify-email'; // ← THÊM DÒNG NÀY
           const sessionExpiredMessage = data?.message;
           
           // Kiểm tra xem có phải lỗi do session bị logout từ thiết bị khác
           if (sessionExpiredMessage && sessionExpiredMessage.includes('phiên đăng nhập')) {
             console.warn('Session đã bị đăng xuất từ thiết bị khác');
-            if (!isLoginPage && globalLogoutHandler) {
+            if (!isLoginPage && !isVerifyEmailPage && globalLogoutHandler) {
               globalLogoutHandler();
               // Hiển thị thông báo cho user
               if (window.showLogoutNotification) {
@@ -69,14 +70,14 @@ api.interceptors.response.use(
               }
               window.location.href = '/login?reason=session_logout';
             }
-          } else if (!isLoginPage && (!tokenPresent || /\/users\//.test(originalRequest?.url || ''))) {
+          } else if (!isLoginPage && !isVerifyEmailPage && (!tokenPresent || /\/users\//.test(originalRequest?.url || ''))) { // ← SỬA DÒNG NÀY
             if (globalLogoutHandler) {
               globalLogoutHandler();
             } else {
               apiUtils.clearAuthData();
             }
             window.location.href = '/login';
-          } else if (!isLoginPage) {
+          } else if (!isLoginPage && !isVerifyEmailPage) { // ← SỬA DÒNG NÀY
             console.error('Phiên đăng nhập không hợp lệ hoặc hết hạn. Vui lòng đăng nhập lại.');
           }
           break;

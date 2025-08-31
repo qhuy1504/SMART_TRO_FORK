@@ -10,6 +10,8 @@ import tenantRoutes from './tenant-service/routes/tenantRoutes.js';
 import contractRoutes from './contract-service/routes/contractRoutes.js';
 import authRoutes from './auth-service/routes/authRoutes.js';
 import amenityRoutes from './amenity-service/routes/amenityRoutes.js';
+import locationRoutes from './location-service/routes/locationRoutes.js';
+import myPropertiesRoutes from './property-service/routes/myPropertiesRoutes.js';
 
 const router = express.Router();
 
@@ -22,6 +24,9 @@ router.use('/api/tenants', tenantRoutes);
 router.use('/api/contracts', contractRoutes);
 router.use('/api/auth', authRoutes);
 router.use('/api/amenities', amenityRoutes);
+router.use('/api/locations', locationRoutes);
+router.use('/api/my-properties', myPropertiesRoutes);
+
 
 // API documentation route
 router.get('/api', (req, res) => {
@@ -35,7 +40,10 @@ router.get('/api', (req, res) => {
             tenants: '/api/tenants',
             payments: '/api/payments',
             contracts: '/api/contracts',
-            forgotPassword: '/api/forgot-password'
+            locations: '/api/locations',
+            amenities: '/api/amenities',
+            auth: '/api/auth',
+            myProperties: '/api/my-properties'
         },
         documentation: {
             users: {
@@ -75,6 +83,14 @@ router.get('/api', (req, res) => {
                 'GET /api/contracts/:id': 'Chi tiết hợp đồng',
                 'PUT /api/contracts/:id': 'Cập nhật hợp đồng',
                 'POST /api/contracts/:id/terminate': 'Chấm dứt hợp đồng'
+            },
+            myProperties: {
+                'GET /api/my-properties': 'Lấy danh sách bài đăng của tôi',
+                'GET /api/my-properties/stats': 'Lấy thống kê bài đăng của tôi',
+                'GET /api/my-properties/:propertyId/edit': 'Lấy thông tin bài đăng để chỉnh sửa',
+                'PUT /api/my-properties/:propertyId': 'Cập nhật thông tin bài đăng',
+                'DELETE /api/my-properties/:propertyId': 'Xóa bài đăng',
+                'PATCH /api/my-properties/:propertyId/toggle-status': 'Chuyển trạng thái bài đăng (available/draft/inactive)'
             }
         }
     });
