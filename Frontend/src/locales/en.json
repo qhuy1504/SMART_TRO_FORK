@@ -365,6 +365,86 @@
       "active": "Active",
       "expired": "Expired",
       "terminated": "Terminated"
+    },
+    "rental": {
+      "title": "Create Rental Contract",
+      "tenantInfo": {
+        "title": "Tenant Information",
+        "addTenant": "Add Person",
+        "removeTenant": "Remove",
+        "tenantLabel": "Tenant",
+        "fullName": "Full Name",
+        "fullNamePlaceholder": "Enter full name",
+        "phone": "Phone Number",
+        "phonePlaceholder": "0xxx xxx xxx",
+        "idCard": "ID Card/CCCD",
+        "idCardPlaceholder": "012345678901",
+        "images": "Images (Max 5 images)",
+        "addImage": "Add Image",
+        "removeImage": "Remove this image"
+      },
+      "vehicleInfo": {
+        "title": "Vehicle Information",
+        "addVehicle": "Add Vehicle",
+        "removeVehicle": "Remove this vehicle",
+        "vehicleLabel": "Vehicle",
+        "licensePlate": "License Plate",
+        "licensePlatePlaceholder": "30A-123.45",
+        "vehicleType": "Vehicle Type",
+        "vehicleTypePlaceholder": "Motorbike, Car, Bicycle...",
+        "owner": "Vehicle Owner",
+        "noVehicles": "No vehicle information yet",
+        "noVehiclesDesc": "Click \"Add Vehicle\" to add vehicle information"
+      },
+      "contractInfo": {
+        "title": "Contract Information",
+        "startDate": "Start Date",
+        "endDate": "End Date",
+        "quickDate6M": "6 months from start date",
+        "quickDate1Y": "1 year from start date",
+        "quick6M": "6M",
+        "quick1Y": "1Y",
+        "deposit": "Deposit",
+        "monthlyRent": "Monthly Rent"
+      },
+      "serviceInfo": {
+        "title": "Service Costs",
+        "electricityPrice": "Electricity Price (VND/kWh)",
+        "servicePrice": "Service Fee (VND/month)",
+        "waterChargeType": "Water Charge Method",
+        "waterChargeFixed": "💧 Fixed Price",
+        "waterChargePerPerson": "👥 Per Person",
+        "waterPrice": "Water Price",
+        "waterPriceUnit": "(VND/cubic meter)",
+        "waterPricePerPerson": "Water Price Per Person (VND/person/month)",
+        "paymentCycle": "Payment Cycle",
+        "paymentMonthly": "📅 Monthly",
+        "paymentQuarterly": "📊 Quarterly",
+        "paymentYearly": "📈 Yearly",
+        "notes": "Notes",
+        "notesPlaceholder": "Enter additional notes (optional)"
+      },
+      "meterReadings": {
+        "title": "Current Meter Readings",
+        "electricIndex": "Electric Index (kWh)",
+        "electricIndexPlaceholder": "Enter current electric reading",
+        "waterIndex": "Water Index (m³)",
+        "waterIndexPlaceholder": "Enter current water reading"
+      },
+      "roomInfo": {
+        "title": "Room Information",
+        "roomName": "Room Name:",
+        "capacity": "Capacity:",
+        "capacityUnit": "people",
+        "area": "Area:",
+        "price": "Room Price:",
+        "amenities": "Amenities:"
+      },
+      "actions": {
+        "cancel": "Cancel",
+        "creating": "Creating...",
+        "create": "Create Rental Contract"
+      }
     }
   },
   "header": {

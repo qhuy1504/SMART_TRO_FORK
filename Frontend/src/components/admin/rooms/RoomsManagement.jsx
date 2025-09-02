@@ -7,6 +7,7 @@ import "./rooms.css";
 import roomsAPI from '../../../services/roomsAPI';
 import amenitiesAPI from '../../../services/amenitiesAPI';
 import depositContractsAPI from '../../../services/depositContractsAPI';
+import contractsAPI from '../../../services/contractsAPI';
 import api from '../../../services/api';
 
 const RoomsManagement = () => {
@@ -48,6 +49,37 @@ const RoomsManagement = () => {
   });
   const [depositContractErrors, setDepositContractErrors] = useState({});
   const [creatingDepositContract, setCreatingDepositContract] = useState(false);
+  
+  // Rental Contract Modal States
+  const [showRentalContractModal, setShowRentalContractModal] = useState(false);
+  const [rentalContractData, setRentalContractData] = useState({
+    tenants: [{
+      tenantName: '',
+      tenantPhone: '',
+      tenantId: '',
+      tenantImages: [] // Array of max 5 images
+    }],
+    vehicles: [{
+      licensePlate: '',
+      vehicleType: '',
+      ownerIndex: 0 // Index of tenant who owns this vehicle
+    }],
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: '',
+    deposit: '',
+    monthlyRent: '',
+    electricityPrice: 3500,
+    waterPrice: 25000,
+    waterPricePerPerson: 50000,
+    waterChargeType: 'fixed', // 'fixed' or 'per_person'
+    servicePrice: 150000,
+    currentElectricIndex: '',
+    currentWaterIndex: '',
+    paymentCycle: 'monthly',
+    notes: ''
+  });
+  const [rentalContractErrors, setRentalContractErrors] = useState({});
+  const [creatingRentalContract, setCreatingRentalContract] = useState(false);
   const [creating, setCreating] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [viewRoom, setViewRoom] = useState(null);
@@ -322,8 +354,318 @@ const RoomsManagement = () => {
   };
 
   const handleCreateRentalContract = (roomNumber) => {
-    // Navigate to contracts page or open rental contract modal
-    window.location.href = '/admin/contracts';
+    // Find the room and deposit contract
+    const room = rooms.find(r => r.name === roomNumber);
+    const depositContract = depositContracts.find(contract => {
+      const contractRoomNumber = contract.room?.roomNumber || contract.room;
+      return contractRoomNumber === roomNumber && contract.status === 'active';
+    });
+    
+    if (!room) {
+      showToast('error', 'Không tìm thấy thông tin phòng');
+      return;
+    }
+    
+    if (!depositContract) {
+      showToast('error', 'Không tìm thấy hợp đồng cọc');
+      return;
+    }
+    
+    // Set selected room for contract
+    setSelectedRoomForContract(room);
+    
+    // Pre-fill rental contract data from deposit contract and room
+    setRentalContractData({
+      tenants: [{
+        tenantName: depositContract.tenantName || '',
+        tenantPhone: depositContract.tenantPhone || '',
+        tenantId: '',
+        tenantImages: []
+      }],
+      vehicles: [{
+        licensePlate: '',
+        vehicleType: '',
+        ownerIndex: 0
+      }],
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: '',
+      deposit: depositContract.depositAmount || room.price || '',
+      monthlyRent: room.price || '',
+      electricityPrice: 3500,
+      waterPrice: 25000,
+      waterPricePerPerson: 50000,
+      waterChargeType: 'fixed',
+      servicePrice: 150000,
+      currentElectricIndex: '',
+      currentWaterIndex: '',
+      paymentCycle: 'monthly',
+      notes: ''
+    });
+    
+    // Clear errors and open modal
+    setRentalContractErrors({});
+    setShowRentalContractModal(true);
+  };
+
+  // Validate rental contract data
+  const validateRentalContract = () => {
+    const errors = {};
+    
+    // Validate tenants
+    rentalContractData.tenants.forEach((tenant, index) => {
+      if (!tenant.tenantName.trim()) {
+        errors[`tenantName_${index}`] = 'Tên người thuê là bắt buộc';
+      }
+      
+      if (!tenant.tenantPhone.trim()) {
+        errors[`tenantPhone_${index}`] = 'Số điện thoại là bắt buộc';
+      } else if (!/^\d{10}$/.test(tenant.tenantPhone.replace(/\s/g, ''))) {
+        errors[`tenantPhone_${index}`] = 'Số điện thoại không hợp lệ';
+      }
+      
+      if (!tenant.tenantId.trim()) {
+        errors[`tenantId_${index}`] = 'CCCD/CMND là bắt buộc';
+      }
+    });
+    
+    if (!rentalContractData.startDate) {
+      errors.startDate = 'Ngày bắt đầu là bắt buộc';
+    }
+    
+    if (!rentalContractData.endDate) {
+      errors.endDate = 'Ngày kết thúc là bắt buộc';
+    } else if (new Date(rentalContractData.endDate) <= new Date(rentalContractData.startDate)) {
+      errors.endDate = 'Ngày kết thúc phải sau ngày bắt đầu';
+    }
+    
+    if (!rentalContractData.deposit || Number(rentalContractData.deposit) <= 0) {
+      errors.deposit = 'Tiền cọc phải lớn hơn 0';
+    }
+    
+    if (!rentalContractData.monthlyRent || Number(rentalContractData.monthlyRent) <= 0) {
+      errors.monthlyRent = 'Tiền thuê phải lớn hơn 0';
+    }
+    
+    if (!rentalContractData.electricityPrice || Number(rentalContractData.electricityPrice) < 0) {
+      errors.electricityPrice = 'Giá điện không hợp lệ';
+    }
+    
+    if (!rentalContractData.waterPrice || Number(rentalContractData.waterPrice) < 0) {
+      errors.waterPrice = 'Giá nước không hợp lệ';
+    }
+    
+    if (!rentalContractData.servicePrice || Number(rentalContractData.servicePrice) < 0) {
+      errors.servicePrice = 'Phí dịch vụ không hợp lệ';
+    }
+    
+    return errors;
+  };
+
+  // Submit rental contract
+  const addTenant = () => {
+    if (rentalContractData.tenants.length < selectedRoomForContract.capacity) {
+      setRentalContractData(prev => ({
+        ...prev,
+        tenants: [...prev.tenants, {
+          tenantName: '',
+          tenantPhone: '',
+          tenantId: '',
+          tenantImages: [] // Initialize with empty array
+        }]
+      }));
+    }
+  };
+
+  const removeTenant = (index) => {
+    if (rentalContractData.tenants.length > 1) {
+      setRentalContractData(prev => ({
+        ...prev,
+        tenants: prev.tenants.filter((_, i) => i !== index)
+      }));
+    }
+  };
+
+  const updateTenant = (index, field, value) => {
+    setRentalContractData(prev => ({
+      ...prev,
+      tenants: prev.tenants.map((tenant, i) => 
+        i === index ? { ...tenant, [field]: value } : tenant
+      )
+    }));
+  };
+
+  // Vehicle management functions
+  const addVehicle = () => {
+    const maxVehicles = selectedRoomForContract?.maxVehicles || 3;
+    if (rentalContractData.vehicles.length < maxVehicles) {
+      setRentalContractData(prev => ({
+        ...prev,
+        vehicles: [...prev.vehicles, { 
+          licensePlate: '', 
+          vehicleType: '', 
+          ownerIndex: 0 
+        }]
+      }));
+    }
+  };
+
+  const removeVehicle = (vehicleIndex) => {
+    if (rentalContractData.vehicles.length > 0) {
+      setRentalContractData(prev => ({
+        ...prev,
+        vehicles: prev.vehicles.filter((_, i) => i !== vehicleIndex)
+      }));
+    }
+  };
+
+  const updateVehicle = (vehicleIndex, field, value) => {
+    setRentalContractData(prev => ({
+      ...prev,
+      vehicles: prev.vehicles.map((vehicle, i) =>
+        i === vehicleIndex ? { ...vehicle, [field]: value } : vehicle
+      )
+    }));
+  };
+
+  // Image upload function - support multiple images (max 5)
+  const handleTenantImageUpload = (tenantIndex, files) => {
+    if (files && files.length > 0) {
+      setRentalContractData(prev => ({
+        ...prev,
+        tenants: prev.tenants.map((tenant, i) => {
+          if (i === tenantIndex) {
+            const currentImages = tenant.tenantImages || [];
+            const newImages = Array.from(files);
+            const combinedImages = [...currentImages, ...newImages];
+            
+            // Limit to 5 images max
+            const limitedImages = combinedImages.slice(0, 5);
+            
+            return { ...tenant, tenantImages: limitedImages };
+          }
+          return tenant;
+        })
+      }));
+    }
+  };
+
+  // Remove tenant image
+  const removeTenantImage = (tenantIndex, imageIndex) => {
+    setRentalContractData(prev => ({
+      ...prev,
+      tenants: prev.tenants.map((tenant, i) => {
+        if (i === tenantIndex) {
+          const updatedImages = tenant.tenantImages.filter((_, idx) => idx !== imageIndex);
+          return { ...tenant, tenantImages: updatedImages };
+        }
+        return tenant;
+      })
+    }));
+  };
+
+  // Format number with commas
+  const formatNumberWithCommas = (num) => {
+    if (!num) return '';
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  };
+
+  // Parse number from formatted string
+  const parseFormattedNumber = (str) => {
+    if (!str) return '';
+    // Remove commas and keep only digits
+    return str.toString().replace(/[^0-9]/g, '');
+  };
+
+  // Quick date selection functions
+  const setEndDateQuick = (months) => {
+    if (!rentalContractData.startDate) {
+      setRentalContractErrors(prev => ({
+        ...prev,
+        startDate: 'Vui lòng chọn ngày bắt đầu trước'
+      }));
+      return;
+    }
+    
+    const startDate = new Date(rentalContractData.startDate);
+    const endDate = new Date(startDate);
+    endDate.setMonth(endDate.getMonth() + months);
+    
+    setRentalContractData(prev => ({
+      ...prev,
+      endDate: endDate.toISOString().split('T')[0]
+    }));
+    
+    // Clear any existing error
+    if (rentalContractErrors.startDate === 'Vui lòng chọn ngày bắt đầu trước') {
+      setRentalContractErrors(prev => {
+        const newErrors = {...prev};
+        delete newErrors.startDate;
+        return newErrors;
+      });
+    }
+  };
+
+  const submitRentalContract = async () => {
+    const errors = validateRentalContract();
+    setRentalContractErrors(errors);
+    if (Object.keys(errors).length) return;
+
+    setCreatingRentalContract(true);
+    try {
+      const payload = {
+        roomId: selectedRoomForContract.id,
+        tenants: rentalContractData.tenants,
+        startDate: rentalContractData.startDate,
+        endDate: rentalContractData.endDate,
+        deposit: Number(rentalContractData.deposit),
+        monthlyRent: Number(rentalContractData.monthlyRent),
+        electricityPrice: Number(rentalContractData.electricityPrice),
+        waterPrice: Number(rentalContractData.waterPrice),
+        servicePrice: Number(rentalContractData.servicePrice),
+        paymentCycle: rentalContractData.paymentCycle,
+        notes: rentalContractData.notes
+      };
+      
+      const response = await contractsAPI.createContract(payload);
+      
+      if (response.success) {
+        // Close modal and refresh data
+        setShowRentalContractModal(false);
+        setSelectedRoomForContract(null);
+        
+        // Show success toast
+        showToast(
+          'success',
+          t('contracts.success.rentalCreated') || 'Hợp đồng thuê đã được tạo thành công!'
+        );
+        
+        // Refresh both rooms and deposit contracts to update UI
+        setTimeout(() => {
+          fetchRooms();
+          fetchDepositContracts();
+        }, 500);
+      } else {
+        throw new Error(response.message || 'Failed to create rental contract');
+      }
+    } catch (error) {
+      console.error('Error creating rental contract:', error);
+      
+      let errorMessage = t('contracts.error.createFailed') || 'Có lỗi xảy ra khi tạo hợp đồng thuê';
+      
+      if (error.response) {
+        if (error.response.status === 401) {
+          errorMessage = t('common.unauthorized') || 'Bạn cần đăng nhập lại';
+        } else if (error.response.status === 404) {
+          errorMessage = t('contracts.error.roomNotFound') || 'Phòng không tồn tại';
+        } else if (error.response.status === 400) {
+          errorMessage = error.response.data?.message || t('contracts.error.invalidData') || 'Dữ liệu không hợp lệ';
+        }
+      }
+      
+      showToast('error', errorMessage);
+    } finally {
+      setCreatingRentalContract(false);
+    }
   };
 
   const handleViewRoom = (roomId) => {
@@ -488,16 +830,22 @@ const RoomsManagement = () => {
       const response = await depositContractsAPI.createDepositContract(payload);
       
       if (response.success) {
-        // Close modal and refresh room list
+        // Close modal and refresh data
         setShowDepositContractModal(false);
         setSelectedRoomForContract(null);
-        fetchRooms();
         
-        // Show success toast
+        // Show success toast first
         showToast(
           'success',
           t('contracts.success.depositCreated') || 'Hợp đồng cọc đã được tạo thành công!'
         );
+        
+        // Refresh both rooms and deposit contracts to update UI
+        // Add small delay to ensure backend has updated the data
+        setTimeout(() => {
+          fetchRooms();
+          fetchDepositContracts();
+        }, 500);
       } else {
         throw new Error(response.message || 'Failed to create deposit contract');
       }
@@ -540,6 +888,39 @@ const RoomsManagement = () => {
       notes: ''
     });
     setDepositContractErrors({});
+  };
+
+  // Close rental contract modal
+  const closeRentalContractModal = () => {
+    setShowRentalContractModal(false);
+    setSelectedRoomForContract(null);
+    setRentalContractData({
+      tenants: [{
+        tenantName: '',
+        tenantPhone: '',
+        tenantId: '',
+        tenantImages: []
+      }],
+      vehicles: [{
+        licensePlate: '',
+        vehicleType: '',
+        ownerIndex: 0
+      }],
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: '',
+      deposit: '',
+      monthlyRent: '',
+      electricityPrice: 3500,
+      waterPrice: 25000,
+      waterPricePerPerson: 50000,
+      waterChargeType: 'fixed',
+      servicePrice: 150000,
+      currentElectricIndex: '',
+      currentWaterIndex: '',
+      paymentCycle: 'monthly',
+      notes: ''
+    });
+    setRentalContractErrors({});
   };
 
   const formatPrice = (price) => {
@@ -1751,6 +2132,612 @@ const RoomsManagement = () => {
               {creatingDepositContract 
                 ? (t('contracts.form.creating') || 'Đang tạo...') 
                 : (t('contracts.form.createDeposit') || 'Tạo hợp đồng cọc')
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Rental Contract Modal */}
+    {showRentalContractModal && selectedRoomForContract && (
+      <div className="room-modal-backdrop">
+        <div className="room-modal rental-contract-modal">
+          <div className="room-modal-header">
+            <h2 className="room-modal-title">
+              <i className="fas fa-file-contract"></i> Tạo hợp đồng thuê - {selectedRoomForContract.name}
+            </h2>
+            <button className="room-modal-close" onClick={closeRentalContractModal}>×</button>
+          </div>
+          
+          <div className="rental-contract-two-columns">
+            {/* Left Column - Tenant Information */}
+            <div className="rental-contract-left">
+              {/* Tenant Information */}
+              <div className="form-section tenant-section">
+              <div className="section-header">
+                <h3><i className="fas fa-users"></i> Thông tin người thuê ({rentalContractData.tenants.length}/{selectedRoomForContract.capacity})</h3>
+                {rentalContractData.tenants.length < selectedRoomForContract.capacity && (
+                  <button
+                    type="button"
+                    className="btn-add-tenant"
+                    onClick={addTenant}
+                    title="Thêm người thuê"
+                  >
+                    <i className="fas fa-plus"></i> Thêm người
+                  </button>
+                )}
+              </div>
+              
+              {rentalContractData.tenants.map((tenant, index) => (
+                <div key={index} className="tenant-item">
+                  <div className="item-header">
+                    <h4><i className="fas fa-user"></i>Người thuê {index + 1}</h4>
+                    {rentalContractData.tenants.length > 1 && (
+                      <button
+                        type="button"
+                        className="btn-remove-tenant"
+                        onClick={() => removeTenant(index)}
+                        title="Xóa người thuê này"
+                      >
+                        <i className="fas fa-trash"></i> Xóa
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">
+                        Họ và tên <span className="required">*</span>
+                      </label>
+                      <div className="form-input-group">
+                        <i className="input-icon fas fa-user"></i>
+                        <input
+                          type="text"
+                          className={`form-input ${rentalContractErrors[`tenantName_${index}`] ? 'error' : ''}`}
+                          value={tenant.tenantName}
+                          onChange={(e) => updateTenant(index, 'tenantName', e.target.value)}
+                          placeholder="Nhập họ và tên đầy đủ"
+                        />
+                      </div>
+                      {rentalContractErrors[`tenantName_${index}`] && (
+                        <div className="error-message">{rentalContractErrors[`tenantName_${index}`]}</div>
+                      )}
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">
+                        Số điện thoại <span className="required">*</span>
+                      </label>
+                      <div className="form-input-group">
+                        <i className="input-icon fas fa-phone"></i>
+                        <input
+                          type="tel"
+                          className={`form-input ${rentalContractErrors[`tenantPhone_${index}`] ? 'error' : ''}`}
+                          value={tenant.tenantPhone}
+                          onChange={(e) => updateTenant(index, 'tenantPhone', e.target.value)}
+                          placeholder="0xxx xxx xxx"
+                        />
+                      </div>
+                      {rentalContractErrors[`tenantPhone_${index}`] && (
+                        <div className="error-message">{rentalContractErrors[`tenantPhone_${index}`]}</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">
+                        CCCD/CMND <span className="required">*</span>
+                      </label>
+                      <div className="form-input-group">
+                        <i className="input-icon fas fa-id-card"></i>
+                        <input
+                          type="text"
+                          className={`form-input ${rentalContractErrors[`tenantId_${index}`] ? 'error' : ''}`}
+                          value={tenant.tenantId}
+                          onChange={(e) => updateTenant(index, 'tenantId', e.target.value)}
+                          placeholder="012345678901"
+                        />
+                      </div>
+                      {rentalContractErrors[`tenantId_${index}`] && (
+                        <div className="error-message">{rentalContractErrors[`tenantId_${index}`]}</div>
+                      )}
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">
+                        Ảnh (Tối đa 5 ảnh)
+                      </label>
+                      <div className="tenant-image-upload-container">
+                        {/* Display existing images */}
+                        {tenant.tenantImages && tenant.tenantImages.length > 0 && (
+                          <div className="tenant-images-gallery">
+                            {tenant.tenantImages.map((image, imgIndex) => (
+                              <div key={imgIndex} className="tenant-image-item">
+                                <img 
+                                  src={URL.createObjectURL(image)} 
+                                  alt={`Tenant ${imgIndex + 1}`} 
+                                  className="tenant-image-preview"
+                                />
+                                <button 
+                                  type="button"
+                                  className="remove-image-btn"
+                                  onClick={() => removeTenantImage(index, imgIndex)}
+                                >
+                                  <i className="fas fa-times"></i>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Upload button - only show if less than 5 images */}
+                        {(!tenant.tenantImages || tenant.tenantImages.length < 5) && (
+                          <div className="tenant-image-upload">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              onChange={(e) => handleTenantImageUpload(index, e.target.files)}
+                              className="image-upload-input"
+                              id={`tenantImages_${index}`}
+                              style={{display: 'none'}}
+                            />
+                            <label htmlFor={`tenantImages_${index}`} className="image-upload-btn">
+                              <div className="image-upload-placeholder">
+                                <i className="fas fa-plus-circle"></i>
+                                <span>Thêm ảnh</span>
+                                <small>({tenant.tenantImages ? tenant.tenantImages.length : 0}/5)</small>
+                              </div>
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {index < rentalContractData.tenants.length - 1 && <hr style={{margin: '16px 0'}} />}
+                </div>
+              ))}
+            </div>
+
+            {/* Vehicle Information Section */}
+            <div className="form-section tenant-section">
+              <div className="section-header">
+                <h3><i className="fas fa-car"></i> Thông tin phương tiện ({rentalContractData.vehicles.length}/3)</h3>
+                {rentalContractData.vehicles.length < 3 && (
+                  <button
+                    type="button"
+                    className="btn-add-tenant"
+                    onClick={addVehicle}
+                    title="Thêm phương tiện"
+                  >
+                    <i className="fas fa-plus"></i> Thêm xe
+                  </button>
+                )}
+              </div>
+              
+              {rentalContractData.vehicles.length > 0 ? (
+                rentalContractData.vehicles.map((vehicle, vehicleIndex) => (
+                  <div key={vehicleIndex} className="tenant-item">
+                    <div className="item-header">
+                      <h4><i className="fas fa-car"></i>Xe {vehicleIndex + 1}</h4>
+                      <button
+                        type="button"
+                        className="btn-remove-tenant"
+                        onClick={() => removeVehicle(vehicleIndex)}
+                        title="Xóa xe này"
+                      >
+                        <i className="fas fa-trash"></i> Xóa
+                      </button>
+                    </div>
+                    
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">
+                          Biển số xe <span className="required">*</span>
+                        </label>
+                        <div className="form-input-group">
+                          <i className="input-icon fas fa-id-card"></i>
+                          <input
+                            type="text"
+                            className="form-input"
+                            value={vehicle.licensePlate}
+                            onChange={(e) => updateVehicle(vehicleIndex, 'licensePlate', e.target.value)}
+                            placeholder="30A-123.45"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label">
+                          Loại xe <span className="required">*</span>
+                        </label>
+                        <div className="form-input-group">
+                          <i className="input-icon fas fa-car"></i>
+                          <input
+                            type="text"
+                            className="form-input"
+                            value={vehicle.vehicleType}
+                            onChange={(e) => updateVehicle(vehicleIndex, 'vehicleType', e.target.value)}
+                            placeholder="Xe máy, Ô tô, Xe đạp..."
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">
+                        Chủ xe <span className="required">*</span>
+                      </label>
+                      <div className="form-input-group">
+                        <i className="input-icon fas fa-user"></i>
+                        <select
+                          className="form-input"
+                          value={vehicle.ownerIndex}
+                          onChange={(e) => updateVehicle(vehicleIndex, 'ownerIndex', parseInt(e.target.value))}
+                        >
+                          {rentalContractData.tenants.map((tenant, tenantIndex) => (
+                            <option key={tenantIndex} value={tenantIndex}>
+                              {tenant.tenantName || `Người thuê ${tenantIndex + 1}`}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    
+                    {vehicleIndex < rentalContractData.vehicles.length - 1 && <hr style={{margin: '16px 0'}} />}
+                  </div>
+                ))
+              ) : (
+                <div className="no-vehicles-message">
+                  <i className="fas fa-car"></i>
+                  <p>Chưa có thông tin phương tiện nào</p>
+                  <small>Nhấn "Thêm xe" để thêm thông tin phương tiện</small>
+                </div>
+              )}
+            </div>
+            </div>
+
+            {/* Right Column - Room & Service Information */}
+            <div className="rental-contract-right">
+              {/* Room Information */}
+              <div className="form-section">
+                <h3><i className="fas fa-home"></i> Thông tin phòng</h3>
+                
+                <div className="room-info-card">
+                  <div className="room-info-item">
+                    <span className="info-label">Tên phòng:</span>
+                    <span className="info-value">{selectedRoomForContract.name}</span>
+                  </div>
+                  <div className="room-info-item">
+                    <span className="info-label">Sức chứa:</span>
+                    <span className="info-value">{selectedRoomForContract.capacity} người</span>
+                  </div>
+                  <div className="room-info-item">
+                    <span className="info-label">Diện tích:</span>
+                    <span className="info-value">{selectedRoomForContract.area} m²</span>
+                  </div>
+                  <div className="room-info-item">
+                    <span className="info-label">Giá phòng:</span>
+                    <span className="info-value highlight">{Number(selectedRoomForContract.price).toLocaleString()} VNĐ</span>
+                  </div>
+                  
+                  {/* Amenities */}
+                  {selectedRoomForContract.amenities && selectedRoomForContract.amenities.length > 0 && (
+                    <div className="room-info-item amenities-item">
+                      <span className="info-label">Tiện ích:</span>
+                      <div className="amenities-list">
+                        {selectedRoomForContract.amenities.map((amenity, index) => (
+                          <span key={index} className="amenity-tag">
+                            {amenity.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            {/* Contract Information */}
+            <div className="form-section">
+              <h3><i className="fas fa-calendar-alt"></i> Thông tin hợp đồng</h3>
+              
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="startDate" className="form-label">
+                    Ngày bắt đầu <span className="required">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    id="startDate"
+                    className={`form-input ${rentalContractErrors.startDate ? 'error' : ''}`}
+                    value={rentalContractData.startDate}
+                    onChange={(e) => setRentalContractData(prev => ({...prev, startDate: e.target.value}))}
+                  />
+                  {rentalContractErrors.startDate && <div className="error-message">{rentalContractErrors.startDate}</div>}
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="endDate" className="form-label">
+                    Ngày kết thúc <span className="required">*</span>
+                  </label>
+                  <div className="date-input-container">
+                    <input
+                      type="date"
+                      id="endDate"
+                      className={`form-input ${rentalContractErrors.endDate ? 'error' : ''}`}
+                      value={rentalContractData.endDate}
+                      onChange={(e) => setRentalContractData(prev => ({...prev, endDate: e.target.value}))}
+                    />
+                    <div className="quick-date-buttons">
+                      <button
+                        type="button"
+                        className="quick-date-btn"
+                        onClick={() => setEndDateQuick(6)}
+                        title="6 tháng từ ngày bắt đầu"
+                      >
+                        6T
+                      </button>
+                      <button
+                        type="button"
+                        className="quick-date-btn"
+                        onClick={() => setEndDateQuick(12)}
+                        title="1 năm từ ngày bắt đầu"
+                      >
+                        1N
+                      </button>
+                    </div>
+                  </div>
+                  {rentalContractErrors.endDate && <div className="error-message">{rentalContractErrors.endDate}</div>}
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="deposit" className="form-label">
+                    Tiền cọc <span className="required">*</span>
+                  </label>
+                  <div className="form-input-group">
+                    <i className="input-icon fas fa-money-bill-wave"></i>
+                    <input
+                      type="text"
+                      id="deposit"
+                      className={`form-input ${rentalContractErrors.deposit ? 'error' : ''}`}
+                      value={formatNumberWithCommas(rentalContractData.deposit)}
+                      onChange={(e) => {
+                        const value = parseFormattedNumber(e.target.value);
+                        setRentalContractData(prev => ({...prev, deposit: value}));
+                      }}
+                      placeholder="0"
+                    />
+                  </div>
+                  {rentalContractErrors.deposit && <div className="error-message">{rentalContractErrors.deposit}</div>}
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="monthlyRent" className="form-label">
+                    Tiền thuê hàng tháng <span className="required">*</span>
+                  </label>
+                  <div className="form-input-group">
+                    <i className="input-icon fas fa-home"></i>
+                    <input
+                      type="text"
+                      id="monthlyRent"
+                      className={`form-input ${rentalContractErrors.monthlyRent ? 'error' : ''}`}
+                      value={formatNumberWithCommas(rentalContractData.monthlyRent)}
+                      onChange={(e) => {
+                        const value = parseFormattedNumber(e.target.value);
+                        setRentalContractData(prev => ({...prev, monthlyRent: value}));
+                      }}
+                      placeholder="0"
+                    />
+                  </div>
+                  {rentalContractErrors.monthlyRent && <div className="error-message">{rentalContractErrors.monthlyRent}</div>}
+                </div>
+              </div>
+            </div>
+
+            {/* Pricing Information */}
+            <div className="form-section">
+              <h3><i className="fas fa-calculator"></i> Chi phí dịch vụ</h3>
+              
+              <div className="service-pricing-grid">
+                <div className="form-group">
+                  <label htmlFor="electricityPrice" className="form-label">
+                    Giá điện (VNĐ/kWh)
+                  </label>
+                  <div className="form-input-group">
+                    <i className="input-icon fas fa-bolt"></i>
+                    <input
+                      type="text"
+                      id="electricityPrice"
+                      className="form-input"
+                      value={formatNumberWithCommas(rentalContractData.electricityPrice)}
+                      onChange={(e) => {
+                        const value = parseFormattedNumber(e.target.value);
+                        setRentalContractData(prev => ({...prev, electricityPrice: value}));
+                      }}
+                      placeholder="3,500"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="servicePrice" className="form-label">
+                    Phí dịch vụ (VNĐ/tháng)
+                  </label>
+                  <div className="form-input-group">
+                    <i className="input-icon fas fa-concierge-bell"></i>
+                    <input
+                      type="text"
+                      id="servicePrice"
+                      className="form-input"
+                      value={formatNumberWithCommas(rentalContractData.servicePrice)}
+                      onChange={(e) => {
+                        const value = parseFormattedNumber(e.target.value);
+                        setRentalContractData(prev => ({...prev, servicePrice: value}));
+                      }}
+                      placeholder="150,000"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    Cách tính tiền nước
+                  </label>
+                  <select
+                    className="form-input"
+                    value={rentalContractData.waterChargeType}
+                    onChange={(e) => setRentalContractData(prev => ({...prev, waterChargeType: e.target.value}))}
+                  >
+                    <option value="fixed">💧 Giá cố định</option>
+                    <option value="per-person">👥 Tính theo người</option>
+                  </select>
+                </div>
+
+                {rentalContractData.waterChargeType === 'fixed' && (
+                  <div className="form-group">
+                    <label htmlFor="waterPrice" className="form-label">
+                      Giá nước<br />(VNĐ/khối)
+                    </label>
+                    <div className="form-input-group">
+                      <i className="input-icon fas fa-tint"></i>
+                      <input
+                        type="text"
+                        id="waterPrice"
+                        className="form-input"
+                        value={formatNumberWithCommas(rentalContractData.waterPrice)}
+                        onChange={(e) => {
+                          const value = parseFormattedNumber(e.target.value);
+                          setRentalContractData(prev => ({...prev, waterPrice: value}));
+                        }}
+                        placeholder="25,000"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {rentalContractData.waterChargeType === 'per-person' && (
+                  <div className="form-group">
+                    <label htmlFor="waterPricePerPerson" className="form-label">
+                      Giá nước theo người (VNĐ/người/tháng)
+                    </label>
+                    <div className="form-input-group">
+                      <i className="input-icon fas fa-user-friends"></i>
+                      <input
+                        type="text"
+                        id="waterPricePerPerson"
+                        className="form-input"
+                        value={formatNumberWithCommas(rentalContractData.waterPricePerPerson)}
+                        onChange={(e) => {
+                          const value = parseFormattedNumber(e.target.value);
+                          setRentalContractData(prev => ({...prev, waterPricePerPerson: value}));
+                        }}
+                        placeholder="50,000"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="paymentCycle" className="form-label">
+                    Chu kỳ thanh toán
+                  </label>
+                  <select
+                    id="paymentCycle"
+                    className="form-input"
+                    value={rentalContractData.paymentCycle}
+                    onChange={(e) => setRentalContractData(prev => ({...prev, paymentCycle: e.target.value}))}
+                  >
+                    <option value="monthly">📅 Hàng tháng</option>
+                    <option value="quarterly">📊 Hàng quý</option>
+                    <option value="yearly">📈 Hàng năm</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="notes" className="form-label">
+                    Ghi chú<br />
+                  </label>
+                  <textarea
+                    id="notes"
+                    className="form-input"
+                    value={rentalContractData.notes}
+                    onChange={(e) => setRentalContractData(prev => ({...prev, notes: e.target.value}))}
+                    placeholder="Nhập ghi chú bổ sung (tùy chọn)"
+                    rows="3"
+                    style={{resize: 'vertical', minHeight: '80px'}}
+                  />
+                </div>
+              </div>
+
+              {/* Current Meter Readings */}
+              <div className="meter-readings-section">
+                <h3><i className="fas fa-tachometer-alt"></i>Chỉ số điện nước hiện tại</h3>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">
+                      Chỉ số điện (kWh) <span className="required">*</span>
+                    </label>
+                    <div className="form-input-group">
+                      <i className="input-icon fas fa-bolt"></i>
+                      <input
+                        type="number"
+                        min="0"
+                        className="form-input"
+                        value={rentalContractData.currentElectricIndex}
+                        onChange={(e) => setRentalContractData(prev => ({...prev, currentElectricIndex: e.target.value}))}
+                        placeholder="Nhập chỉ số điện hiện tại"
+                      />
+                    </div>
+                    {rentalContractErrors.currentElectricIndex && (
+                      <div className="error-message">{rentalContractErrors.currentElectricIndex}</div>
+                    )}
+                  </div>
+                  
+                  <div className="form-group">
+                    <label className="form-label">
+                      Chỉ số nước (m³) <span className="required">*</span>
+                    </label>
+                    <div className="form-input-group">
+                      <i className="input-icon fas fa-tint"></i>
+                      <input
+                        type="number"
+                        min="0"
+                        className="form-input"
+                        value={rentalContractData.currentWaterIndex}
+                        onChange={(e) => setRentalContractData(prev => ({...prev, currentWaterIndex: e.target.value}))}
+                        placeholder="Nhập chỉ số nước hiện tại"
+                      />
+                    </div>
+                    {rentalContractErrors.currentWaterIndex && (
+                      <div className="error-message">{rentalContractErrors.currentWaterIndex}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            </div>
+          </div>
+
+          <div className="room-modal-footer">
+            <button type="button" className="btn-cancel" onClick={closeRentalContractModal}>
+              <i className="fas fa-times"></i> Hủy bỏ
+            </button>
+            <button 
+              type="submit" 
+              className="btn-submit"
+              onClick={submitRentalContract}
+              disabled={creatingRentalContract}
+            >
+              {creatingRentalContract 
+                ? <><i className="fas fa-spinner fa-spin"></i> Đang tạo...</>
+                : <><i className="fas fa-check"></i> Tạo hợp đồng thuê</>
               }
             </button>
           </div>
