@@ -14,7 +14,6 @@ export const getDistricts = async (req, res) => {
   try {
     const { provinceCode } = req.params;
     const response = await axios.get(`https://provinces.open-api.vn/api/p/${provinceCode}?depth=2`);
-    console.log("Districts data:", response.data.districts);
     res.status(200).json({ success: true, data: response.data.districts });
   } catch (error) {
     res.status(500).json({ success: false, message: "Lỗi khi lấy danh sách quận huyện" });

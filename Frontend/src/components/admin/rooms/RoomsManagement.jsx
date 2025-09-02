@@ -8,6 +8,7 @@ import roomsAPI from '../../../services/roomsAPI';
 import amenitiesAPI from '../../../services/amenitiesAPI';
 import depositContractsAPI from '../../../services/depositContractsAPI';
 import contractsAPI from '../../../services/contractsAPI';
+import tenantsAPI from '../../../services/tenantsAPI';
 import api from '../../../services/api';
 
 const RoomsManagement = () => {
@@ -218,7 +219,9 @@ const RoomsManagement = () => {
             vehicleCount: r.vehicleCount,
             description: r.description,
             images: r.images || [],
-            amenities: r.amenities || []
+            amenities: r.amenities || [],
+            // Keep original amenities structure for contract modals
+            originalAmenities: r.amenities || []
         }));
         setRooms(list);
         setPagination(prev => ({
@@ -461,6 +464,28 @@ const RoomsManagement = () => {
     return errors;
   };
 
+  // Helper function to scroll to first error field
+  const scrollToFirstError = (errors) => {
+    const firstErrorKey = Object.keys(errors)[0];
+    if (!firstErrorKey) return;
+
+    setTimeout(() => {
+      // Simple approach: find any input with error styling
+      const errorInputs = document.querySelectorAll('.form-input.error, .room-form-input[style*="border"], input.error');
+      if (errorInputs.length > 0) {
+        const firstErrorInput = errorInputs[0];
+        firstErrorInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstErrorInput.focus();
+        
+        // Highlight briefly
+        firstErrorInput.style.boxShadow = '0 0 0 3px rgba(220, 38, 38, 0.3)';
+        setTimeout(() => {
+          firstErrorInput.style.boxShadow = '';
+        }, 2000);
+      }
+    }, 200);
+  };
+
   // Submit rental contract
   const addTenant = () => {
     if (rentalContractData.tenants.length < selectedRoomForContract.capacity) {
@@ -608,47 +633,239 @@ const RoomsManagement = () => {
   const submitRentalContract = async () => {
     const errors = validateRentalContract();
     setRentalContractErrors(errors);
-    if (Object.keys(errors).length) return;
+
+    // If there are errors, scroll to first error field
+    if (Object.keys(errors).length) {
+      scrollToFirstError(errors);
+      showToast('error', 'Vui lòng kiểm tra và sửa các lỗi được đánh dấu');
+      return;
+    }
 
     setCreatingRentalContract(true);
+    
+    // Transaction state for rollback
+    const transaction = {
+      createdTenants: [],
+      createdContract: null,
+      uploadedImages: [],
+      updatedRoom: false,
+      updatedDepositContract: false,
+      originalDepositContract: null
+    };
+
     try {
-      const payload = {
-        roomId: selectedRoomForContract.id,
-        tenants: rentalContractData.tenants,
+      // 1. Tìm hợp đồng cọc (nếu có) để cập nhật trạng thái sau
+      const depositContract = depositContracts.find(contract => {
+        const contractRoomNumber = contract.room?.roomNumber || contract.room;
+        return contractRoomNumber === selectedRoomForContract.name && contract.status === 'active';
+      });
+      
+      if (depositContract) {
+        transaction.originalDepositContract = depositContract;
+      }
+
+      // 2. PHASE 1: Tạo tenants
+      showToast('info', 'Đang tạo thông tin khách thuê...');
+      
+      for (let i = 0; i < rentalContractData.tenants.length; i++) {
+        const tenantData = rentalContractData.tenants[i];
+        
+        console.log('Creating tenant', i + 1, ':', tenantData);
+        
+        // Lấy vehicles của tenant này
+        const tenantVehicles = rentalContractData.vehicles.filter(vehicle => 
+          vehicle.ownerIndex === i && vehicle.licensePlate.trim()
+        ).map(vehicle => ({
+          licensePlate: vehicle.licensePlate,
+          vehicleType: vehicle.vehicleType,
+          notes: ''
+        }));
+        
+        // Chuẩn bị dữ liệu tenant
+        const tenantPayload = {
+          fullName: tenantData.tenantName,
+          phone: tenantData.tenantPhone,
+          identificationNumber: tenantData.tenantId,
+          landlord: null, // Sẽ được backend tự động gán
+          room: selectedRoomForContract.id,
+          leaseStart: rentalContractData.startDate,
+          leaseEnd: rentalContractData.endDate,
+          rentPrice: Number(rentalContractData.monthlyRent),
+          deposit: Number(rentalContractData.deposit),
+          status: 'active',
+          notes: rentalContractData.notes,
+          vehicles: tenantVehicles // Thêm vehicles của tenant này
+        };
+
+        console.log('Tenant payload:', tenantPayload);
+
+        // Tạo tenant
+        const tenantResponse = await tenantsAPI.createTenant(tenantPayload);
+        
+        console.log('Tenant response:', tenantResponse);
+        
+        if (tenantResponse.success) {
+          const createdTenant = tenantResponse.data;
+          transaction.createdTenants.push(createdTenant);
+
+          // Upload hình ảnh sau khi tạo tenant thành công
+          if (tenantData.tenantImages && tenantData.tenantImages.length > 0) {
+            try {
+              const uploadRes = await tenantsAPI.uploadTenantImages(createdTenant._id, tenantData.tenantImages);
+              
+              if (uploadRes.success) {
+                console.log('Tenant images uploaded successfully:', uploadRes.data.images);
+                transaction.uploadedImages.push({
+                  tenantId: createdTenant._id,
+                  images: uploadRes.data.images
+                });
+                
+                // Cập nhật URLs hình ảnh vào rental contract data để hiển thị
+                setRentalContractData(prev => ({
+                  ...prev,
+                  tenants: prev.tenants.map((tenant, idx) => 
+                    idx === i ? { 
+                      ...tenant, 
+                      tenantImages: uploadRes.data.images.map(url => ({ 
+                        url, 
+                        isUploaded: true 
+                      })) 
+                    } : tenant
+                  )
+                }));
+              }
+            } catch (uploadError) {
+              console.warn('Failed to upload tenant images:', uploadError);
+              // Tiếp tục flow mà không có ảnh
+            }
+          }
+        } else {
+          console.error('Failed to create tenant:', tenantResponse);
+          throw new Error(`Failed to create tenant ${i + 1}: ${tenantResponse.message}`);
+        }
+      }
+
+      // 3. PHASE 2: Tạo contract
+      showToast('info', 'Đang tạo hợp đồng...');
+      
+      const contractPayload = {
+        room: selectedRoomForContract.id,
+        tenants: transaction.createdTenants.map(t => t._id), // Gửi mảng tất cả tenants
+        tenant: transaction.createdTenants[0]._id, // Primary tenant for backward compatibility
+        landlord: null, // Backend sẽ tự động gán
         startDate: rentalContractData.startDate,
         endDate: rentalContractData.endDate,
-        deposit: Number(rentalContractData.deposit),
         monthlyRent: Number(rentalContractData.monthlyRent),
-        electricityPrice: Number(rentalContractData.electricityPrice),
+        deposit: Number(rentalContractData.deposit),
+        electricPrice: Number(rentalContractData.electricityPrice),
         waterPrice: Number(rentalContractData.waterPrice),
         servicePrice: Number(rentalContractData.servicePrice),
-        paymentCycle: rentalContractData.paymentCycle,
-        notes: rentalContractData.notes
+        // Thông tin xe
+        vehicles: rentalContractData.vehicles.filter(v => v.licensePlate.trim()).map(vehicle => ({
+          licensePlate: vehicle.licensePlate,
+          vehicleType: vehicle.vehicleType,
+          owner: transaction.createdTenants[vehicle.ownerIndex]?._id || transaction.createdTenants[0]._id
+        })),
+        notes: rentalContractData.notes,
+        status: 'active'
       };
       
-      const response = await contractsAPI.createContract(payload);
+      console.log('Contract payload:', contractPayload);
       
-      if (response.success) {
-        // Close modal and refresh data
+      const contractResponse = await contractsAPI.createContract(contractPayload);
+      
+      console.log('Contract response:', contractResponse);
+      
+      if (contractResponse.success) {
+        transaction.createdContract = contractResponse.data;
+        
+        // 4. PHASE 3: Cập nhật contract reference cho tenants
+        for (const tenant of transaction.createdTenants) {
+          await tenantsAPI.updateTenant(tenant._id, {
+            contract: transaction.createdContract._id
+          });
+        }
+        
+        // 5. PHASE 4: Cập nhật trạng thái phòng
+        showToast('info', 'Đang cập nhật trạng thái phòng...');
+        await roomsAPI.updateRoom(selectedRoomForContract.id, {
+          status: 'occupied',
+          tenant: transaction.createdTenants[0]._id,
+          leaseStart: rentalContractData.startDate,
+          leaseEnd: rentalContractData.endDate
+        });
+        transaction.updatedRoom = true;
+
+        // 6. PHASE 5: Cập nhật trạng thái hợp đồng cọc nếu có
+        if (transaction.originalDepositContract) {
+          showToast('info', 'Đang cập nhật hợp đồng cọc...');
+          await depositContractsAPI.updateDepositContractStatus(
+            transaction.originalDepositContract._id, 
+            'fulfilled'
+          );
+          transaction.updatedDepositContract = true;
+        }
+
+        // 7. COMMIT: Thành công - đóng modal và refresh data
+        showToast('info', 'Đang hoàn tất...');
         setShowRentalContractModal(false);
         setSelectedRoomForContract(null);
         
-        // Show success toast
         showToast(
           'success',
           t('contracts.success.rentalCreated') || 'Hợp đồng thuê đã được tạo thành công!'
         );
         
-        // Refresh both rooms and deposit contracts to update UI
+        // Refresh UI
         setTimeout(() => {
           fetchRooms();
           fetchDepositContracts();
         }, 500);
+
       } else {
-        throw new Error(response.message || 'Failed to create rental contract');
+        throw new Error(contractResponse.message || 'Failed to create contract');
       }
+
     } catch (error) {
       console.error('Error creating rental contract:', error);
+      
+      // ROLLBACK: Hoàn tác tất cả các thay đổi
+      showToast('info', 'Đang hoàn tác các thay đổi...');
+      
+      try {
+        // Rollback room status if updated
+        if (transaction.updatedRoom) {
+          await roomsAPI.updateRoom(selectedRoomForContract.id, {
+            status: 'available',
+            tenant: null,
+            leaseStart: null,
+            leaseEnd: null
+          });
+        }
+
+        // Rollback deposit contract status if updated
+        if (transaction.updatedDepositContract && transaction.originalDepositContract) {
+          await depositContractsAPI.updateDepositContractStatus(
+            transaction.originalDepositContract._id, 
+            'active'
+          );
+        }
+
+        // Rollback contract if created
+        if (transaction.createdContract) {
+          await contractsAPI.deleteContract(transaction.createdContract._id);
+        }
+
+        // Rollback tenants if created
+        for (const tenant of transaction.createdTenants) {
+          await tenantsAPI.archiveTenant(tenant._id);
+        }
+
+        showToast('warning', 'Đã hoàn tác các thay đổi do có lỗi xảy ra');
+      } catch (rollbackError) {
+        console.error('Error during rollback:', rollbackError);
+        showToast('error', 'Có lỗi khi hoàn tác. Vui lòng kiểm tra dữ liệu thủ công.');
+      }
       
       let errorMessage = t('contracts.error.createFailed') || 'Có lỗi xảy ra khi tạo hợp đồng thuê';
       
@@ -660,6 +877,8 @@ const RoomsManagement = () => {
         } else if (error.response.status === 400) {
           errorMessage = error.response.data?.message || t('contracts.error.invalidData') || 'Dữ liệu không hợp lệ';
         }
+      } else if (error.message) {
+        errorMessage = error.message;
       }
       
       showToast('error', errorMessage);
@@ -813,7 +1032,13 @@ const RoomsManagement = () => {
   const submitDepositContract = async () => {
     const errors = validateDepositContract();
     setDepositContractErrors(errors);
-    if (Object.keys(errors).length) return;
+    
+    // If there are errors, scroll to first error field
+    if (Object.keys(errors).length) {
+      scrollToFirstError(errors);
+      showToast('error', 'Vui lòng kiểm tra và sửa các lỗi được đánh dấu');
+      return;
+    }
 
     setCreatingDepositContract(true);
     try {
@@ -1514,7 +1739,7 @@ const RoomsManagement = () => {
         <div className="room-modal">
           <div className="room-modal-header">
             <h2 className="room-modal-title">{t('rooms.form.modalTitle')}</h2>
-            <button className="room-modal-close" onClick={closeCreateModal}>×</button>
+            <button className="room-modal-close" disabled={creating || uploadingImages} onClick={closeCreateModal}>×</button>
           </div>
           <div className="room-form-grid">
             <div className="room-form-group">
@@ -1646,7 +1871,7 @@ const RoomsManagement = () => {
             </div>
           </div>
           <div className="room-modal-footer">
-            <button className="btn-secondary" onClick={closeCreateModal}>{t('rooms.form.cancel')}</button>
+            <button className="btn-secondary" disabled={creating || uploadingImages} onClick={closeCreateModal}>{t('rooms.form.cancel')}</button>
             <button className="btn-primary" disabled={creating || uploadingImages || roomNumberChecking || !roomNumberAvailable} onClick={submitCreate}>{(creating||uploadingImages) ? (uploadingImages? t('rooms.form.uploading') : t('rooms.form.creating')) : t('rooms.form.create')}</button>
           </div>
         </div>
@@ -1978,7 +2203,7 @@ const RoomsManagement = () => {
             <h2 className="room-modal-title">
               {t('contracts.create.depositTitle') || 'Tạo hợp đồng cọc'} - {selectedRoomForContract.name}
             </h2>
-            <button className="room-modal-close" onClick={closeDepositContractModal}>×</button>
+            <button className="room-modal-close" disabled={creatingDepositContract} onClick={closeDepositContractModal}>×</button>
           </div>
           
           <div className="room-form-grid">
@@ -2018,7 +2243,7 @@ const RoomsManagement = () => {
               </label>
               <input
                 type="date"
-                className="room-form-input"
+                className={`room-form-input ${depositContractErrors.depositDate ? 'error' : ''}`}
                 value={depositContractData.depositDate}
                 onChange={(e) => handleDepositContractChange('depositDate', e.target.value)}
                 disabled={creatingDepositContract}
@@ -2035,7 +2260,7 @@ const RoomsManagement = () => {
               </label>
               <input
                 type="date"
-                className="room-form-input"
+                className={`room-form-input ${depositContractErrors.expectedMoveInDate ? 'error' : ''}`}
                 value={depositContractData.expectedMoveInDate}
                 onChange={(e) => handleDepositContractChange('expectedMoveInDate', e.target.value)}
                 min={depositContractData.depositDate}
@@ -2053,7 +2278,7 @@ const RoomsManagement = () => {
               </label>
               <input
                 type="text"
-                className="room-form-input"
+                className={`room-form-input ${depositContractErrors.tenantName ? 'error' : ''}`}
                 value={depositContractData.tenantName}
                 onChange={(e) => handleDepositContractChange('tenantName', e.target.value)}
                 placeholder={t('contracts.form.tenantNamePlaceholder') || 'Nhập tên người thuê'}
@@ -2071,7 +2296,7 @@ const RoomsManagement = () => {
               </label>
               <input
                 type="tel"
-                className="room-form-input"
+                className={`room-form-input ${depositContractErrors.tenantPhone ? 'error' : ''}`}
                 value={depositContractData.tenantPhone}
                 onChange={(e) => handleDepositContractChange('tenantPhone', e.target.value)}
                 placeholder={t('contracts.form.tenantPhonePlaceholder') || 'Nhập số điện thoại'}
@@ -2089,7 +2314,7 @@ const RoomsManagement = () => {
               </label>
               <input
                 type="text"
-                className="room-form-input"
+                className={`room-form-input ${depositContractErrors.depositAmount ? 'error' : ''}`}
                 value={depositContractData.depositAmount === '' ? '' : formatWithCommas(depositContractData.depositAmount)}
                 onChange={(e) => handleMoneyInlineChange('depositAmount', e.target.value, false, setDepositContractData)}
                 onKeyDown={(e) => handleMoneyInlineKey(e, 'depositAmount', false, setDepositContractData)}
@@ -2121,7 +2346,7 @@ const RoomsManagement = () => {
           </div>
 
           <div className="room-modal-footer">
-            <button className="btn-secondary" onClick={closeDepositContractModal}>
+            <button className="btn-secondary" disabled={creatingDepositContract} onClick={closeDepositContractModal}>
               {t('common.cancel') || 'Hủy'}
             </button>
             <button 
@@ -2147,7 +2372,7 @@ const RoomsManagement = () => {
             <h2 className="room-modal-title">
               <i className="fas fa-file-contract"></i> Tạo hợp đồng thuê - {selectedRoomForContract.name}
             </h2>
-            <button className="room-modal-close" onClick={closeRentalContractModal}>×</button>
+            <button className="room-modal-close" disabled={creatingRentalContract} onClick={closeRentalContractModal}>×</button>
           </div>
           
           <div className="rental-contract-two-columns">
@@ -2253,22 +2478,29 @@ const RoomsManagement = () => {
                         {/* Display existing images */}
                         {tenant.tenantImages && tenant.tenantImages.length > 0 && (
                           <div className="tenant-images-gallery">
-                            {tenant.tenantImages.map((image, imgIndex) => (
-                              <div key={imgIndex} className="tenant-image-item">
-                                <img 
-                                  src={URL.createObjectURL(image)} 
-                                  alt={`Tenant ${imgIndex + 1}`} 
-                                  className="tenant-image-preview"
-                                />
-                                <button 
-                                  type="button"
-                                  className="remove-image-btn"
-                                  onClick={() => removeTenantImage(index, imgIndex)}
-                                >
-                                  <i className="fas fa-times"></i>
-                                </button>
-                              </div>
-                            ))}
+                            {tenant.tenantImages.map((image, imgIndex) => {
+                              // Handle both File objects and uploaded URLs
+                              const imageUrl = image?.url 
+                                ? image.url // Uploaded URL from server
+                                : (typeof image === 'string' ? image : URL.createObjectURL(image)); // File object
+                              
+                              return (
+                                <div key={imgIndex} className="tenant-image-item">
+                                  <img 
+                                    src={imageUrl} 
+                                    alt={`Tenant ${imgIndex + 1}`} 
+                                    className="tenant-image-preview"
+                                  />
+                                  <button 
+                                    type="button"
+                                    className="remove-image-btn"
+                                    onClick={() => removeTenantImage(index, imgIndex)}
+                                  >
+                                    <i className="fas fa-times"></i>
+                                  </button>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                         
@@ -2428,9 +2660,28 @@ const RoomsManagement = () => {
                   {selectedRoomForContract.amenities && selectedRoomForContract.amenities.length > 0 && (
                     <div className="room-info-item amenities-item">
                       <span className="info-label">Tiện ích:</span>
-                      <div className="amenities-list">
+                      <div className="amenities-list" style={{
+                        display: 'flex', 
+                        flexWrap: 'wrap', 
+                        gap: '8px', 
+                        marginTop: '8px'
+                      }}>
                         {selectedRoomForContract.amenities.map((amenity, index) => (
-                          <span key={index} className="amenity-tag">
+                          <span 
+                            key={amenity._id || index} 
+                            className="amenity-tag"
+                            style={{
+                              display: 'inline-block',
+                              padding: '4px 8px',
+                              background: '#e3f2fd',
+                              color: '#1976d2',
+                              borderRadius: '12px',
+                              fontSize: '12px',
+                              fontWeight: '500',
+                              border: '1px solid #bbdefb'
+                            }}
+                          >
+                            <i className={amenity.icon} style={{marginRight: '4px'}}></i>
                             {amenity.name}
                           </span>
                         ))}
@@ -2662,7 +2913,7 @@ const RoomsManagement = () => {
 
                 <div className="form-group">
                   <label htmlFor="notes" className="form-label">
-                    Ghi chú<br />
+                    Ghi chú
                   </label>
                   <textarea
                     id="notes"
@@ -2689,7 +2940,7 @@ const RoomsManagement = () => {
                       <input
                         type="number"
                         min="0"
-                        className="form-input"
+                        className={`form-input ${rentalContractErrors.currentElectricIndex ? 'error' : ''}`}
                         value={rentalContractData.currentElectricIndex}
                         onChange={(e) => setRentalContractData(prev => ({...prev, currentElectricIndex: e.target.value}))}
                         placeholder="Nhập chỉ số điện hiện tại"
@@ -2709,7 +2960,7 @@ const RoomsManagement = () => {
                       <input
                         type="number"
                         min="0"
-                        className="form-input"
+                        className={`form-input ${rentalContractErrors.currentWaterIndex ? 'error' : ''}`}
                         value={rentalContractData.currentWaterIndex}
                         onChange={(e) => setRentalContractData(prev => ({...prev, currentWaterIndex: e.target.value}))}
                         placeholder="Nhập chỉ số nước hiện tại"
@@ -2726,7 +2977,7 @@ const RoomsManagement = () => {
           </div>
 
           <div className="room-modal-footer">
-            <button type="button" className="btn-cancel" onClick={closeRentalContractModal}>
+            <button type="button" className="btn-cancel" disabled={creatingRentalContract} onClick={closeRentalContractModal}>
               <i className="fas fa-times"></i> Hủy bỏ
             </button>
             <button 

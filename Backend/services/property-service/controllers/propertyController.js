@@ -8,10 +8,6 @@ class PropertyController {
     // Tạo property mới với validation đầy đủ
     async createProperty(req, res) {
         try {
-            console.log('Request body:', req.body);
-            console.log('Request files:', req.files);
-            console.log('Request user:', req.user);
-
             // Kiểm tra xác thực user trước tiên
             if (!req.user || (!req.user.id && !req.user.userId)) {
                 return res.status(401).json({

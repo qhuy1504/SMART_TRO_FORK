@@ -61,7 +61,6 @@ export const createDepositContract = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error creating deposit contract:', error);
         res.status(500).json({
             success: false,
             message: 'Có lỗi xảy ra khi tạo hợp đồng đặt cọc',
@@ -103,7 +102,6 @@ export const getDepositContracts = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error getting deposit contracts:', error);
         res.status(500).json({
             success: false,
             message: 'Có lỗi xảy ra khi lấy danh sách hợp đồng cọc',
@@ -134,7 +132,6 @@ export const getDepositContractById = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error getting deposit contract:', error);
         res.status(500).json({
             success: false,
             message: 'Có lỗi xảy ra khi lấy thông tin hợp đồng cọc',
@@ -172,7 +169,6 @@ export const updateDepositContractStatus = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error updating deposit contract status:', error);
         res.status(500).json({
             success: false,
             message: 'Có lỗi xảy ra khi cập nhật trạng thái hợp đồng cọc',
@@ -217,7 +213,6 @@ export const deleteDepositContract = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error deleting deposit contract:', error);
         res.status(500).json({
             success: false,
             message: 'Có lỗi xảy ra khi xóa hợp đồng cọc',
