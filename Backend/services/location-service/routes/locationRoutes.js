@@ -3,7 +3,8 @@ import {
   getProvinces,
   getDistricts,
   getWards,
-  getAddressDetail
+  getAddressDetail,
+  geocodeAddress
 } from "../controllers/locationController.js";
 
 const router = express.Router();
@@ -14,5 +15,7 @@ router.get("/provinces", getProvinces);
 router.get("/provinces/:provinceCode/districts", getDistricts);
 router.get("/districts/:districtCode/wards", getWards);
 router.get("/address-detail/:provinceCode/:districtCode/:wardCode", getAddressDetail);
+router.post("/geocode", geocodeAddress);
+
 
 export default router;

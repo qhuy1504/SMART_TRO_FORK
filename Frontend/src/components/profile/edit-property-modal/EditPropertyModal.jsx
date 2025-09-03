@@ -1,25 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { toast } from 'react-toastify';
-import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api';
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { myPropertiesAPI } from '../../../services/myPropertiesAPI';
 import { locationAPI } from '../../../services/locationAPI';
 import dayjs from 'dayjs';
 import './EditPropertyModal.css';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
-const libraries = ['places'];
-
-const mapContainerStyle = {
-  width: '100%',
-  height: '250px',
-  borderRadius: '8px'
-};
-
-const mapOptions = {
-  zoomControl: true,
-  streetViewControl: false,
-  mapTypeControl: false,
-  fullscreenControl: false,
-};
+// Fix default marker icon
+const markerIcon = new L.Icon({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
 
 const EditPropertyModal = ({ property, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({});
@@ -27,13 +24,10 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
   const [errors, setErrors] = useState({});
   const fileInputRef = useRef(null);
   const videoInputRef = useRef(null);
-  const geocoderRef = useRef(null);
-  
-  // Google Maps
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
-    libraries
-  });
+
+  const lastAddressRef = useRef(null);
+  const lastCoordsRef = useRef(null);
+
 
   // Location data
   const [locationData, setLocationData] = useState({
@@ -93,11 +87,13 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
   useEffect(() => {
     if (property) {
       // Initialize form với tất cả dữ liệu property
+      console.log('Loading property for edit:', property);
       setFormData({
         title: property.title || '',
         category: property.category || 'phong_tro',
         contactName: property.contactName || '',
         contactPhone: property.contactPhone || '',
+        coordinates: property.coordinates || { lat: 16.0583, lng: 108.2772 },
         description: property.description || '',
         rentPrice: property.rentPrice || '',
         promotionPrice: property.promotionPrice || '',
@@ -107,22 +103,22 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
         waterPrice: property.waterPrice || '',
         maxOccupants: property.maxOccupants || '1',
         availableDate: property.availableDate ? dayjs(property.availableDate).format('YYYY-MM-DD') : '',
-        
+
         // Tiện ích
         amenities: property.amenities || [],
         fullAmenities: property.fullAmenities || false,
         timeRules: property.timeRules || '',
-        
+
         // Nội quy
         houseRules: property.houseRules || [],
-        
+
         // Địa chỉ - cần convert từ name về code
-      province: property.province || '',
-      district: property.district || '',
-      ward: property.ward || '',
-      detailAddress: property.detailAddress || '',
-      coordinates: property.coordinates || { lat: 16.0583, lng: 108.2772 },
-        
+        province: property.province || '',
+        district: property.district || '',
+        ward: property.ward || '',
+        detailAddress: property.detailAddress || '',
+        coordinates: property.coordinates || { lat: 16.0583, lng: 108.2772 },
+
         // Media
         images: property.images || [],
         video: property.video || null,
@@ -130,75 +126,82 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
         newImages: [], // Track new uploaded images
         removedImages: [] // Track removed images
       });
-      
-      loadLocationData();
+
+      loadLocationData(property);
     }
   }, [property]);
 
-  const loadLocationData = async () => {
+  const loadLocationData = async (property) => {
     try {
       // Load provinces
       setLocationData(prev => ({ ...prev, loadingProvinces: true }));
       const provinces = await locationAPI.getProvinces();
-      console.log('Loaded provinces:', provinces);
       const provincesData = provinces.data || [];
-      console.log('property:', property);
-      // Tìm province code từ name
-      const provinceData = provincesData.find(p => p.name === property.province);
-      console.log('CODE province data:', provinceData);
+
       setLocationData(prev => ({
         ...prev,
         provinces: provincesData,
         loadingProvinces: false
       }));
 
-      if (provinceData) {
-        setFormData(prev => ({ ...prev, province: provinceData.code }));
-        
-        // Load districts
+
+      // Nếu có province code thì load districts
+      if (property.province) {
         setLocationData(prev => ({ ...prev, loadingDistricts: true }));
-        const districts = await locationAPI.getDistricts(provinceData.code);
-        const districtsData = districts.data?.districts || [];
-        console.log('Loaded districts:', districtsData);
-        
-        // Tìm district code từ name
-        const districtData = districtsData.find(d => d.name === property.location?.district);
-        
+        const districtsRes = await locationAPI.getDistricts(property.province);
+
+        const districtsData = districtsRes.data || [];
+
         setLocationData(prev => ({
           ...prev,
           districts: districtsData,
           loadingDistricts: false
         }));
 
-        if (districtData) {
-          setFormData(prev => ({ ...prev, district: districtData.code }));
-          
-          // Load wards
-          setLocationData(prev => ({ ...prev, loadingWards: true }));
-          const wards = await locationAPI.getWards(districtData.code);
-          const wardsData = wards.data || [];
-          
-          // Tìm ward code từ name
-          const wardData = wardsData.find(w => w.name === property.location?.ward);
-          
-          setLocationData(prev => ({
-            ...prev,
-            wards: wardsData,
-            loadingWards: false
-          }));
+        // So sánh code trong danh sách với property.district
+        if (property.district) {
 
-          if (wardData) {
-            setFormData(prev => ({ ...prev, ward: wardData.code }));
+
+          const districtData = districtsData.find(
+            (d) => String(d.code) === String(property.district)
+          );
+
+
+          if (districtData) {
+            setFormData(prev => ({ ...prev, district: String(districtData.code) }));
+
+            // Nếu có district thì load wards
+            setLocationData(prev => ({ ...prev, loadingWards: true }));
+            const wardsRes = await locationAPI.getWards(districtData.code);
+            const wardsData = wardsRes.data || [];
+
+
+            setLocationData(prev => ({
+              ...prev,
+              wards: wardsData,
+              loadingWards: false
+            }));
+
+            // Nếu DB có ward thì set lại luôn
+            if (property.ward) {
+              const wardData = wardsData.find(
+                (w) => String(w.code) === String(property.ward)
+              );
+              if (wardData) {
+                setFormData(prev => ({ ...prev, ward: String(wardData.code) }));
+              }
+            }
           }
         }
       }
+
     } catch (error) {
       console.error('Error loading location data:', error);
-      setLocationData(prev => ({ 
-        ...prev, 
+      setLocationData(prev => ({
+        ...prev,
         loadingProvinces: false,
         loadingDistricts: false,
-        loadingWards: false 
+        loadingWards: false
       }));
     }
   };
@@ -307,53 +310,218 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
       }));
     }
   };
+  const getFileName = (img) => {
+    if (!img) return "";
+    if (typeof img === "string") {
+      return img.split("/").pop(); // lấy phần sau cùng trong URL
+    }
+    if (img.name) return img.name; // ảnh mới (File object)
+    if (img.url) return img.url.split("/").pop(); // ảnh object có url
+    return "";
+  };
 
+
+  const ConfirmToast = ({ message, onConfirm, onCancel }) => (
+    <div>
+      <p>{message}</p>
+      <div style={{ marginTop: "8px", display: "flex", gap: "8px" }}>
+        <button
+          onClick={() => {
+            toast.dismiss(); // đóng toast
+            onConfirm();
+          }}
+          style={{
+            background: "#4CAF50",
+            color: "#fff",
+            border: "none",
+            padding: "6px 12px",
+            borderRadius: "4px",
+            cursor: "pointer",
+          }}
+        >
+          Ghi đè
+        </button>
+        <button
+          onClick={() => {
+            toast.dismiss();
+            onCancel();
+          }}
+          style={{
+            background: "#f44336",
+            color: "#fff",
+            border: "none",
+            padding: "6px 12px",
+            borderRadius: "4px",
+            cursor: "pointer",
+          }}
+        >
+          Hủy
+        </button>
+      </div>
+    </div>
+  );
   // Image upload handler
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
+    if (!files.length) return;
 
+    const existingCount = formData.existingImages?.length || 0;
+    const newCount = formData.newImages?.length || 0;
+
+    // Kiểm tra tổng số ảnh không vượt quá 5
+    if (existingCount + newCount + files.length > 5) {
+      toast.error("Bạn chỉ được chọn tối đa 5 ảnh");
+      e.target.value = null;
+      return;
+    }
+
+    // Lấy danh sách tên ảnh đã có (cả ảnh cũ lẫn ảnh mới)
+    const existingFileNames = [
+      ...(formData.existingImages?.map(img => getFileName(img)) || []),
+      ...(formData.newImages?.map(img => getFileName(img)) || [])
+    ];
+
+    const duplicateFiles = files.filter(f => existingFileNames.includes(f.name));
+
+    if (duplicateFiles.length > 0) {
+      const duplicateNames = duplicateFiles.map(f => f.name).join(", ");
+
+      toast.warn(
+        <ConfirmToast
+          message={`Ảnh ${duplicateNames} đã tồn tại. Bạn có muốn ghi đè không?`}
+          onConfirm={() => {
+            // Xóa ảnh trùng
+            setFormData(prev => ({
+              ...prev,
+              existingImages: prev.existingImages?.filter(
+                img => !duplicateFiles.some(f => getFileName(img) === f.name)
+              ) || [],
+              newImages: prev.newImages?.filter(
+                img => !duplicateFiles.some(f => getFileName(img) === f.name)
+              ) || []
+            }));
+
+            // Thêm ảnh mới
+            files.forEach(file => {
+              const reader = new FileReader();
+              reader.onload = (event) => {
+                setFormData(prev => ({
+                  ...prev,
+                  newImages: [
+                    ...(prev.newImages || []),
+                    { file, url: event.target.result, name: file.name }
+                  ]
+                }));
+              };
+              reader.readAsDataURL(file);
+            });
+
+            e.target.value = null; // reset input
+          }}
+          onCancel={() => {
+            e.target.value = null; // reset input
+          }}
+        />,
+        { autoClose: false }
+      );
+
+      return;
+    }
+
+    // Nếu không có trùng → thêm ảnh mới
     files.forEach(file => {
       const reader = new FileReader();
       reader.onload = (event) => {
         setFormData(prev => ({
           ...prev,
-          newImages: [...prev.newImages, {
-            file: file,
-            url: event.target.result,
-            name: file.name
-          }]
+          newImages: [
+            ...(prev.newImages || []),
+            { file, url: event.target.result, name: file.name }
+          ]
         }));
       };
       reader.readAsDataURL(file);
     });
 
-    if (errors.images) {
-      setErrors(prev => ({ ...prev, images: '' }));
-    }
+    e.target.value = null; // reset input để chọn liên tiếp
   };
+
+
 
   // Video upload handler
   const handleVideoUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setFormData(prev => ({
-        ...prev,
-        video: {
-          file: file,
-          url: event.target.result,
-          name: file.name
-        }
-      }));
-    };
-    reader.readAsDataURL(file);
-
-    if (errors.video) {
-      setErrors(prev => ({ ...prev, video: '' }));
+    if (files.length > 1) {
+      toast.error("Bạn chỉ được chọn tối đa 1 video");
+      e.target.value = null;
+      return;
     }
+
+    const file = files[0];
+
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error("Video không được lớn hơn 50MB");
+      e.target.value = null;
+      return;
+    }
+
+    const newUrl = URL.createObjectURL(file);
+
+    // Nếu đã có video và trùng tên
+    if (formData.video && formData.video.name === file.name) {
+      toast.warn(
+        <ConfirmToast
+          message={`Video "${file.name}" đã tồn tại. Bạn có muốn ghi đè không?`}
+          onConfirm={() => {
+            // Giải phóng URL cũ
+            if (formData.video?.url) {
+              URL.revokeObjectURL(formData.video.url);
+            }
+
+            setFormData((prev) => ({
+              ...prev,
+              video: {
+                file,
+                url: newUrl,
+                name: file.name,
+              },
+              removeVideo: false,
+            }));
+            e.target.value = null;
+            toast.dismiss();
+          }}
+          onCancel={() => {
+            URL.revokeObjectURL(newUrl); // không dùng thì revoke luôn
+            e.target.value = null;
+            toast.dismiss();
+          }}
+        />,
+        { autoClose: false }
+      );
+      return;
+    }
+
+    // Nếu chưa có hoặc khác tên
+    if (formData.video?.url) {
+      URL.revokeObjectURL(formData.video.url);
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      video: {
+        file,
+        url: newUrl,
+        name: file.name,
+      },
+    }));
+
+    e.target.value = null;
   };
+
+
+
 
   // Remove existing image
   const handleRemoveExistingImage = (index) => {
@@ -373,18 +541,7 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
     }));
   };
 
-  // Handle map click
-  const handleMapClick = (e) => {
-    const lat = e.latLng.lat();
-    const lng = e.latLng.lng();
 
-    setFormData(prev => ({
-      ...prev,
-      coordinates: { lat, lng }
-    }));
-
-    toast.success(`Đã chọn vị trí: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
-  };
 
   // Format date for backend
   const formatDateForBackend = (dateString) => {
@@ -396,56 +553,238 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
     return dateString;
   };
 
+
+  // Hàm format số thành VNĐ style
+  const formatNumber = (value) => {
+    if (!value) return "";
+    return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  };
+
+  // Hàm loại bỏ ký tự không phải số
+  const parseNumber = (value) => {
+    return value.replace(/\./g, "");
+  };
+
+  // Xử lý change
+  const handlePriceChange = (e) => {
+    const { name, value } = e.target;
+    // bỏ dấu chấm trước khi set
+    const rawValue = parseNumber(value);
+    if (!/^\d*$/.test(rawValue)) return; // chỉ cho nhập số
+
+    setFormData({
+      ...formData,
+      [name]: rawValue, // giữ số thực (chưa format)
+    });
+  };
+
+  // Tạo full address từ các trường
+
+  const getFullAddressPayload = async (formData, locationData) => {
+    const provinceName =
+      locationData.provinces.find(p => String(p.code) === String(formData.province))?.name || "";
+    const districtName =
+      locationData.districts.find(d => String(d.code) === String(formData.district))?.name || "";
+    const wardName =
+      locationData.wards.find(w => String(w.code) === String(formData.ward))?.name || "";
+
+    return {
+      street: formData.detailAddress || "",
+      ward: wardName || "",
+      district: districtName || "",
+      province: provinceName || "",
+      country: "Vietnam",
+    };
+  };
+
+
+
+
+  // Geocode address
+  const geocodeAddressConst = async (addressPayload) => {
+    if (!addressPayload) return null;
+
+    try {
+      setLocationData(prev => ({ ...prev, geocoding: true }));
+
+      console.log("fullAddress payload:", addressPayload);
+      const res = await locationAPI.geocodeAddress(addressPayload);
+
+      // Kiểm tra response từ backend
+      const coords = res?.data?.coordinates;
+      if (coords?.lat && coords?.lng) {
+        return { lat: coords.lat, lng: coords.lng };
+      }
+      return null;
+    } catch (err) {
+      console.error("Geocoding error:", err);
+      return null;
+    } finally {
+      setLocationData(prev => ({ ...prev, geocoding: false }));
+    }
+  };
+
+
+  useEffect(() => {
+    if (formData.detailAddress && formData.province && formData.district && formData.ward) {
+      const timer = setTimeout(async () => {
+        const addressPayload = await getFullAddressPayload(formData, locationData);
+        const payloadString = JSON.stringify(addressPayload);
+
+        if (addressPayload && payloadString !== lastAddressRef.current) {
+          lastAddressRef.current = payloadString;
+
+          console.log("Geocoding payload (Edit):", addressPayload);
+          const res = await geocodeAddressConst(addressPayload);
+
+          if (res?.lat && res?.lng) {
+            lastCoordsRef.current = res;
+            setFormData(prev => ({ ...prev, coordinates: res }));
+          } else if (lastCoordsRef.current) {
+            setFormData(prev => ({ ...prev, coordinates: lastCoordsRef.current }));
+          }
+        }
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [formData.detailAddress, formData.ward, formData.district, formData.province, locationData]);
+
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setErrors({});
 
     try {
-      // Tìm tên từ code để gửi lên backend (tương tự NewProperty)
-      const provinceData = locationData.provinces.find(p => p.code === formData.province);
-      const districtData = locationData.districts.find(d => d.code === formData.district);
-      const wardData = locationData.wards.find(w => w.code === formData.ward);
+      const provinceData = locationData.provinces.find(
+        (p) => String(p.code) === String(formData.province)
+      );
+      const districtData = locationData.districts.find(
+        (d) => String(d.code) === String(formData.district)
+      );
+      const wardData = locationData.wards.find(
+        (w) => String(w.code) === String(formData.ward)
+      );
 
-      const dataToSubmit = {
-        ...formData,
-        availableDate: formatDateForBackend(formData.availableDate),
-        // Gửi location names
-        province: provinceData?.name || formData.province,
-        district: districtData?.name || formData.district,
-        ward: wardData?.name || formData.ward,
-        // Gửi thông tin về images thay đổi
-        removedImages: formData.removedImages,
-        // newImages sẽ được handle riêng nếu cần upload
-      };
+      // ---- Tạo FormData ----
+      const formDataToSend = new FormData();
 
-      console.log('Data to submit for update:', dataToSubmit);
+      // Append các field text
+      formDataToSend.append("title", formData.title || "");
+      formDataToSend.append("contactName", formData.contactName || "");
+      formDataToSend.append("contactPhone", formData.contactPhone || "");
+      formDataToSend.append("description", formData.description || "");
+      formDataToSend.append("rentPrice", formData.rentPrice || "");
+      formDataToSend.append("promotionPrice", formData.promotionPrice || "");
+      formDataToSend.append("deposit", formData.deposit || "");
+      formDataToSend.append("area", formData.area || "");
+      formDataToSend.append("electricPrice", formData.electricPrice || "");
+      formDataToSend.append("waterPrice", formData.waterPrice || "");
+      formDataToSend.append("maxOccupants", formData.maxOccupants || "");
+      formDataToSend.append("timeRules", formData.timeRules || "");
+      formDataToSend.append("province", formData.province || "");
+      formDataToSend.append("district", formData.district || "");
+      formDataToSend.append("ward", formData.ward || "");
+      formDataToSend.append("detailAddress", formData.detailAddress || "");
+      formDataToSend.append("availableDate", formatDateForBackend(formData.availableDate));
+      formDataToSend.append("fullAmenities", formData.fullAmenities);
 
-      const response = await myPropertiesAPI.updateProperty(property._id, dataToSubmit);
+      // JSON stringify cho mảng
+      formDataToSend.append("amenities", JSON.stringify(formData.amenities || []));
+      formDataToSend.append("category", JSON.stringify(formData.category || []));
+      formDataToSend.append("houseRules", JSON.stringify(formData.houseRules || []));
+      formDataToSend.append("removedImages", JSON.stringify(formData.removedImages || []));
+
+      // Append coordinates
+      if (formData.coordinates) {
+        formDataToSend.append("coordinates", JSON.stringify(formData.coordinates));
+      }
+
+      // Append ảnh mới (tối đa 5)
+      if (formData.newImages?.length > 0) {
+        formData.newImages.forEach((img) => {
+          if (img.file) {
+            formDataToSend.append("images", img.file);
+          }
+        });
+      }
+
+
+      // Append video (chỉ 1 file, < 50MB)
+      if (formData.video?.file) {
+        if (formData.video.file.size > 50 * 1024 * 1024) {
+          toast.error("Video không được lớn hơn 50MB");
+          setLoading(false);
+          return;
+        }
+        formDataToSend.append("video", formData.video.file);
+      } else if (formData.removeVideo) {
+              // nếu user chọn xoá video
+              formDataToSend.append("removeVideo", "true");
+      }
+
+
+      console.log("Existing video:", formData.video);
+      console.log("Payload FormData gửi lên:", Object.fromEntries(formDataToSend.entries()));
+
+      const response = await myPropertiesAPI.updateProperty(property._id, formDataToSend);
 
       if (response.success) {
-        toast.success('Cập nhật tin đăng thành công!');
+        toast.success("Cập nhật tin đăng thành công!");
         onSuccess();
       } else {
         if (response.errors) {
           setErrors(response.errors);
-          toast.error('Có lỗi trong dữ liệu. Vui lòng kiểm tra lại.');
+          toast.error("Có lỗi trong dữ liệu. Vui lòng kiểm tra lại.");
         } else {
-          toast.error(response.message || 'Có lỗi xảy ra');
+          toast.error(response.message || "Có lỗi xảy ra");
         }
       }
     } catch (error) {
-      console.error('Error updating property:', error);
+      console.error("Error updating property:", error);
       if (error.response?.data?.errors) {
         setErrors(error.response.data.errors);
-        toast.error('Có lỗi trong dữ liệu. Vui lòng kiểm tra lại.');
+        toast.error("Có lỗi trong dữ liệu. Vui lòng kiểm tra lại.");
       } else {
-        toast.error('Lỗi khi cập nhật tin đăng');
+        toast.error("Lỗi khi cập nhật tin đăng");
       }
     } finally {
       setLoading(false);
     }
   };
+
+
+
+  // Draggable Marker component
+  const DraggableMarker = ({ position, onChange }) => {
+    const [draggable] = useState(true);
+    const markerRef = useRef(null);
+
+    useMapEvents({
+      click(e) {
+        onChange(e.latlng);
+      }
+    });
+    return (
+      <Marker
+        position={position}
+        draggable={draggable}
+        eventHandlers={{
+          dragend: () => {
+            const marker = markerRef.current;
+            if (marker != null) {
+              onChange(marker.getLatLng());
+            }
+          }
+        }}
+        icon={markerIcon}
+        ref={markerRef}
+      />
+    );
+  };
+
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -462,7 +801,7 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
             {/* Thông tin chủ nhà */}
             <div className="form-section">
               <h4>Thông tin chủ nhà</h4>
-              
+
               <div className="form-group">
                 <label>Tiêu đề *</label>
                 <input
@@ -535,15 +874,15 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
             {/* Thông tin cơ bản & giá */}
             <div className="form-section">
               <h4>Thông tin cơ bản & giá</h4>
-              
+
               <div className="form-row">
                 <div className="form-group">
                   <label>Giá thuê (VNĐ/tháng) *</label>
                   <input
-                    type="number"
+                    type="text"
                     name="rentPrice"
-                    value={formData.rentPrice || ''}
-                    onChange={handleInputChange}
+                    value={formatNumber(formData.rentPrice) || ''}
+                    onChange={handlePriceChange}
                     className={errors.rentPrice ? 'error' : ''}
                   />
                   {errors.rentPrice && <span className="error-text">{errors.rentPrice}</span>}
@@ -552,10 +891,10 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                 <div className="form-group">
                   <label>Giá khuyến mãi (VNĐ/tháng)</label>
                   <input
-                    type="number"
+                    type="text"
                     name="promotionPrice"
-                    value={formData.promotionPrice || ''}
-                    onChange={handleInputChange}
+                    value={formatNumber(formData.promotionPrice) || ''}
+                    onChange={handlePriceChange}
                     className={errors.promotionPrice ? 'error' : ''}
                   />
                   {errors.promotionPrice && <span className="error-text">{errors.promotionPrice}</span>}
@@ -566,10 +905,10 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                 <div className="form-group">
                   <label>Tiền cọc (VNĐ)</label>
                   <input
-                    type="number"
+                    type="text"
                     name="deposit"
-                    value={formData.deposit || ''}
-                    onChange={handleInputChange}
+                    value={formatNumber(formData.deposit) || ''}
+                    onChange={handlePriceChange}
                     className={errors.deposit ? 'error' : ''}
                   />
                   {errors.deposit && <span className="error-text">{errors.deposit}</span>}
@@ -592,10 +931,10 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                 <div className="form-group">
                   <label>Giá điện (VNĐ/kWh)</label>
                   <input
-                    type="number"
+                    type="text"
                     name="electricPrice"
-                    value={formData.electricPrice || ''}
-                    onChange={handleInputChange}
+                    value={formatNumber(formData.electricPrice) || ''}
+                    onChange={handlePriceChange}
                     className={errors.electricPrice ? 'error' : ''}
                   />
                   {errors.electricPrice && <span className="error-text">{errors.electricPrice}</span>}
@@ -604,10 +943,10 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                 <div className="form-group">
                   <label>Giá nước (VNĐ/m³)</label>
                   <input
-                    type="number"
+                    type="text"
                     name="waterPrice"
-                    value={formData.waterPrice || ''}
-                    onChange={handleInputChange}
+                    value={formatNumber(formData.waterPrice) || ''}
+                    onChange={handlePriceChange}
                     className={errors.waterPrice ? 'error' : ''}
                   />
                   {errors.waterPrice && <span className="error-text">{errors.waterPrice}</span>}
@@ -659,6 +998,7 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                   />
                   Full tiện ích
                 </label>
+
               </div>
 
               <div className="amenities-grid">
@@ -679,6 +1019,7 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                   </label>
                 ))}
               </div>
+              {errors.amenities && <span className="error-text">{errors.amenities}</span>}
 
               <div className="form-group">
                 <label>Quy định giờ giấc</label>
@@ -689,6 +1030,7 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                   rows="3"
                 />
               </div>
+              {errors.timeRules && <span className="error-text">{errors.timeRules}</span>}
             </div>
 
             {/* Nội quy */}
@@ -708,6 +1050,7 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                   </label>
                 ))}
               </div>
+              {errors.houseRules && <span className="error-text">{errors.houseRules}</span>}
             </div>
 
             {/* Địa chỉ */}
@@ -792,44 +1135,42 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                     placeholder="VD: 123 Nguyễn Văn A"
                     className={errors.detailAddress ? 'error' : ''}
                   />
+
                   {errors.detailAddress && <span className="error-text">{errors.detailAddress}</span>}
                 </div>
               </div>
 
-              {/* Google Maps */}
+              {/* Leaflet Map */}
               <div className="form-group">
                 <label>Vị trí trên bản đồ</label>
-                <div className="map-container" style={{ marginBottom: '15px' }}>
-                  {!isLoaded ? (
-                    <div className="map-loading-placeholder">
-                      <i className="fa fa-spinner fa-spin"></i>
-                      <span>Đang tải Google Maps...</span>
-                    </div>
-                  ) : loadError ? (
-                    <div className="map-error-placeholder">
-                      <i className="fa fa-exclamation-triangle"></i>
-                      <span>Lỗi tải Google Maps</span>
-                    </div>
-                  ) : (
-                    <GoogleMap
-                      mapContainerStyle={mapContainerStyle}
-                      center={formData.coordinates}
-                      zoom={15}
-                      options={mapOptions}
-                      onClick={handleMapClick}
-                    >
-                      <Marker
+                <div className="map-container" style={{ height: '250px', width: '100%' }}>
+                  <MapContainer
+                    center={formData.coordinates || { lat: '10.8533189', lng: '106.6501853' }}
+                    zoom={15}
+                    style={{ height: '100%', width: '100%' }}
+                    scrollWheelZoom={true}
+                  >
+                    <TileLayer
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution="&copy; OpenStreetMap contributors"
+                    />
+                    {formData.coordinates && (
+                      <DraggableMarker
                         position={formData.coordinates}
-                        draggable={true}
-                        onDragEnd={handleMapClick}
+                        onChange={(latlng) =>
+                          setFormData(prev => ({
+                            ...prev,
+                            coordinates: { lat: latlng.lat, lng: latlng.lng }
+                          }))
+                        }
                       />
-                    </GoogleMap>
-                  )}
+                    )}
+                  </MapContainer>
                 </div>
-                
+
                 <div className="coordinates-display">
-                  <span>Vĩ độ: {formData.coordinates?.lat?.toFixed(6) || 'N/A'}</span>
-                  <span>Kinh độ: {formData.coordinates?.lng?.toFixed(6) || 'N/A'}</span>
+                  <span>Vĩ độ: {formData.coordinates?.lat?.toFixed(7) || 'N/A'}</span>
+                  <span>Kinh độ: {formData.coordinates?.lng?.toFixed(7) || 'N/A'}</span>
                 </div>
               </div>
             </div>
@@ -856,6 +1197,7 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                     ))}
                   </div>
                 )}
+
               </div>
 
               <div className="form-group">
@@ -893,50 +1235,82 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                     ))}
                   </div>
                 )}
+                {errors.newImages && <p className="text-danger">{errors.newImages}</p>}
               </div>
 
-              <div className="form-group">
+              <div className="form-group" style={{ position: "relative" }}>
                 <label>Video</label>
-                {formData.video && typeof formData.video === 'string' && (
-                  <div className="video-preview" style={{ marginBottom: '10px' }}>
-                    <video controls style={{ maxWidth: '200px', height: 'auto' }}>
-                      <source src={formData.video} />
+
+                {formData.video && (
+                  <div
+                    className="video-preview"
+                    style={{
+                      marginBottom: "10px",
+                      position: "relative",
+                      display: "inline-block",
+                    }}
+                  >
+                    <video
+                      key={formData.video?.url}
+                      controls
+                      style={{ maxWidth: "200px", height: "auto" }}
+                    >
+                      <source
+                        src={typeof formData.video === "string" ? formData.video : formData.video.url}
+                        type={formData.video.file?.type || "video/mp4"}
+                      />
                     </video>
+
+
+                    {/* Nút Xóa video ở góc phải */}
                     <button
                       type="button"
                       className="remove-video"
-                      onClick={() => setFormData(prev => ({ ...prev, video: null }))}
+                      style={{
+                        position: "absolute",
+                        top: "5px",
+                        right: "5px",
+                        borderRadius: "50%",
+                        width: "40px",
+                        height: "40px",
+                        padding: 0,
+                        alignItems: "center",
+                      }}
+                      onClick={() =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          video: null,
+                          removeVideo: true, // gửi flag cho backend
+                        }))
+                      }
+
                     >
-                      <i className="fa fa-times"></i>
-                      Xóa video
+                      <i className="fa fa-trash" style={{ fontSize: "20px", alignItems: "center", marginLeft: "5px" }}></i>
                     </button>
                   </div>
                 )}
 
+                {/* Nút chọn video (luôn hiển thị) */}
                 <input
                   type="file"
                   ref={videoInputRef}
                   onChange={handleVideoUpload}
                   accept="video/*"
-                  style={{ display: 'none' }}
+                  style={{ display: "none" }}
                 />
                 <button
                   type="button"
                   className="btn btn-secondary btn-sm"
                   onClick={() => videoInputRef.current?.click()}
                 >
-                  <i className="fa fa-video-camera"></i>
-                  {formData.video ? 'Thay đổi video' : 'Chọn video'}
+                  <i className="fa fa-video-camera"></i>{" "}
+                  {formData.video ? "Thay đổi video" : "Chọn video"}
                 </button>
 
-                {formData.video && formData.video.url && (
-                  <div className="video-preview" style={{ marginTop: '10px' }}>
-                    <video controls style={{ maxWidth: '200px', height: 'auto' }}>
-                      <source src={formData.video.url} type={formData.video.file?.type} />
-                    </video>
-                  </div>
-                )}
+                {errors.video && <p className="text-danger">{errors.video}</p>}
               </div>
+
+
             </div>
           </div>
 

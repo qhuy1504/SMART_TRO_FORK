@@ -75,7 +75,7 @@ class PropertyController {
             // 2. VALIDATION - Thông tin giá cả (bắt buộc, không được để trống)
             if (!req.body.rentPrice || req.body.rentPrice.toString().trim() === '') {
                 validationErrors.rentPrice = 'Giá thuê không được để trống';
-            } else { 
+            } else {
                 const rentPrice = Number(req.body.rentPrice);
                 if (isNaN(rentPrice) || rentPrice < 0) {
                     validationErrors.rentPrice = 'Giá thuê phải là số dương';
@@ -119,11 +119,11 @@ class PropertyController {
             // With upload.fields(), req.files is an object: { images: [...], video: [...] }
             const imageFilesForValidation = req.files?.images || [];
             const videoFilesForValidation = req.files?.video || [];
-            
+
             if (imageFilesForValidation.length === 0) {
                 validationErrors.images = 'Vui lòng tải lên ít nhất 1 hình ảnh';
             }
-            
+
             if (imageFilesForValidation.length > 5) {
                 validationErrors.images = 'Không được tải lên quá 5 hình ảnh';
             }
@@ -158,7 +158,7 @@ class PropertyController {
             if (req.body.deposit && req.body.deposit.toString().trim() !== '') {
                 const deposit = Number(req.body.deposit);
                 const rentPrice = Number(req.body.rentPrice);
-                if (isNaN(deposit) || deposit <0) {
+                if (isNaN(deposit) || deposit < 0) {
                     validationErrors.deposit = 'Tiền cọc (VNĐ) phải là số dương';
                 } else if (deposit > rentPrice * 3) {
                     validationErrors.deposit = 'Tiền cọc không được vượt quá 3 lần giá thuê';
@@ -176,7 +176,7 @@ class PropertyController {
 
             if (req.body.waterPrice && req.body.waterPrice.toString().trim() !== '') {
                 const waterPrice = Number(req.body.waterPrice);
-                if (isNaN(waterPrice) || waterPrice <0) {
+                if (isNaN(waterPrice) || waterPrice < 0) {
                     validationErrors.waterPrice = 'Giá nước (VNĐ/m³) phải là số dương';
                 } else if (waterPrice > 50000) {
                     validationErrors.waterPrice = 'Giá nước không hợp lý (tối đa 50,000 VNĐ/m³)';
@@ -186,7 +186,7 @@ class PropertyController {
             // 7. VALIDATION - Ngày có thể vào ở (định dạng DD-MM-YYYY)
             if (req.body.availableDate && req.body.availableDate.toString().trim() !== '') {
                 const dateValue = req.body.availableDate.toString().trim();
-                
+
                 // Kiểm tra định dạng DD-MM-YYYY
                 const dateRegex = /^(0[1-9]|[12][0-9]|3[01])-(0[1-9]|1[0-2])-\d{4}$/;
                 if (!dateRegex.test(dateValue)) {
@@ -198,30 +198,21 @@ class PropertyController {
                     const month = parseInt(dateParts[1]) - 1; // Month is 0-indexed
                     const year = parseInt(dateParts[2]);
                     const availableDate = new Date(year, month, day);
-                    
+
                     // Kiểm tra ngày hợp lệ
-                    if (availableDate.getDate() !== day || 
-                        availableDate.getMonth() !== month || 
+                    if (availableDate.getDate() !== day ||
+                        availableDate.getMonth() !== month ||
                         availableDate.getFullYear() !== year) {
                         validationErrors.availableDate = 'Ngày không hợp lệ, vui lòng kiểm tra lại';
                     } else {
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
-                        
+
                         if (availableDate < today) {
                             validationErrors.availableDate = 'Ngày có thể vào ở không được là ngày trong quá khứ';
                         }
                     }
                 }
-            }
-
-            // Nếu có lỗi validation, trả về ngay
-            if (Object.keys(validationErrors).length > 0) {
-                return res.status(400).json({
-                    success: false,
-                    message: `Thông tin không hợp lệ. Vui lòng kiểm tra lại ${Object.keys(validationErrors).length} trường bị lỗi.`,
-                    errors: validationErrors
-                });
             }
 
             // Parse JSON fields
@@ -230,23 +221,39 @@ class PropertyController {
             let coordinates = null;
 
             try {
-                if (req.body.amenities) {
-                    amenities = JSON.parse(req.body.amenities);
-                }
-                if (req.body.houseRules) {
-                    houseRules = JSON.parse(req.body.houseRules);
-                }
-                if (req.body.coordinates) {
-                    coordinates = JSON.parse(req.body.coordinates);
-                }
+                amenities = req.body.amenities
+                    ? typeof req.body.amenities === 'string'
+                        ? JSON.parse(req.body.amenities)
+                        : req.body.amenities
+                    : [];
+                houseRules = req.body.houseRules
+                    ? typeof req.body.houseRules === 'string'
+                        ? JSON.parse(req.body.houseRules)
+                        : req.body.houseRules
+                    : [];
             } catch (parseError) {
-                console.error('JSON parse error:', parseError);
                 return res.status(400).json({
                     success: false,
                     message: 'Dữ liệu JSON không hợp lệ',
                     error: parseError.message
                 });
             }
+
+            // Bắt lỗi ngay sau khi parse
+            if (!amenities.length) validationErrors.amenities = 'Vui lòng chọn ít nhất 1 tiện ích';
+            if (!houseRules.length) validationErrors.houseRules = 'Vui lòng chọn ít nhất 1 nội quy';
+            if (!req.body.timeRules || req.body.timeRules.toString().trim() === '')
+                validationErrors.timeRules = 'Vui lòng nhập quy định giờ giấc';
+
+            if (Object.keys(validationErrors).length > 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Thông tin không hợp lệ. Vui lòng kiểm tra lại ${Object.keys(validationErrors).length} trường bị lỗi.`,
+                    errors: validationErrors
+                });
+            }
+
+
 
             // Upload images to Cloudinary với cấu trúc upload.fields()
             let imageUrls = [];
@@ -310,7 +317,7 @@ class PropertyController {
                 electricPrice: req.body.electricPrice ? Number(req.body.electricPrice) : 3500,
                 waterPrice: req.body.waterPrice ? Number(req.body.waterPrice) : 15000,
                 maxOccupants: req.body.maxOccupants || '1',
-                availableDate: req.body.availableDate && req.body.availableDate.toString().trim() !== '' 
+                availableDate: req.body.availableDate && req.body.availableDate.toString().trim() !== ''
                     ? (() => {
                         // Chuyển đổi từ định dạng DD-MM-YYYY sang Date
                         const dateParts = req.body.availableDate.toString().trim().split('-');
@@ -369,7 +376,7 @@ class PropertyController {
 
         } catch (error) {
             console.error('Create property error:', error);
-            
+
             // Xử lý các loại lỗi cụ thể
             let errorMessage = 'Lỗi server khi tạo bài đăng';
             let statusCode = 500;
@@ -381,7 +388,7 @@ class PropertyController {
                 Object.keys(error.errors).forEach(key => {
                     mongoErrors[key] = error.errors[key].message;
                 });
-                
+
                 return res.status(statusCode).json({
                     success: false,
                     message: errorMessage,
@@ -404,7 +411,7 @@ class PropertyController {
     async getProperty(req, res) {
         try {
             const property = await propertyRepository.findById(req.params.id);
-            
+
             if (!property) {
                 return res.status(404).json({
                     success: false,
@@ -413,8 +420,8 @@ class PropertyController {
             }
 
             // Tăng lượt xem
-            await propertyRepository.updateById(req.params.id, { 
-                $inc: { views: 1 } 
+            await propertyRepository.updateById(req.params.id, {
+                $inc: { views: 1 }
             });
 
             res.status(200).json({
@@ -436,13 +443,13 @@ class PropertyController {
     async searchProperties(req, res) {
         try {
             const filters = { ...req.query };
-            
+
             // Chỉ hiển thị bài đã được duyệt và đang hoạt động
             filters.approvalStatus = 'approved';
             filters.status = 'available';
-            
+
             const properties = await propertyRepository.find(filters);
-            
+
             res.status(200).json({
                 success: true,
                 data: properties,
@@ -459,115 +466,6 @@ class PropertyController {
         }
     }
 
-    // Lấy properties của user hiện tại
-    async getMyProperties(req, res) {
-        try {
-            const userId = req.user.id || req.user.userId;
-            const properties = await propertyRepository.find({ 
-                owner: userId
-            });
-            
-            res.status(200).json({
-                success: true,
-                data: properties
-            });
-
-        } catch (error) {
-            console.error('Get my properties error:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Lỗi server',
-                error: error.message
-            });
-        }
-    }
-
-    // Cập nhật property
-    async updateProperty(req, res) {
-        try {
-            const property = await propertyRepository.findById(req.params.id);
-            
-            if (!property) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Không tìm thấy bất động sản'
-                });
-            }
-
-            // Kiểm tra quyền sở hữu
-            const userId = req.user.id || req.user.userId;
-            if (property.owner.toString() !== userId && req.user.role !== 'admin') {
-                return res.status(403).json({
-                    success: false,
-                    message: 'Không có quyền truy cập'
-                });
-            }
-
-            // Nếu bài bị từ chối và được cập nhật, reset trạng thái duyệt
-            const updateData = { ...req.body };
-            if (property.approvalStatus === 'rejected') {
-                updateData.approvalStatus = 'pending';
-                updateData.rejectionReason = undefined;
-            }
-
-            const updatedProperty = await propertyRepository.updateById(
-                req.params.id, 
-                updateData
-            );
-
-            res.status(200).json({
-                success: true,
-                message: 'Cập nhật bất động sản thành công',
-                data: updatedProperty
-            });
-
-        } catch (error) {
-            console.error('Update property error:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Lỗi server',
-                error: error.message
-            });
-        }
-    }
-
-    // Xóa property
-    async deleteProperty(req, res) {
-        try {
-            const property = await propertyRepository.findById(req.params.id);
-            
-            if (!property) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Không tìm thấy bất động sản'
-                });
-            }
-
-            // Kiểm tra quyền (owner hoặc admin)
-            const userId = req.user.id || req.user.userId;
-            if (property.owner.toString() !== userId && req.user.role !== 'admin') {
-                return res.status(403).json({
-                    success: false,
-                    message: 'Không có quyền truy cập'
-                });
-            }
-
-            await propertyRepository.deleteById(req.params.id);
-
-            res.status(200).json({
-                success: true,
-                message: 'Xóa bất động sản thành công'
-            });
-
-        } catch (error) {
-            console.error('Delete property error:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Lỗi server',
-                error: error.message
-            });
-        }
-    }
 
 }
 

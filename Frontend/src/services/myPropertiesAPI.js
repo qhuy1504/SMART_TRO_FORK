@@ -53,7 +53,7 @@ export const myPropertiesAPI = {
       // Kiểm tra xem formData có phải là FormData không
       const isFormData = formData instanceof FormData;
       
-      const response = await api.put(`/${propertyId}`, formData, {
+      const response = await api.put(`/my-properties/${propertyId}`, formData, {
         headers: {
           'Content-Type': isFormData ? 'multipart/form-data' : 'application/json',
         },

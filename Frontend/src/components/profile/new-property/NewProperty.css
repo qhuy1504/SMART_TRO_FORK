@@ -29,6 +29,7 @@
   position: relative;
 }
 
+
 .modal-header {
   display: flex;
   justify-content: space-between;
@@ -402,22 +403,27 @@
   position: absolute;
   top: 4px;
   right: 4px;
-  background: rgba(239, 68, 68, 0.8);
+  width: 35px;
+  height: 35px;
+  background: #ef4444; /* đỏ đẹp */
   color: white;
   border: none;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
+  border-radius: 50%; /* tròn đều */
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: 16px;
+  font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
+  line-height: 1; /* tránh text bị lệch */
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  transition: background 0.3s, transform 0.2s;
 }
 
 .remove-image:hover,
 .remove-video:hover {
-  background: rgba(239, 68, 68, 1);
+  background: #dc2626;
+  transform: scale(1.1);
 }
 
 .video-preview {
@@ -429,6 +435,8 @@
 .video-preview .remove-video {
   top: 8px;
   right: 8px;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 /* Buttons */
@@ -524,6 +532,11 @@
   position: sticky;
   bottom: 0;
   z-index: 10;
+}
+
+.coordinate-item{
+  display: flex;
+  gap: 10px;
 }
 
 /* Responsive */
@@ -739,9 +752,10 @@
 
 .address-hint {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: #0048d8;
   margin: 8px 0 0 0;
   line-height: 1.4;
+  margin-bottom: 10px;
 }
 
 /* Date input styling with dayjs */

@@ -3,12 +3,16 @@ import { validationResult } from 'express-validator';
 import mongoose from 'mongoose';
 import { fetchProvinces, fetchDistricts, fetchWards } from "../../shared/utils/locationService.js";
 
+import { uploadToCloudinary, deleteFromCloudinary } from '../../shared/utils/cloudinary.js';
+import { format } from 'path';
+
+
 const myPropertiesController = {
   // Lấy danh sách tin đăng của user hiện tại
   getMyProperties: async (req, res) => {
     try {
       const userId = req.user.userId; // Từ middleware auth
-      
+
       // Pagination params
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 10;
@@ -61,7 +65,7 @@ const myPropertiesController = {
           .lean(),
         Property.countDocuments(query),
         fetchProvinces(),
-      
+
       ]);
 
       // Map tỉnh
@@ -84,7 +88,7 @@ const myPropertiesController = {
 
 
       // Transform data for frontend - CẬP NHẬT để sử dụng status
-  const transformedProperties = properties.map(property => ({
+      const transformedProperties = properties.map(property => ({
         _id: property._id,
         title: property.title,
         category: property.category,
@@ -106,7 +110,7 @@ const myPropertiesController = {
         createdAt: property.createdAt,
         updatedAt: property.updatedAt
       }));
-      console.log("Transformed properties:", transformedProperties);
+      // console.log("Transformed properties:", transformedProperties);
 
       const totalPages = Math.ceil(total / limit);
 
@@ -144,7 +148,8 @@ const myPropertiesController = {
         _id: propertyId,
         owner: userId
       }).lean();
-      console.log("Fetched property for edit:", property);
+      console.log("Fetched property EDIT:", property);
+
 
       if (!property) {
         return res.status(404).json({
@@ -160,6 +165,7 @@ const myPropertiesController = {
         category: property.category,
         contactName: property.contactName,
         contactPhone: property.contactPhone,
+        coordinates: property.coordinates,
         description: property.description,
         rentPrice: property.rentPrice,
         promotionPrice: property.promotionPrice,
@@ -173,7 +179,7 @@ const myPropertiesController = {
         fullAmenities: property.fullAmenities,
         timeRules: property.timeRules,
         houseRules: property.houseRules,
-        location: property.location,
+        detailAddress: property.detailAddress,
         images: property.images,
         video: property.video,
         status: property.status, // Thay isForRent bằng status
@@ -202,107 +208,255 @@ const myPropertiesController = {
   // Cập nhật tin đăng
   updateProperty: async (req, res) => {
     try {
-      // Validate input
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Dữ liệu không hợp lệ',
-          errors: errors.mapped()
-        });
-      }
-
       const { propertyId } = req.params;
-      const userId = req.user.userId;
+      const userId = req.user.id || req.user.userId;
+      console.log("req body: ", req.body);
 
-      // Check if property exists and belongs to user
-      const existingProperty = await Property.findOne({
-        _id: propertyId,
-        owner: userId
-      });
-
+      // 1. Tìm property
+      const existingProperty = await Property.findOne({ _id: propertyId, owner: userId });
       if (!existingProperty) {
         return res.status(404).json({
           success: false,
           message: 'Không tìm thấy tin đăng hoặc bạn không có quyền chỉnh sửa'
         });
       }
+      console.log("Existing property:", existingProperty);
 
-      // Prepare update data
+      // 2. Validation cơ bản
+      const validationErrors = {};
+
+      // Title
+      if (!req.body.title || req.body.title.trim().length < 10) {
+        validationErrors.title = 'Tiêu đề phải có ít nhất 10 ký tự';
+      } else if (req.body.title.trim().length > 200) {
+        validationErrors.title = 'Tiêu đề không được vượt quá 200 ký tự';
+      }
+
+      // Contact name
+      if (!req.body.contactName || !/^[\p{L}\p{M}\s]{2,}$/u.test(req.body.contactName.trim())) {
+        validationErrors.contactName = 'Tên liên hệ chỉ được chứa chữ cái và khoảng trắng';
+      }
+
+      // Contact phone
+      if (!req.body.contactPhone || !/^[0-9]{10}$/.test(req.body.contactPhone.trim())) {
+        validationErrors.contactPhone = 'Số điện thoại phải có 10 chữ số';
+      }
+
+      // Description
+      if (!req.body.description || req.body.description.trim().length < 20) {
+        validationErrors.description = 'Mô tả phải có ít nhất 20 ký tự';
+      }
+
+      // Rent price
+      if (req.body.rentPrice) {
+        const rentPrice = Number(req.body.rentPrice);
+        if (isNaN(rentPrice) || rentPrice < 500000) {
+          validationErrors.rentPrice = 'Giá thuê phải ít nhất 500,000 VNĐ';
+        } else if (rentPrice > 100000000) {
+          validationErrors.rentPrice = 'Giá thuê không được vượt quá 100,000,000 VNĐ';
+        }
+      }
+
+      // Promotion price
+      if (req.body.promotionPrice) {
+        const promotionPrice = Number(req.body.promotionPrice);
+        const rentPrice = Number(req.body.rentPrice || existingProperty.rentPrice);
+        if (promotionPrice >= rentPrice) {
+          validationErrors.promotionPrice = 'Giá khuyến mãi phải nhỏ hơn giá thuê';
+        }
+      }
+
+      // Deposit
+      if (req.body.deposit) {
+        const deposit = Number(req.body.deposit);
+        const rentPrice = Number(req.body.rentPrice || existingProperty.rentPrice);
+        if (deposit > rentPrice * 3) {
+          validationErrors.deposit = 'Tiền cọc không được vượt quá 3 lần giá thuê';
+        }
+      }
+
+      // Electric/Water price
+      if (req.body.electricPrice && Number(req.body.electricPrice) > 10000) {
+        validationErrors.electricPrice = 'Giá điện tối đa 10,000 VNĐ/kWh';
+      }
+      if (req.body.waterPrice && Number(req.body.waterPrice) > 50000) {
+        validationErrors.waterPrice = 'Giá nước tối đa 50,000 VNĐ/m³';
+      }
+
+      // Detail address
+      if (!req.body.detailAddress || req.body.detailAddress.trim().length < 5) {
+        validationErrors.detailAddress = 'Địa chỉ chi tiết phải có ít nhất 5 ký tự';
+      }
+
+      let amenities = [];
+      let houseRules = [];
+
+      // Parse amenities
+      if (req.body.amenities) {
+        if (Array.isArray(req.body.amenities)) {
+          amenities = req.body.amenities;
+        } else if (typeof req.body.amenities === 'string') {
+          try {
+            const parsed = JSON.parse(req.body.amenities);
+            amenities = Array.isArray(parsed) ? parsed : [parsed];
+          } catch {
+            // Nếu không phải JSON, coi là 1 giá trị duy nhất
+            amenities = [req.body.amenities];
+          }
+        }
+      }
+
+      // Parse houseRules
+      if (req.body.houseRules) {
+        if (Array.isArray(req.body.houseRules)) {
+          houseRules = req.body.houseRules;
+        } else if (typeof req.body.houseRules === 'string') {
+          try {
+            const parsed = JSON.parse(req.body.houseRules);
+            houseRules = Array.isArray(parsed) ? parsed : [parsed];
+          } catch {
+            // Nếu không phải JSON, coi là 1 giá trị duy nhất
+            houseRules = [req.body.houseRules];
+          }
+        }
+      }
+
+      // Bắt lỗi ngay sau khi parse
+      if (!amenities.length) validationErrors.amenities = 'Vui lòng chọn ít nhất 1 tiện ích';
+      if (!houseRules.length) validationErrors.houseRules = 'Vui lòng chọn ít nhất 1 nội quy';
+      if (!req.body.timeRules || req.body.timeRules.toString().trim() === '') {
+        validationErrors.timeRules = 'Vui lòng nhập quy định giờ giấc';
+      }
+
+      let removedImages = [];
+      try {
+        removedImages = req.body.removedImages
+          ? typeof req.body.removedImages === 'string'
+            ? JSON.parse(req.body.removedImages)
+            : req.body.removedImages
+          : [];
+      } catch (err) {
+        removedImages = [];
+      }
+
+      // Coordinates
+      let coords = existingProperty.coordinates;
+      if (req.body.coordinates) {
+        try {
+          const parsed = typeof req.body.coordinates === 'string'
+            ? JSON.parse(req.body.coordinates)
+            : req.body.coordinates;
+          if (typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
+            coords = { lat: parsed.lat, lng: parsed.lng };
+          } else {
+            validationErrors.coordinates = 'Toạ độ không hợp lệ';
+          }
+        } catch (err) {
+          validationErrors.coordinates = 'Toạ độ không hợp lệ';
+        }
+      }
+
+      // Images & video validation
+      let images = existingProperty.images || [];
+      let video = existingProperty.video || [];
+      console.log("Existing videos:", video);
+
+      // Xử lý upload ảnh mới từ req.files.images
+      if (req.files?.images && req.files.images.length > 0) {
+        const uploadedImages = await Promise.all(
+          req.files.images.map(file => uploadToCloudinary(file.buffer, 'properties/images'))
+        );
+    
+        // uploadedImages là mảng, lấy tất cả secure_url
+        const newImageUrls = uploadedImages.map(img => img.secure_url);
+        images = [...images, ...newImageUrls]; // giữ ảnh cũ + ảnh mới
+     
+      }
+
+      // Xử lý removedImages
+      if (req.body.removedImages) {
+        let removed = [];
+        try {
+          removed = typeof req.body.removedImages === 'string'
+            ? JSON.parse(req.body.removedImages)
+            : req.body.removedImages;
+        } catch (err) {
+          removed = [];
+        }
+        images = images.filter(img => !removed.includes(img));
+      }
+
+      if (!images || images.length === 0) {
+        validationErrors.images = 'Vui lòng tải lên ít nhất 1 hình ảnh';
+      }
+
+      // Video
+      // Nếu user xoá video (frontend gửi removeVideo=true)
+      if (req.body.removeVideo === "true") {
+        video = ""; // hoặc null
+      } else if (req.files?.video && req.files.video.length > 0) {
+        // Nếu user upload video mới
+        const uploadedVideo = await uploadToCloudinary(
+          req.files.video[0].buffer,
+          'properties/videos'
+        );
+        video = uploadedVideo.secure_url;
+      }
+
+
+      if (Object.keys(validationErrors).length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Thông tin không hợp lệ',
+          errors: validationErrors
+        });
+      }
+
+      // 3. Chuẩn bị update data
       const updateData = {
         title: req.body.title,
         contactName: req.body.contactName,
         contactPhone: req.body.contactPhone,
         description: req.body.description,
-        rentPrice: parseFloat(req.body.rentPrice),
-        area: parseFloat(req.body.area),
-        electricPrice: req.body.electricPrice ? parseFloat(req.body.electricPrice) : undefined,
-        waterPrice: req.body.waterPrice ? parseFloat(req.body.waterPrice) : undefined,
-        maxOccupants: req.body.maxOccupants,
+        rentPrice: Number(req.body.rentPrice),
+        promotionPrice: req.body.promotionPrice ? Number(req.body.promotionPrice) : 0,
+        deposit: req.body.deposit ? Number(req.body.deposit) : 0,
+        area: req.body.area ? Number(req.body.area) : 0,
+        electricPrice: req.body.electricPrice ? Number(req.body.electricPrice) : 0,
+        waterPrice: req.body.waterPrice ? Number(req.body.waterPrice) : 0,
+        maxOccupants: req.body.maxOccupants || existingProperty.maxOccupants,
         timeRules: req.body.timeRules,
-        updatedAt: new Date()
+        amenities,
+        houseRules,
+        fullAmenities: req.body.fullAmenities === 'true',
+        category: req.body.category ? JSON.parse(req.body.category) : existingProperty.category,
+        province: req.body.province || existingProperty.province,
+        district: req.body.district || existingProperty.district,
+        ward: req.body.ward || existingProperty.ward,
+        detailAddress: req.body.detailAddress,
+        coordinates: coords,
+        images,
+        video,
+        updatedAt: new Date(),
       };
 
-      // Optional fields
-      if (req.body.promotionPrice) {
-        updateData.promotionPrice = parseFloat(req.body.promotionPrice);
-      }
-      if (req.body.deposit) {
-        updateData.deposit = parseFloat(req.body.deposit);
-      }
       if (req.body.availableDate) {
-        updateData.availableDate = req.body.availableDate;
+        const [day, month, year] = req.body.availableDate.split('-').map(Number);
+        updateData.availableDate = new Date(year, month - 1, day);
       }
 
-      // Arrays
-      if (req.body.amenities) {
-        updateData.amenities = Array.isArray(req.body.amenities) 
-          ? req.body.amenities 
-          : [req.body.amenities];
-      }
-      if (req.body.houseRules) {
-        updateData.houseRules = Array.isArray(req.body.houseRules) 
-          ? req.body.houseRules 
-          : [req.body.houseRules];
-      }
-
-      // Boolean fields
-      if (req.body.fullAmenities !== undefined) {
-        updateData.fullAmenities = req.body.fullAmenities === 'true';
-      }
-
-      // Location update
-      if (req.body.province || req.body.district || req.body.ward || req.body.detailAddress) {
-        updateData.location = {
-          province: req.body.province || existingProperty.location?.province,
-          district: req.body.district || existingProperty.location?.district,
-          ward: req.body.ward || existingProperty.location?.ward,
-          detailAddress: req.body.detailAddress || existingProperty.location?.detailAddress
-        };
-      }
-
-      // Coordinates update
-      if (req.body.coordinates) {
-        const coords = JSON.parse(req.body.coordinates);
-        updateData.coordinates = {
-          type: 'Point',
-          coordinates: [coords.lng, coords.lat]
-        };
-      }
-
-      // Reset approval status to pending when updated (except admin)
       if (req.user.role !== 'admin') {
         updateData.approvalStatus = 'pending';
       }
 
-      // Update property
+      // 4. Update DB
       const updatedProperty = await Property.findByIdAndUpdate(
         propertyId,
         { $set: updateData },
         { new: true, runValidators: true }
       );
 
-      res.json({
+      return res.json({
         success: true,
         message: 'Cập nhật tin đăng thành công. Tin đăng sẽ được admin duyệt lại.',
         data: updatedProperty
@@ -310,26 +464,15 @@ const myPropertiesController = {
 
     } catch (error) {
       console.error('Error in updateProperty:', error);
-      
-      if (error.name === 'ValidationError') {
-        const validationErrors = {};
-        for (let field in error.errors) {
-          validationErrors[field] = error.errors[field].message;
-        }
-        return res.status(400).json({
-          success: false,
-          message: 'Dữ liệu không hợp lệ',
-          errors: validationErrors
-        });
-      }
-
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: 'Lỗi server khi cập nhật tin đăng',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   },
+
+
 
   // Xóa tin đăng
   deleteProperty: async (req, res) => {
@@ -394,8 +537,8 @@ const myPropertiesController = {
 
       const updatedProperty = await Property.findByIdAndUpdate(
         propertyId,
-        { 
-          $set: { 
+        {
+          $set: {
             status: newStatus,
             updatedAt: new Date()
           }

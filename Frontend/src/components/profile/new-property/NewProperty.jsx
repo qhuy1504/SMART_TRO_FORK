@@ -1,51 +1,68 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi';
 import { toast } from 'react-toastify';
+import "react-toastify/dist/ReactToastify.css";
 
 import { postAPI } from '../../../services/propertiesAPI';
 import { locationAPI } from '../../../services/locationAPI';
 import './../ProfilePages.css';
 import './NewProperty.css';
 
-const libraries = ['places'];
+import 'leaflet/dist/leaflet.css';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
 
-const mapContainerStyle = {
-  width: '100%',
-  height: '300px',
-  borderRadius: '8px'
-};
+
 
 const defaultCenter = {
-  lat: 16.0583,
-  lng: 108.2772
+  lat: 16.056204,
+  lng: 108.168202
 };
 
-const mapOptions = {
-  zoomControl: true,
-  streetViewControl: false,
-  mapTypeControl: false,
-  fullscreenControl: false,
+// Icon mặc định Leaflet
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
+  iconUrl: require('leaflet/dist/images/marker-icon.png'),
+  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
+});
+
+const geocodeAddress = async (address) => {
+  try {
+    const res = await locationAPI.geocodeAddress(address);
+    console.log("Geocode via backend:", res.data);
+
+    if (res.data && res.data.coordinates.lat && res.data.coordinates.lng) {
+      return { lat: res.data.coordinates.lat, lng: res.data.coordinates.lng };
+    }
+    return null;
+  } catch (error) {
+    console.error("Geocode error (frontend):", error);
+    return null;
+  }
 };
+
+
+
+
 
 const NewProperty = () => {
   const { t } = useTranslation();
   const fileInputRef = useRef(null);
   const videoInputRef = useRef(null);
-  const geocoderRef = useRef(null);
-  
+  const lastAddressRef = useRef("");
+
+  // Ref để nhớ toạ độ cuối cùng hợp lệ
+  const lastCoordsRef = useRef(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
+
   // Cấu hình dayjs
   dayjs.extend(relativeTime);
   dayjs.locale("vi");
-
-  // Load Google Maps script
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
-    libraries
-  });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -93,7 +110,7 @@ const NewProperty = () => {
   const [showModal, setShowModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
-  const [mapKey, setMapKey] = useState(0);
+
   const [showMap, setShowMap] = useState(false);
 
   // Location data from API
@@ -167,13 +184,14 @@ const NewProperty = () => {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
+        console.log("User location:", { lat: latitude, lng: longitude });
         setFormData(prev => ({
           ...prev,
           coordinates: { lat: latitude, lng: longitude }
         }));
         setGettingLocation(false);
         toast.success('Đã lấy vị trí hiện tại thành công!');
-        console.log('User location:', { lat: latitude, lng: longitude });
+        // console.log('User location:', { lat: latitude, lng: longitude });
       },
       (error) => {
         console.error('Error getting user location:', error);
@@ -203,8 +221,8 @@ const NewProperty = () => {
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 300000
+        timeout: 20000,
+        maximumAge: 0
       }
     );
   };
@@ -216,7 +234,7 @@ const NewProperty = () => {
 
   // Handle modal show/hide và Google Maps
   useEffect(() => {
-    if (showModal && isLoaded) {
+    if (showModal) {
       // Delay để modal render hoàn toàn trước khi hiển thị map
       const timer = setTimeout(() => {
         setShowMap(true);
@@ -225,7 +243,7 @@ const NewProperty = () => {
     } else {
       setShowMap(false);
     }
-  }, [showModal, isLoaded]);
+  }, [showModal]);
 
   // Load provinces when component mounts
   useEffect(() => {
@@ -233,7 +251,7 @@ const NewProperty = () => {
       try {
         setLocationData(prev => ({ ...prev, loadingProvinces: true }));
         const provinces = await locationAPI.getProvinces();
-        console.log('Provinces data:', provinces);
+
         setLocationData(prev => ({
           ...prev,
           provinces: provinces.data || [],
@@ -312,7 +330,7 @@ const NewProperty = () => {
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [formData.province, formData.district, formData.ward, formData.detailAddress, isLoaded]);
+  }, [formData.province, formData.district, formData.ward, formData.detailAddress]);
 
   // Handle input changes
   const handleInputChange = (e) => {
@@ -382,6 +400,94 @@ const NewProperty = () => {
     }
   };
 
+  const getFullAddressPayload = async (formData, locationData) => {
+    try {
+      let provinceName = "", districtName = "", wardName = "";
+
+      // Province
+      const province = locationData.provinces.find(
+        p => String(p.code) === String(formData.province)
+      );
+      if (province) {
+        provinceName = province.name;
+      } else if (formData.province) {
+        const res = await locationAPI.getProvinces();
+        const found = res.data.find(p => String(p.code) === String(formData.province));
+        provinceName = found ? found.name : "";
+      }
+
+      // District
+      const district = locationData.districts.find(
+        d => String(d.code) === String(formData.district)
+      );
+      if (district) {
+        districtName = district.name;
+      } else if (formData.district) {
+        const res = await locationAPI.getDistricts(formData.province);
+        const found = res.data.find(d => String(d.code) === String(formData.district));
+        districtName = found ? found.name : "";
+      }
+
+      // Ward
+      const ward = locationData.wards.find(
+        w => String(w.code) === String(formData.ward)
+      );
+      if (ward) {
+        wardName = ward.name;
+      } else if (formData.ward) {
+        const res = await locationAPI.getWards(formData.district);
+        const found = res.data.find(w => String(w.code) === String(formData.ward));
+        wardName = found ? found.name : "";
+      }
+
+      return {
+        street: formData.detailAddress || "",
+        ward: wardName || "",
+        district: districtName || "",
+        province: provinceName || "",
+        country: "Vietnam"
+      };
+    } catch (err) {
+      console.error("Error building full address payload:", err);
+      return null;
+    }
+  };
+
+
+
+  // --- Auto-update coordinates when address changes ---
+  useEffect(() => {
+    if (formData.detailAddress && formData.province && formData.district && formData.ward) {
+      const timer = setTimeout(async () => {
+        const addressPayload = await getFullAddressPayload(formData, locationData);
+
+
+        const payloadString = JSON.stringify(addressPayload);
+
+        if (addressPayload && payloadString !== lastAddressRef.current) {
+          lastAddressRef.current = payloadString;
+
+          console.log("Geocoding payload:", addressPayload);
+          const coords = await geocodeAddress(addressPayload);
+          console.log("Geocoded coords:", coords);
+
+          if (coords) {
+            lastCoordsRef.current = coords;
+            setFormData(prev => ({ ...prev, coordinates: coords }));
+          } else if (lastCoordsRef.current) {
+            setFormData(prev => ({ ...prev, coordinates: lastCoordsRef.current }));
+          }
+        }
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [formData.detailAddress, formData.ward, formData.district, formData.province, locationData]);
+
+
+
+
+
   // Convert date format for backend
   const formatDateForBackend = (dateString) => {
     if (!dateString) return '';
@@ -392,139 +498,216 @@ const NewProperty = () => {
     return dateString;
   };
 
-  // Image upload handler
-  const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files);
+// Component confirm toast
+const ConfirmToast = ({ message, onConfirm, onCancel }) => (
+  <div>
+    <p>{message}</p>
+    <div style={{ marginTop: "8px", display: "flex", gap: "8px" }}>
+      <button
+        onClick={() => {
+          toast.dismiss(); // đóng toast
+          onConfirm();
+        }}
+        style={{
+          background: "#4CAF50",
+          color: "#fff",
+          border: "none",
+          padding: "6px 12px",
+          borderRadius: "4px",
+          cursor: "pointer",
+        }}
+      >
+        Ghi đè
+      </button>
+      <button
+        onClick={() => {
+          toast.dismiss();
+          onCancel();
+        }}
+        style={{
+          background: "#f44336",
+          color: "#fff",
+          border: "none",
+          padding: "6px 12px",
+          borderRadius: "4px",
+          cursor: "pointer",
+        }}
+      >
+        Hủy
+      </button>
+    </div>
+  </div>
+);
 
-        // kiểm tra tổng ảnh cũ + mới
-    if (formData.images.length + files.length > 5) {
-      setErrors(prev => ({
+
+
+
+// Image upload handler
+const handleImageUpload = (e) => {
+  const files = Array.from(e.target.files);
+
+  // kiểm tra tổng ảnh
+  if (formData.images.length + files.length > 5) {
+    toast.error("Bạn chỉ được chọn tối đa 5 ảnh.");
+    e.target.value = null; // reset input
+    return;
+  }
+
+  const existingFileNames = formData.images.map(img => img.name);
+  const duplicateFiles = files.filter(f => existingFileNames.includes(f.name));
+
+  if (duplicateFiles.length > 0) {
+    const duplicateNames = duplicateFiles.map(f => f.name).join(", ");
+
+    toast.warn(
+      <ConfirmToast
+        message={`Ảnh ${duplicateNames} đã tồn tại. Bạn có muốn ghi đè không?`}
+        onConfirm={() => {
+          // Xóa ảnh trùng trước
+          setFormData(prev => ({
+            ...prev,
+            images: prev.images.filter(
+              img => !duplicateFiles.some(f => f.name === img.name)
+            ),
+          }));
+
+          // Thêm ảnh mới
+          files.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              setFormData(prev => ({
+                ...prev,
+                images: [...prev.images, {
+                  file,
+                  url: event.target.result,
+                  name: file.name
+                }]
+              }));
+            };
+            reader.readAsDataURL(file);
+          });
+
+          e.target.value = null; // reset input sau confirm
+        }}
+        onCancel={() => {
+          e.target.value = null; // reset input sau khi cancel
+        }}
+      />,
+      { autoClose: false }
+    );
+
+    return;
+  }
+
+  // nếu không có trùng → thêm ảnh mới
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setFormData(prev => ({
         ...prev,
-        images: "Bạn chỉ được chọn tối đa 5 ảnh."
+        images: [...prev.images, {
+          file,
+          url: event.target.result,
+          name: file.name
+        }]
       }));
-      return;
-    }
+    };
+    reader.readAsDataURL(file);
+  });
 
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setFormData(prev => ({
-          ...prev,
-          images: [...prev.images, {
-            file: file,
-            url: event.target.result,
-            name: file.name
-          }]
-        }));
-      };
-      reader.readAsDataURL(file);
-    });
+  e.target.value = null; // luôn reset input sau mỗi lần up
+};
 
-    if (errors.images) {
-      setErrors(prev => ({
-        ...prev,
-        images: ''
-      }));
-    }
-  };
+
+
 
   // Video upload handler
-  const handleVideoUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+const handleVideoUpload = (e) => {
+  const file = e.target.files[0];
+  if (file.length > 1) {
+    toast.error("Bạn chỉ được chọn tối đa 1 video");
+    e.target.value = null;
+    return;
+  }
+  if (!file) return;
 
+  // Nếu đã có video trùng tên
+  if (formData.video && formData.video.name === file.name) {
+    toast.warn(
+      <ConfirmToast
+        message={`Video "${file.name}" đã tồn tại. Bạn có muốn ghi đè không?`}
+        onConfirm={() => {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            setFormData(prev => ({
+              ...prev,
+              video: {
+                file,
+                url: event.target.result,
+                name: file.name
+              }
+            }));
+          };
+          reader.readAsDataURL(file);
+        }}
+        onCancel={() => {
+          e.target.value = null; // clear input
+        }}
+      />,
+      { autoClose: false }
+    );
+  } else {
+    // Nếu chưa có video → thêm mới
     const reader = new FileReader();
     reader.onload = (event) => {
       setFormData(prev => ({
         ...prev,
         video: {
-          file: file,
+          file,
           url: event.target.result,
           name: file.name
         }
       }));
     };
     reader.readAsDataURL(file);
+  }
 
-    if (errors.video) {
-      setErrors(prev => ({
-        ...prev,
-        video: ''
-      }));
-    }
-  };
+  // Reset input để chọn cùng file liên tiếp vẫn trigger được
+  e.target.value = null;
 
-  // Handle map click
-  const handleMapClick = (e) => {
-    const lat = e.latLng.lat();
-    const lng = e.latLng.lng();
-
-    setFormData(prev => ({
+  // clear error nếu có
+  if (errors.video) {
+    setErrors(prev => ({
       ...prev,
-      coordinates: { lat, lng }
+      video: ''
     }));
+  }
+};
 
-    toast.success(`Đã chọn vị trí: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+  // Hàm format số thành VNĐ style
+  const formatNumber = (value) => {
+    if (!value) return "";
+    return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   };
 
-  // Geocode address using Google Geocoding API
-  const geocodeAddress = async () => {
-    if (!isLoaded || !window.google || !formData.province || !formData.district || !formData.ward || !formData.detailAddress) {
-      return;
-    }
-
-    const provinceData = locationData.provinces.find(p => p.code === formData.province);
-    const districtData = locationData.districts.find(d => d.code === formData.district);
-    const wardData = locationData.wards.find(w => w.code === formData.ward);
-
-    if (!provinceData || !districtData || !wardData) {
-      return;
-    }
-
-    const fullAddress = `${formData.detailAddress}, ${wardData.name}, ${districtData.name}, ${provinceData.name}, Vietnam`;
-
-    try {
-      setLocationData(prev => ({ ...prev, geocoding: true }));
-
-      // Initialize geocoder if not already done
-      if (!geocoderRef.current) {
-        geocoderRef.current = new window.google.maps.Geocoder();
-      }
-
-      geocoderRef.current.geocode({ address: fullAddress }, (results, status) => {
-        setLocationData(prev => ({ ...prev, geocoding: false }));
-
-        if (status === 'OK' && results[0]) {
-          const location = results[0].geometry.location;
-          const lat = location.lat();
-          const lng = location.lng();
-
-          setFormData(prev => ({
-            ...prev,
-            coordinates: { lat, lng }
-          }));
-
-          toast.success('Đã tìm thấy vị trí địa chỉ!');
-          console.log('Geocoded address:', fullAddress, 'to coordinates:', { lat, lng });
-        } else {
-          console.error('Geocoding failed:', status);
-          // Fallback to province/city center
-          if (provinceData.name.toLowerCase().includes('hồ chí minh')) {
-            setFormData(prev => ({ ...prev, coordinates: { lat: 10.8231, lng: 106.6297 } }));
-          } else if (provinceData.name.toLowerCase().includes('hà nội')) {
-            setFormData(prev => ({ ...prev, coordinates: { lat: 21.0285, lng: 105.8542 } }));
-          } else if (provinceData.name.toLowerCase().includes('đà nẵng')) {
-            setFormData(prev => ({ ...prev, coordinates: { lat: 16.0471, lng: 108.2068 } }));
-          }
-          toast.info('Không tìm thấy địa chỉ chính xác. Sử dụng vị trí ước tính.');
-        }
-      });
-    } catch (error) {
-      console.error('Error geocoding address:', error);
-      setLocationData(prev => ({ ...prev, geocoding: false }));
-      toast.error('Lỗi khi tìm kiếm địa chỉ');
-    }
+  // Hàm loại bỏ ký tự không phải số
+  const parseNumber = (value) => {
+    return value.replace(/\./g, "");
   };
+
+  // Xử lý change
+  const handlePriceChange = (e) => {
+    const { name, value } = e.target;
+    // bỏ dấu chấm trước khi set
+    const rawValue = parseNumber(value);
+    if (!/^\d*$/.test(rawValue)) return; // chỉ cho nhập số
+
+    setFormData({
+      ...formData,
+      [name]: rawValue, // giữ số thực (chưa format)
+    });
+  };
+
 
   // Submit form
   const handleSubmit = async (e) => {
@@ -540,29 +723,29 @@ const NewProperty = () => {
       });
 
       // Tìm tên từ code để gửi lên backend
-    const provinceData = locationData.provinces.find(p => p.code === formData.province);
-    const districtData = locationData.districts.find(d => d.code === formData.district);
-    const wardData = locationData.wards.find(w => w.code === formData.ward);
+      const provinceData = locationData.provinces.find(p => p.code === formData.province);
+      const districtData = locationData.districts.find(d => d.code === formData.district);
+      const wardData = locationData.wards.find(w => w.code === formData.ward);
 
-     
-    const dataToSubmit = {
-      ...formData,
-      availableDate: formatDateForBackend(formData.availableDate),
-      // Gửi cả code và name để backend có thể chọn
-      province: provinceData?.name || formData.province,
-      district: districtData?.name || formData.district,
-      ward: wardData?.name || formData.ward,
-      // Hoặc tạo object location
-      location: {
+
+      const dataToSubmit = {
+        ...formData,
+        availableDate: formatDateForBackend(formData.availableDate),
+        // Gửi cả code và name để backend có thể chọn
         province: provinceData?.name || formData.province,
         district: districtData?.name || formData.district,
         ward: wardData?.name || formData.ward,
-        detailAddress: formData.detailAddress,
-        coordinates: formData.coordinates
-      }
-    };
+        // Hoặc tạo object location
+        location: {
+          province: provinceData?.name || formData.province,
+          district: districtData?.name || formData.district,
+          ward: wardData?.name || formData.ward,
+          detailAddress: formData.detailAddress,
+          coordinates: formData.coordinates
+        }
+      };
 
-    console.log('Data to submit:', dataToSubmit);
+      console.log('Data to submit:', dataToSubmit);
 
       const result = await postAPI.createPost(dataToSubmit);
 
@@ -691,10 +874,16 @@ const NewProperty = () => {
     }
   };
 
-  // Handle loading and error states
-  if (loadError) {
-    console.error('Error loading Google Maps:', loadError);
-  }
+  // Map click handler trực tiếp trong component
+  const MapClickHandler = () => {
+    useMapEvents({
+      click(e) {
+        setFormData(prev => ({ ...prev, coordinates: { lat: e.latlng.lat, lng: e.latlng.lng } }));
+      },
+    });
+    return null;
+  };
+
 
   return (
     <div className="profile-page">
@@ -812,10 +1001,10 @@ const NewProperty = () => {
                     <div className="form-group">
                       <label>Giá thuê (VNĐ/tháng) *</label>
                       <input
-                        type="number"
+                        type="text"
                         name="rentPrice"
-                        value={formData.rentPrice}
-                        onChange={handleInputChange}
+                        value={formatNumber(formData.rentPrice)}
+                        onChange={handlePriceChange}
                         placeholder="VD: 3000000"
                         className={errors.rentPrice ? 'error' : ''}
                       />
@@ -825,10 +1014,10 @@ const NewProperty = () => {
                     <div className="form-group">
                       <label>Giá thuê khuyến mãi (VNĐ/tháng)</label>
                       <input
-                        type="number"
+                        type="text"
                         name="promotionPrice"
-                        value={formData.promotionPrice}
-                        onChange={handleInputChange}
+                        value={formatNumber(formData.promotionPrice)}
+                        onChange={handlePriceChange}
                         placeholder="VD: 2500000"
                         className={errors.promotionPrice ? 'error' : ''}
                       />
@@ -840,10 +1029,10 @@ const NewProperty = () => {
                     <div className="form-group">
                       <label>Tiền cọc (VNĐ)</label>
                       <input
-                        type="number"
+                        type="text"
                         name="deposit"
-                        value={formData.deposit}
-                        onChange={handleInputChange}
+                        value={formatNumber(formData.deposit)}
+                        onChange={handlePriceChange}
                         placeholder="VD: 3000000"
                         className={errors.deposit ? 'error' : ''}
                       />
@@ -868,10 +1057,10 @@ const NewProperty = () => {
                     <div className="form-group">
                       <label>Giá điện (VNĐ/kWh)</label>
                       <input
-                        type="number"
+                        type="text"
                         name="electricPrice"
-                        value={formData.electricPrice}
-                        onChange={handleInputChange}
+                        value={formatNumber(formData.electricPrice)}
+                        onChange={handlePriceChange}
                         placeholder="VD: 3500"
                         className={errors.electricPrice ? 'error' : ''}
                       />
@@ -881,10 +1070,10 @@ const NewProperty = () => {
                     <div className="form-group">
                       <label>Giá nước (VNĐ/m³)</label>
                       <input
-                        type="number"
+                        type="text"
                         name="waterPrice"
-                        value={formData.waterPrice}
-                        onChange={handleInputChange}
+                        value={formatNumber(formData.waterPrice)}
+                        onChange={handlePriceChange}
                         placeholder="VD: 15000"
                         className={errors.waterPrice ? 'error' : ''}
                       />
@@ -957,6 +1146,7 @@ const NewProperty = () => {
                       </label>
                     ))}
                   </div>
+                  {errors.amenities && <span className="error-text">{errors.amenities}</span>}
 
                   <div className="form-group">
                     <label>Quy định giờ giấc</label>
@@ -968,6 +1158,7 @@ const NewProperty = () => {
                       rows="3"
                     />
                   </div>
+                  {errors.timeRules && <span className="error-text">{errors.timeRules}</span>}
                 </div>
 
                 {/* Nội quy */}
@@ -987,6 +1178,7 @@ const NewProperty = () => {
                       </label>
                     ))}
                   </div>
+                  {errors.houseRules && <span className="error-text">{errors.houseRules}</span>}
                 </div>
 
                 {/* Địa chỉ */}
@@ -1068,110 +1260,49 @@ const NewProperty = () => {
                         name="detailAddress"
                         value={formData.detailAddress}
                         onChange={handleInputChange}
-                        placeholder="VD: 123 Nguyễn Văn A"
+                        placeholder="VD: Hẻm 566 Nguyễn Thái Sơn"
                         className={errors.detailAddress ? 'error' : ''}
                       />
                       {errors.detailAddress && <span className="error-text">{errors.detailAddress}</span>}
                     </div>
                   </div>
 
-                  {/* Google Maps */}
+                  {/* Leaflet Map */}
                   <div className="form-group">
-                    <label>
-                      Vị trí trên bản đồ
-                      {(gettingLocation || locationData.geocoding) && (
-                        <span className="geocoding-status">
-                          {gettingLocation ? ' - Đang lấy vị trí hiện tại...' : ' - Đang tìm địa chỉ...'}
-                        </span>
-                      )}
-                    </label>
-
-                    <div className="map-container" style={{ marginBottom: '15px', height: '300px' }}>
-                      {!isLoaded ? (
-                        <div className="map-loading-placeholder">
-                          <i className="fa fa-spinner fa-spin"></i>
-                          <span>Đang tải Google Maps...</span>
-                        </div>
-                      ) : loadError ? (
-                        <div className="map-error-placeholder">
-                          <i className="fa fa-exclamation-triangle"></i>
-                          <span>Lỗi tải Google Maps</span>
-                        </div>
-                      ) : showMap ? (
-                        <GoogleMap
-                          key={mapKey}
-                          mapContainerStyle={mapContainerStyle}
-                          center={formData.coordinates}
-                          zoom={15}
-                          options={mapOptions}
-                          onClick={handleMapClick}
-                        >
-                          <Marker
-                            position={formData.coordinates}
-                            draggable={true}
-                            onDragEnd={handleMapClick}
-                          />
-                        </GoogleMap>
-                      ) : (
-                        <div className="map-loading-placeholder">
-                          <i className="fa fa-spinner fa-spin"></i>
-                          <span>Đang khởi tạo bản đồ...</span>
-                        </div>
-                      )}
-                    </div>
-
+                    <label>Vị trí trên bản đồ</label>
                     <div className="coordinates-info">
                       <div className="coordinate-display">
                         <div className="coordinate-item">
                           <i className="fa fa-map-marker"></i>
-                          <span>Vĩ độ: {formData.coordinates?.lat?.toFixed(6) || 'N/A'}</span>
+                          <span>Vĩ độ: <strong>{formData.coordinates?.lat?.toFixed(6) || 'N/A'}</strong></span>
                         </div>
                         <div className="coordinate-item">
                           <i className="fa fa-compass"></i>
-                          <span>Kinh độ: {formData.coordinates?.lng?.toFixed(6) || 'N/A'}</span>
+                          <span>Kinh độ: <strong>{formData.coordinates?.lng?.toFixed(6) || 'N/A'}</strong></span>
                         </div>
                       </div>
+                      <p className="address-hint">💡 Nhấp vào bản đồ để chọn vị trí chính xác</p>
 
-                      <div className="location-actions">
-                        <p className="address-hint">
-                          💡 Nhấp vào bản đồ để chọn vị trí chính xác hoặc kéo marker để di chuyển
-                        </p>
-                        <div className="location-buttons">
-                          <button
-                            type="button"
-                            className="btn btn-secondary btn-sm"
-                            onClick={getUserLocation}
-                            disabled={gettingLocation}
-                          >
-                            <i className={`fa ${gettingLocation ? 'fa-spinner fa-spin' : 'fa-location-arrow'}`}></i>
-                            {gettingLocation ? 'Đang định vị...' : 'Lấy vị trí hiện tại'}
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-outline btn-sm"
-                            onClick={() => {
-                              setFormData(prev => ({
-                                ...prev,
-                                coordinates: defaultCenter
-                              }));
-                              toast.info('Đã đặt lại vị trí về trung tâm Việt Nam');
-                            }}
-                          >
-                            <i className="fa fa-refresh"></i>
-                            Đặt lại vị trí mặc định
-                          </button>
-                          {formData.province && formData.district && formData.ward && formData.detailAddress && (
-                            <button
-                              type="button"
-                              className="btn btn-info btn-sm"
-                              onClick={geocodeAddress}
-                              disabled={locationData.geocoding}
-                            >
-                              <i className={`fa ${locationData.geocoding ? 'fa-spinner fa-spin' : 'fa-search'}`}></i>
-                              {locationData.geocoding ? 'Đang tìm...' : 'Tìm theo địa chỉ'}
-                            </button>
-                          )}
-                        </div>
+                      <div>
+                        <MapContainer
+                          center={[formData.coordinates.lat, formData.coordinates.lng]}
+                          zoom={13}
+                          style={{ height: '300px', width: '100%' }}
+                        >
+                          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                          <Marker position={[formData.coordinates.lat, formData.coordinates.lng]} />
+                          <MapClickHandler />
+                        </MapContainer>
+                      </div>
+
+                      <div className="location-buttons">
+                        <button type="button" className="btn btn-secondary btn-sm" onClick={getUserLocation} disabled={gettingLocation}>
+                          <i className={`fa ${gettingLocation ? 'fa-spinner fa-spin' : 'fa-location-arrow'}`}></i>
+                          {gettingLocation ? 'Đang định vị...' : 'Lấy vị trí hiện tại'}
+                        </button>
+                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setFormData(prev => ({ ...prev, coordinates: { lat: 10.7769, lng: 106.7009 } }))}>
+                          Reset vị trí
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1258,7 +1389,7 @@ const NewProperty = () => {
                             }));
                           }}
                         >
-                          <i className="fa fa-times"></i>
+
                           Xóa video
                         </button>
                       </div>
@@ -1289,6 +1420,8 @@ const NewProperty = () => {
           </div>
         </div>
       )}
+
+
     </div>
   );
 };

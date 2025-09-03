@@ -5,7 +5,7 @@ export const locationAPI = {
   getProvinces: async () => {
     try {
       const response = await api.get('/locations/provinces');
-      console.log('Provinces response data:', response.data);
+      // console.log('Provinces response data:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error fetching provinces:', error);
@@ -44,5 +44,23 @@ export const locationAPI = {
       console.error('Error fetching address detail:', error);
       throw error;
     }
+  },
+
+    // New geocoding methods
+  geocodeAddress: async (address) => {
+    try {
+      const response = await api.post('/locations/geocode', { address });
+      console.log('Geocode locationAPI:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error geocoding address:', error);
+      if (error.response?.status === 429) {
+        throw new Error('Quá nhiều yêu cầu, vui lòng thử lại sau');
+      }
+      throw error;
+    }
   }
+
 };
+
+
