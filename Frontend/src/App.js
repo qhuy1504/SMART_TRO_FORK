@@ -2,7 +2,9 @@ import "./App.css"
 import Pages from "./components/pages/Pages"
 import { ThemeProvider } from "./contexts/ThemeContext"
 import { AuthProvider } from "./contexts/AuthContext"
+import { FavoritesProvider } from "./contexts/FavoritesContext"
 import { GoogleOAuthProvider } from '@react-oauth/google'
+import ViewTrackingManager from "./components/common/ViewTrackingManager"
 import "./styles/themes.css"
 
 function App() {
@@ -10,7 +12,10 @@ function App() {
     <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID}>
       <ThemeProvider>
         <AuthProvider>
-          <Pages />
+          <FavoritesProvider>
+            <ViewTrackingManager />
+            <Pages />
+          </FavoritesProvider>
         </AuthProvider>
       </ThemeProvider>
     </GoogleOAuthProvider>

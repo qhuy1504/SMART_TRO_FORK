@@ -1,5 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useFavorites } from '../../contexts/FavoritesContext';
+import { propertyDetailAPI } from '../../services/propertyDetailAPI';
+import { viewTrackingUtils } from '../../utils/viewTrackingUtils';
 import {
     FaHeart, FaRegHeart, FaCamera, FaHome, FaFire, FaStar, FaCrown,
     FaExpand, FaUsers, FaMapMarkerAlt, FaEye, FaClock, FaUser, FaPhone,
@@ -10,11 +13,9 @@ import './PropertyCard.css';
 
 const PropertyCard = ({ property, onPropertyClick, onFavoriteToggle, isLoggedIn }) => {
     const navigate = useNavigate();
+    const { isFavorited } = useFavorites();
     // Format price
     const formatPrice = (price) => {
-        if (price >= 1000000) {
-            return `${(price / 1000000).toFixed(1)} triệu`;
-        }
         return new Intl.NumberFormat('vi-VN').format(price);
     };
 
@@ -64,7 +65,19 @@ const PropertyCard = ({ property, onPropertyClick, onFavoriteToggle, isLoggedIn 
     };
 
     // Handle card click
-    const handleCardClick = () => {
+    const handleCardClick = async () => {
+        // Record view when user clicks on card
+        try {
+            // Only record if not already viewed in this session
+            if (!viewTrackingUtils.hasBeenViewed(property._id)) {
+                await propertyDetailAPI.recordPropertyView(property._id);
+                viewTrackingUtils.markAsViewedWithTimestamp(property._id);
+            }
+        } catch (error) {
+            console.error('Error recording view:', error);
+            // Continue navigation even if view recording fails
+        }
+
         if (onPropertyClick) {
             onPropertyClick(property._id);
         } else {
@@ -76,7 +89,8 @@ const PropertyCard = ({ property, onPropertyClick, onFavoriteToggle, isLoggedIn 
     const handleFavoriteClick = (e) => {
         e.stopPropagation();
         if (onFavoriteToggle) {
-            onFavoriteToggle(property._id, property.isFavorited);
+            const currentStatus = property.isFavorited || isFavorited(property._id);
+            onFavoriteToggle(property._id, currentStatus);
         }
     };
 
@@ -279,7 +293,7 @@ const PropertyCard = ({ property, onPropertyClick, onFavoriteToggle, isLoggedIn 
 
                     {/* Property meta */}
                     <div className="property-meta">
-                        <div className="meta-item">
+                        <div className="meta-item-card">
                             <FaEye />
                             <span>{property.views || 0} lượt xem</span>
                         </div>
@@ -317,17 +331,17 @@ const PropertyCard = ({ property, onPropertyClick, onFavoriteToggle, isLoggedIn 
                             }}
                         >
                             <FaPhone />
-                            {property.owner?.phoneNumber || 'Liên hệ'}
+                            {property.owner?.phone|| 'Liên hệ'}
                         </button>
 
                         {/* Favorite button - Next to contact button */}
                         {isLoggedIn && (
                             <button
-                                className={`favorite-btn ${property.isFavorited ? 'favorited' : ''}`}
+                                className={`favorite-btn ${(property.isFavorited || isFavorited(property._id)) ? 'favorited' : ''}`}
                                 onClick={handleFavoriteClick}
-                                title={property.isFavorited ? 'Bỏ yêu thích' : 'Yêu thích'}
+                                title={(property.isFavorited || isFavorited(property._id)) ? 'Bỏ yêu thích' : 'Yêu thích'}
                             >
-                                {property.isFavorited ? (
+                                {(property.isFavorited || isFavorited(property._id)) ? (
                                     <FaHeart className="favorite-icon filled" />
                                 ) : (
                                     <FaRegHeart className="favorite-icon" />

@@ -14,6 +14,8 @@ import locationRoutes from './location-service/routes/locationRoutes.js';
 import myPropertiesRoutes from './property-service/routes/myPropertiesRoutes.js';
 import searchRoutes from './property-service/routes/searchPropertiesRoutes.js';
 import depositContractRoutes from '../routes/depositContractRoutes.js';
+import reportRoutes from './report-service/routes/reportRoutes.js';
+import commentRoutes from './comment-service/routes/commentRoutes.js';
 
 const router = express.Router();
 
@@ -30,6 +32,8 @@ router.use('/api/locations', locationRoutes);
 router.use('/api/my-properties', myPropertiesRoutes);
 router.use('/api/search-properties', searchRoutes);
 router.use('/api/deposit-contracts', depositContractRoutes);
+router.use('/api/reports', reportRoutes);
+router.use('/api/comments', commentRoutes);
 
 
 // API documentation route
@@ -47,7 +51,9 @@ router.get('/api', (req, res) => {
             locations: '/api/locations',
             amenities: '/api/amenities',
             auth: '/api/auth',
-            myProperties: '/api/my-properties'
+            myProperties: '/api/my-properties',
+            reports: '/api/reports',
+            comments: '/api/comments'
         },
         documentation: {
             users: {

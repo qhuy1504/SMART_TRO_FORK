@@ -7,7 +7,7 @@ export const myPropertiesAPI = {
       const queryParams = new URLSearchParams({
         page: params.page || 1,
         limit: params.limit || 10,
-        status: params.status || 'all',
+        approvalStatus: params.approvalStatus || 'all',
         sortBy: params.sortBy || 'createdAt',
         sortOrder: params.sortOrder || 'desc'
       });
@@ -41,6 +41,28 @@ export const myPropertiesAPI = {
       return response.data;
     } catch (error) {
       console.error('Error fetching my approved properties:', error);
+      throw error;
+    }
+  },
+   getMyApprovedPropertiesLocation: async (params = {}) => {
+    try {
+      const queryParams = new URLSearchParams({
+        page: params.page || 1,
+        limit: params.limit || 10,
+         status: params.status || 'all',
+        sortBy: params.sortBy || 'createdAt',
+        sortOrder: params.sortOrder || 'desc',
+        district: params.district || '',
+        ward: params.ward || ''
+      });
+        // Thêm search nếu có
+      if (params.search && params.search.trim()) {
+        queryParams.append('search', params.search.trim());
+      }
+      const response = await api.get(`/my-properties/approved-location?${queryParams}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching my approved location properties:', error);
       throw error;
     }
   },
@@ -105,5 +127,84 @@ export const myPropertiesAPI = {
       console.error('Error toggling property status:', error);
       throw error;
     }
-  }
+  },
+
+  // Đưa tin đăng lên đầu trang
+  promotePropertyToTop: async (propertyId) => {
+    try {
+      const response = await api.patch(`/my-properties/${propertyId}/promote-to-top`);
+      return response.data;
+    } catch (error) {
+      console.error('Error promoting property to top:', error);
+      throw error;
+    }
+  },
+
+  // View property (increase view count)
+  viewProperty: async (propertyId) => {
+    try {
+      const response = await api.post(`/my-properties/${propertyId}/view`);
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      // Silent fail for view tracking
+      console.error('Error tracking view:', error);
+      return {
+        success: false
+      };
+    }
+  },
+
+  // Add to favorites
+  addToFavorites: async (propertyId) => {
+    try {
+      const response = await api.post(`/my-properties/${propertyId}/favorite`);
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Error adding to favorites:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Lỗi khi thêm vào yêu thích'
+      };
+    }
+  },
+
+  // Remove from favorites
+  removeFromFavorites: async (propertyId) => {
+    try {
+      const response = await api.delete(`/my-properties/${propertyId}/favorite`);
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Error removing from favorites:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Lỗi khi xóa khỏi yêu thích'
+      };
+    }
+  },
+
+  // Get favorites list
+  getFavorites: async () => {
+    try {
+      const response = await api.get('/my-properties/favorites');
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Error getting favorites:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Lỗi khi lấy danh sách yêu thích'
+      };
+    }
+  },
 };

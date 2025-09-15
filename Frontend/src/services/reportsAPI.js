@@ -276,6 +276,42 @@ export const reportsAPI = {
       console.error('Lỗi khi hủy lịch báo cáo:', error);
       throw error;
     }
+  },
+
+  // Báo cáo tin đăng không phù hợp
+  reportProperty: async (propertyId, reportData) => {
+    try {
+      const response = await api.post(`/reports/property/${propertyId}`, reportData);
+      return response.data;
+    } catch (error) {
+      console.error('Lỗi khi gửi báo cáo tin đăng:', error);
+      throw error;
+    }
+  },
+
+  // Lấy danh sách báo cáo tin đăng (dành cho admin)
+  getPropertyReports: async (filters = {}) => {
+    try {
+      const response = await api.get('/reports/property', { params: filters });
+      return response.data;
+    } catch (error) {
+      console.error('Lỗi khi lấy danh sách báo cáo tin đăng:', error);
+      throw error;
+    }
+  },
+
+  // Xử lý báo cáo tin đăng (dành cho admin)
+  handlePropertyReport: async (reportId, action, note = '') => {
+    try {
+      const response = await api.put(`/reports/property/${reportId}/handle`, {
+        action, // 'approve', 'reject', 'pending'
+        note
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Lỗi khi xử lý báo cáo tin đăng:', error);
+      throw error;
+    }
   }
 };
 

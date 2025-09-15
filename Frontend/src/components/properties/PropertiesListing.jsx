@@ -4,10 +4,13 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { propertiesViewAPI } from '../../services/propertiesAPI';
 import { myPropertiesAPI } from '../../services/myPropertiesAPI';
+import { propertyDetailAPI } from '../../services/propertyDetailAPI';
 import searchPropertiesAPI from '../../services/searchPropertiesAPI';
 import { locationAPI } from '../../services/locationAPI';
 import amenitiesAPI from '../../services/amenitiesAPI';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFavorites } from '../../contexts/FavoritesContext';
+import { viewTrackingUtils } from '../../utils/viewTrackingUtils';
 import PropertyCard from './PropertyCard';
 import Heading from "../common/Heading";
 import {
@@ -19,7 +22,8 @@ import {
   FaHeart,
   FaMoneyBillWave,
   FaExpand,
-  FaClock
+  FaClock,
+  FaArrowUp 
 } from 'react-icons/fa';
 import './PropertiesListing.css';
 
@@ -28,11 +32,13 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
+  const { toggleFavorite, isFavorited } = useFavorites();
 
   // States
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [searchInput, setSearchInput] = useState(searchParams.get('search') || '');
 
   // Location data
   const [provinces, setProvinces] = useState([]);
@@ -44,6 +50,9 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
   const [loadingDistricts, setLoadingDistricts] = useState(false);
   const [showAmenitiesModal, setShowAmenitiesModal] = useState(false);
   const [tempSelectedAmenities, setTempSelectedAmenities] = useState([]);
+  
+  // Go to top button state
+  const [showGoToTop, setShowGoToTop] = useState(false);
   const [searching, setSearching] = useState(false);
   const [selectedPriceIndex, setSelectedPriceIndex] = useState(0);
   const [selectedAreaIndex, setSelectedAreaIndex] = useState(0);
@@ -192,6 +201,16 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
     }
   }, [pagination.page]);
 
+  // Go to top button visibility
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowGoToTop(window.pageYOffset > 300);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   // Handle external search results (from Hero component)
   useEffect(() => {
     if (searchResults && isHomePage) {
@@ -232,7 +251,7 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
   };
 
   // Load properties
-  const loadProperties = async (reset = false) => {
+  const loadProperties = async (reset = false, customFilters = null) => {
     try {
       if (reset) {
         setLoading(true);
@@ -241,12 +260,13 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
         setLoadingMore(true);
       }
 
+      const searchFilters = customFilters || filters;
       const params = {
-        ...filters,
+        ...searchFilters,
         page: reset ? 1 : pagination.page,
         limit: pagination.limit
       };
-      console.log('Loading properties with params:', params);
+      // console.log('Loading properties with params:', params);
 
       // Clean empty params
       Object.keys(params).forEach(key => {
@@ -257,10 +277,10 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
 
       let response;
       // Always use search API when there are any filters applied or search term
-      const hasFilters = filters.search || filters.provinceId || filters.districtId || 
-                        filters.wardId || filters.category || filters.minPrice || 
-                        filters.maxPrice || filters.minArea || filters.maxArea || 
-                        (filters.amenities && filters.amenities.length > 0);
+      const hasFilters = searchFilters.search || searchFilters.provinceId || searchFilters.districtId || 
+                        searchFilters.wardId || searchFilters.category || searchFilters.minPrice || 
+                        searchFilters.maxPrice || searchFilters.minArea || searchFilters.maxArea || 
+                        (searchFilters.amenities && searchFilters.amenities.length > 0);
 
       if (hasFilters || !isHomePage) {
         // Use search API when filters are applied or not on home page
@@ -269,8 +289,6 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
         // Use general properties API only when no filters and on home page
         response = await myPropertiesAPI.getMyApprovedProperties(params);
       }
-
-      console.log('Properties response:', response.data || response);
 
       if (response.success) {
         const newProperties = response.data?.properties || [];
@@ -443,9 +461,12 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
     setShowAmenitiesModal(false);
   };
 
-  const handleResetFilters = () => {
+  const handleResetFilters = async () => {
+    // Reset search input
+    setSearchInput('');
+    
     // Reset searchData (Hero form)
-    setSearchData({
+    const resetSearchData = {
       search: '',
       provinceId: '',
       districtId: '',
@@ -455,7 +476,9 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
       minArea: '',
       maxArea: '',
       amenities: []
-    });
+    };
+    
+    setSearchData(resetSearchData);
     
     // Reset Hero select indices
     setSelectedPriceIndex(0);
@@ -463,7 +486,7 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
     setDistricts([]);
     
     // Reset filters (for sidebar and general filtering)
-    setFilters({
+    const resetFilters = {
       search: '',
       provinceId: '',
       districtId: '',
@@ -476,15 +499,15 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
       amenities: [],
       sortBy: 'createdAt',
       sortOrder: 'desc'
-    });
+    };
     
     setPagination(prev => ({ ...prev, page: 1 }));
     
     // Clear URL params immediately
     setSearchParams(new URLSearchParams());
     
-    // Call search API to load all properties
-    setTimeout(() => searchWithFilters(), 100);
+    // Call search API with reset filters immediately
+    await searchWithFilters(resetFilters);
   };
 
   // Handle Hero search submit
@@ -607,19 +630,20 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
   };
 
   // Search with current filters
-  const searchWithFilters = async () => {
-    if (!searchResults) { // Only search if not using external search results
-      // This will search properties by title, address (detailAddress), and description via backend API
-      console.log('Searching with filters:', {
-        search: filters.search, // Will search in title, description, detailAddress
-        ...filters
-      });
-      await loadProperties(true);
-      // Don't call updateURL() here as it's handled by individual filter functions
+  const searchWithFilters = async (newFilters = null) => {
+    if (!searchResults) { 
+      const searchFilters = newFilters || filters;
+      // Temporarily update filters state if newFilters provided
+      if (newFilters) {
+        setFilters(newFilters);
+      }
+      
+      await loadProperties(true, searchFilters);
+     
     }
   };
 
-  // Load districts when province changes in Hero
+
   useEffect(() => {
     if (searchData.provinceId) {
       console.log('searchData:', searchData);
@@ -630,30 +654,40 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
     }
   }, [searchData.provinceId]);
 
-  // Debounced search for text input
-  useEffect(() => {
-    if (filters.search && !searchResults) {
-      const timeoutId = setTimeout(() => {
-        searchWithFilters();
-        // Update URL after debounced search
-        const params = new URLSearchParams();
-        Object.entries(filters).forEach(([key, value]) => {
-          if (value && value !== '') {
-            if (key === 'amenities' && Array.isArray(value) && value.length > 0) {
-              params.set(key, value.join(','));
-            } else if (key !== 'amenities') {
-              params.set(key, value);
-            }
-          }
-        });
-        setSearchParams(params);
-      }, 500); // Debounce 500ms
-
-      return () => clearTimeout(timeoutId);
+  // Handle search input key press
+  const handleSearchInputKeyPress = async (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      await handleSearchSubmit();
     }
-  }, [filters.search, searchResults]);
+  };
 
-  // Handle price range selection (sync with Hero and call API)
+  // Handle search submit
+  const handleSearchSubmit = async () => {
+    const newFilters = { ...filters, search: searchInput };
+    
+    // Also update Hero search data
+    setSearchData(prev => ({ ...prev, search: searchInput }));
+    
+    setPagination(prev => ({ ...prev, page: 1 }));
+    
+    // Update URL immediately
+    const params = new URLSearchParams();
+    Object.entries(newFilters).forEach(([key, value]) => {
+      if (value && value !== '') {
+        if (key === 'amenities' && Array.isArray(value) && value.length > 0) {
+          params.set(key, value.join(','));
+        } else if (key !== 'amenities') {
+          params.set(key, value);
+        }
+      }
+    });
+    setSearchParams(params);
+    
+    // Search immediately with new filters
+    await searchWithFilters(newFilters);
+  };
+
   const handlePriceRangeSelect = async (range) => {
     // Update both filters and searchData to sync Hero and sidebar
     setFilters(prev => ({
@@ -853,6 +887,7 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
       case 'search':
         newFilters.search = '';
         resetSearchData.search = '';
+        setSearchInput(''); // Reset search input state
         break;
       case 'location':
         newFilters.provinceId = '';
@@ -911,8 +946,8 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
     });
     setSearchParams(params);
     
-    // Search immediately after removing filter
-    setTimeout(() => searchWithFilters(), 100);
+    // Search immediately with new filters
+    await searchWithFilters(newFilters);
   };
 
   // Get active filters for display
@@ -925,7 +960,7 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
         label: `Từ khóa: "${filters.search}"`,
         value: filters.search
       });
-      console.log('Active search filter:', filters.search);
+     
     }
 
     if (filters.provinceId || filters.districtId || filters.wardId) {
@@ -1036,7 +1071,7 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
   };
 
   // Handle favorite toggle
-  const handleFavoriteToggle = async (propertyId, isFavorited) => {
+  const handleFavoriteToggle = async (propertyId, currentFavoriteStatus) => {
     if (!user) {
       toast.error('Vui lòng đăng nhập để sử dụng tính năng này');
       navigate('/login');
@@ -1044,31 +1079,26 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
     }
 
     try {
-      if (isFavorited) {
-        await propertiesViewAPI.removeFromFavorites(propertyId);
-        toast.success('Đã xóa khỏi danh sách yêu thích');
-      } else {
-        await propertiesViewAPI.addToFavorites(propertyId);
-        toast.success('Đã thêm vào danh sách yêu thích');
+      const success = await toggleFavorite(propertyId);
+      if (success) {
+        // Update the property in state
+        setProperties(prevProperties =>
+          prevProperties.map(property =>
+            property._id === propertyId
+              ? { ...property, isFavorited: !currentFavoriteStatus }
+              : property
+          )
+        );
       }
-
-      // Update the property in state
-      setProperties(prevProperties =>
-        prevProperties.map(property =>
-          property._id === propertyId
-            ? { ...property, isFavorited: !isFavorited }
-            : property
-        )
-      );
     } catch (error) {
-      toast.error('Có lỗi xảy ra, vui lòng thử lại');
+      console.error('Error toggling favorite:', error);
     }
   };
 
   // Handle property click
   const handlePropertyClick = async (propertyId) => {
-    // Track view
-    await propertiesViewAPI.viewProperty(propertyId);
+    // View tracking is now handled by PropertyCard component
+    // No need to track view here to avoid double counting
     navigate(`/properties/${propertyId}`);
   };
 
@@ -1082,6 +1112,14 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
     }
   };
 
+  // Scroll to top function
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
+
   // Format price
   const formatPrice = (price) => {
     if (price >= 1000000) {
@@ -1091,10 +1129,28 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
   };
 
   return (
-    <div className={`properties-listing ${isHomePage ? 'home-mode' : ''}`}>
-      {/* Hero Section for Home Page */}
-      {isHomePage && (
+    <div className={`properties-listing ${(isHomePage || (!isHomePage && !searchResults)) ? 'home-mode' : ''}`}>
+      {/* Hero Section for Home Page and Properties Page */}
+      {(isHomePage || (!isHomePage && !searchResults)) && (
         <section className='hero'>
+            {/* Left Decorative Image */}
+      <div className="left-decoration-listing">
+        <img 
+          src="https://res.cloudinary.com/dapvuniyx/image/upload/v1757584703/Screenshot_2025-09-11_165739_feoml8.png" 
+          alt="Decoration" 
+          className="decoration-image-listing"
+        />
+      </div>
+
+      {/* Right Decorative Image */}
+      <div className="right-decoration-listing">
+        <img 
+          src="https://res.cloudinary.com/dapvuniyx/image/upload/v1757584703/Screenshot_2025-09-11_165739_feoml8.png" 
+          alt="Decoration" 
+          className="decoration-image-listing"
+        />
+
+      </div>
           <div className='container'>
             <form className='hero-search-form' onSubmit={handleHeroSearch}>
               <div className='search-grid'>
@@ -1223,23 +1279,25 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
       )}
 
       <div className="container">
-        {/* Quick Search for Home Page */}
-        {isHomePage && (
+        <div className="properties-wrapper">
           <div className="quick-search">
             <div className="search-input-group">
               <i className="fa fa-search"></i>
               <input
                 type="text"
                 placeholder="Tìm kiếm theo tiêu đề, mô tả, hẻm, tên đường..."
-                value={filters.search}
-                onChange={(e) => handleFilterChange('search', e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyPress={handleSearchInputKeyPress}
               />
-              {filters.search && (
+              
+              
+              {searchInput && (
                 <button
                   className="clear-search"
                   onClick={async () => {
+                    setSearchInput('');
                     const newFilters = { ...filters, search: '' };
-                    setFilters(newFilters);
                     
                     // Also reset Hero search data
                     setSearchData(prev => ({ ...prev, search: '' }));
@@ -1259,8 +1317,8 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
                     });
                     setSearchParams(params);
                     
-                    // Search immediately after clearing search
-                    setTimeout(() => searchWithFilters(), 100);
+                    // Search immediately with new filters
+                    await searchWithFilters(newFilters);
                   }}
                 >
                   <i className="fa fa-times"></i>
@@ -1268,9 +1326,9 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
               )}
             </div>
           </div>
-        )}
+        </div>
 
-        <div className="listing-content home-layout">
+        <div className={`listing-content ${(isHomePage || (!isHomePage && !searchResults)) ? 'home-layout' : ''}`}>
           {/* Main Content */}
           <div className="main-content">
             {/* Results Header */}
@@ -1363,8 +1421,6 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
                         sortOrder: 'desc'
                       };
                       
-                      setFilters(resetFilters);
-                      
                       // Reset Hero search data
                       setSearchData({
                         search: '',
@@ -1388,8 +1444,8 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
                       // Clear URL params immediately
                       setSearchParams(new URLSearchParams());
                       
-                      // Search immediately after clearing all filters
-                      setTimeout(() => searchWithFilters(), 100);
+                      // Search immediately with reset filters
+                      await searchWithFilters(resetFilters);
                     }}
                   >
                     <i className="fa fa-refresh"></i>
@@ -1572,7 +1628,18 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
               </h4>
               <div className="recent-posts">
                 {properties.slice(0, 5).map((property) => (
-                  <div key={property._id} className="recent-post-item" onClick={() => handlePropertyClick(property._id)}>
+                  <div key={property._id} className="recent-post-item" onClick={async () => {
+                    // Record view when clicking on recent post
+                    try {
+                      if (!viewTrackingUtils.hasBeenViewed(property._id)) {
+                        await propertyDetailAPI.recordPropertyView(property._id);
+                        viewTrackingUtils.markAsViewedWithTimestamp(property._id);
+                      }
+                    } catch (error) {
+                      console.error('Error recording view:', error);
+                    }
+                    navigate(`/properties/${property._id}`);
+                  }}>
                     <div className="recent-post-image">
                       {property.images && property.images.length > 0 ? (
                         <img src={property.images[0]} alt={property.title} />
@@ -1633,8 +1700,19 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
                 Có thể bạn quan tâm
               </h4>
               <div className="recommended-properties">
-                {properties.slice(0, 3).map((property) => (
-                  <div key={property._id} className="recommended-item" onClick={() => handlePropertyClick(property._id)}>
+                {properties.slice(0, 4).map((property) => (
+                  <div key={property._id} className="recommended-item" onClick={async () => {
+                    // Record view when clicking on recommended property
+                    try {
+                      if (!viewTrackingUtils.hasBeenViewed(property._id)) {
+                        await propertyDetailAPI.recordPropertyView(property._id);
+                        viewTrackingUtils.markAsViewedWithTimestamp(property._id);
+                      }
+                    } catch (error) {
+                      console.error('Error recording view:', error);
+                    }
+                    navigate(`/properties/${property._id}`);
+                  }}>
                     <div className="recommended-image">
                       {property.images && property.images.length > 0 ? (
                         <img src={property.images[0]} alt={property.title} />
@@ -1730,6 +1808,17 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
             </div>
           </div>
         </div>
+      )}
+      
+      {/* Go to Top Button */}
+      {showGoToTop && (
+        <button 
+          className="go-to-top-btn"
+          onClick={scrollToTop}
+          aria-label="Go to top"
+        >
+         <FaArrowUp  size={20} className="text-black" />
+        </button>
       )}
     </div>
   );

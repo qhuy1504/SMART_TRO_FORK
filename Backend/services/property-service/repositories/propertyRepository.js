@@ -18,7 +18,7 @@ class PropertyRepository {
     async findById(id) {
         try {
             return await Property.findById(id)
-                .populate('owner', 'fullName email phone')
+                .populate('owner', 'fullName email phone avatar')
                 .populate('amenities', 'name key icon category')
                 .exec();
         } catch (error) {
@@ -40,7 +40,7 @@ class PropertyRepository {
                 .skip(skip)
                 .limit(parseInt(limit))
                 .sort({ createdAt: -1 })
-                .populate('owner', 'fullName email phone')
+                .populate('owner', 'fullName email phone avatar')
                 .populate('amenities', 'name key icon category')
                 .exec();
 
@@ -147,7 +147,7 @@ class PropertyRepository {
                 id,
                 updateData,
                 { new: true, runValidators: true }
-            ).populate('owner', 'fullName email phone')
+            ).populate('owner', 'fullName email phone avatar')
              .populate('amenities', 'name key icon category');
         } catch (error) {
             throw new Error(`Error updating property: ${error.message}`);
@@ -227,6 +227,99 @@ class PropertyRepository {
             };
         } catch (error) {
             throw new Error(`Error creating rating: ${error.message}`);
+        }
+    }
+
+    // Lấy property theo ID với thông tin đầy đủ cho trang chi tiết
+    async getPropertyById(id) {
+        try {
+            const property = await Property.findById(id)
+                .populate('owner', 'fullName email phone avatar role')
+                .populate('amenities', 'name key icon category')
+                .exec();
+
+            if (property && property.owner) {
+                // Đếm tổng số bài đăng của chủ trọ
+                const propertyCount = await Property.countDocuments({
+                    owner: property.owner._id,
+                    approvalStatus: 'approved',
+                    isDeleted: { $ne: true }
+                });
+
+                // Chuyển property thành plain object và thêm propertyCount
+                const propertyObj = property.toObject();
+                propertyObj.owner.propertyCount = propertyCount;
+                return propertyObj;
+            }
+            
+          
+            return property;
+        } catch (error) {
+            throw new Error(`Error getting property by ID: ${error.message}`);
+        }
+    }
+
+    // Tăng lượt xem
+    async incrementViews(id) {
+        try {
+            return await Property.findByIdAndUpdate(
+                id,
+                { $inc: { views: 1 } },
+                { new: true }
+            );
+        } catch (error) {
+            throw new Error(`Error incrementing views: ${error.message}`);
+        }
+    }
+
+    // Lấy properties liên quan (cùng khu vực hoặc giá tương tự)
+    async getRelatedProperties(currentProperty, limit = 6) {
+        try {
+            const query = {
+                _id: { $ne: currentProperty._id }, // Loại trừ property hiện tại
+                status: 'available',
+                $or: [
+                    // Cùng quận/huyện
+                    { 'location.district': currentProperty.location.district },
+                    // Giá tương tự (±30%)
+                    {
+                        price: {
+                            $gte: currentProperty.price * 0.7,
+                            $lte: currentProperty.price * 1.3
+                        }
+                    }
+                ]
+            };
+
+            return await Property.find(query)
+                .limit(limit)
+                .sort({ createdAt: -1, views: -1 })
+                .populate('owner', 'fullName phone')
+                .populate('amenities', 'name key')
+                .select('title price images location area views createdAt')
+                .exec();
+        } catch (error) {
+            throw new Error(`Error getting related properties: ${error.message}`);
+        }
+    }
+
+    // Lấy properties nổi bật (premium hoặc có lượt xem cao)
+    async getFeaturedProperties(limit = 5) {
+        try {
+            return await Property.find({
+                status: 'available',
+                $or: [
+                    { isPremium: true },
+                    { views: { $gte: 100 } }
+                ]
+            })
+                .limit(limit)
+                .sort({ isPremium: -1, views: -1, createdAt: -1 })
+                .populate('owner', 'fullName phone')
+                .select('title price images location area views isPremium')
+                .exec();
+        } catch (error) {
+            throw new Error(`Error getting featured properties: ${error.message}`);
         }
     }
 }

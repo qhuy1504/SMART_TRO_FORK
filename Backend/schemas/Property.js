@@ -161,12 +161,10 @@ const propertySchema = new mongoose.Schema({
         type: String,
         trim: true
     },
-
-    // Trạng thái bất động sản (gộp isForRent + isActive + status)
     status: {
         type: String,
-        enum: ['available', 'rented', 'maintenance', 'draft', 'inactive'],
-        default: 'draft',
+        enum: ['available', 'inactive'],
+        default: 'available',
         required: true
     },
     views: {
@@ -185,18 +183,28 @@ const propertySchema = new mongoose.Schema({
         type: Date,
         default: null
     }, stats: {
-        views: {
-            type: Number,
-            default: 0
-        },
         favorites: {
             type: Number,
             default: 0
+        },
+        favoritedBy: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        }],
+        lastFavoritedAt: {
+            type: Date,
+            default: null
         },
         contacts: {
             type: Number,
             default: 0
         }
+    },
+
+    // Thời gian promote tin đăng lên đầu trang
+    promotedAt: {
+        type: Date,
+        default: null
     },
 
 }, {
@@ -215,9 +223,11 @@ propertySchema.index({ approvalStatus: 1 });
 propertySchema.index({ province: 1, district: 1 });
 propertySchema.index({ rentPrice: 1 });
 propertySchema.index({ createdAt: -1 });
+propertySchema.index({ promotedAt: -1 }); // Index for promoted properties
 propertySchema.index({ owner: 1, approvalStatus: 1 });
 propertySchema.index({ owner: 1, isDeleted: 1 });
 propertySchema.index({ owner: 1, createdAt: -1 });
+propertySchema.index({ promotedAt: -1, createdAt: -1 }); // Compound index for sorting
 
 propertySchema.pre(/^find/, function (next) {
     // Skip this for admin queries or explicit deleted queries

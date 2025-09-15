@@ -4,6 +4,7 @@ import { nav } from "../../data/Data"
 import { Link, useNavigate } from "react-router-dom"
 import { useTranslation } from 'react-i18next'
 import { useAuth } from "../../../contexts/AuthContext"
+import { useFavorites } from "../../../contexts/FavoritesContext"
 import { toast } from 'react-toastify'
 
 const Header = () => {
@@ -12,6 +13,7 @@ const Header = () => {
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const { t, i18n } = useTranslation()
   const { user, logout, loading } = useAuth()
+  const { favoritesCount } = useFavorites()
   const navigate = useNavigate()
 
   // Helper function để xử lý URL avatar Google
@@ -85,9 +87,11 @@ const Header = () => {
             </ul>
           </div>
           <div className='button flex'>
-            <h4>
-              <span>2</span> {t('header.myList')}
-            </h4>
+            <Link to="/profile/favorites" className="favorites-link">
+              <h4>
+                <span>{favoritesCount || 0}</span> {t('header.myList')}
+              </h4>
+            </Link>
             <div className="language-switcher">
               <button 
                 className={`lang-btn ${i18n.language === 'vi' ? 'active' : ''}`}
@@ -154,6 +158,10 @@ const Header = () => {
                       <hr />
                       <Link to="/profile/new-post" onClick={() => setUserMenuOpen(false)}>
                         <i className="fa fa-plus-circle"></i> {t('header.properties')}
+                      </Link>
+
+                      <Link to="/profile/favorites" onClick={() => setUserMenuOpen(false)}>
+                        <i className="fa fa-heart"></i> {t('header.myList')} ({favoritesCount || 0})
                       </Link>
 
                        <Link to="/profile/account" onClick={() => setUserMenuOpen(false)}>

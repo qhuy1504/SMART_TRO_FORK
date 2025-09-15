@@ -4,7 +4,7 @@ const searchPropertiesAPI = {
   // Tìm kiếm properties với các filter
   searchProperties: async (searchParams) => {
     try {
-      console.log('Searching properties with params:', searchParams);
+     
 
       // Build query string từ searchParams
       const params = new URLSearchParams();
@@ -22,7 +22,7 @@ const searchPropertiesAPI = {
       });
 
       const response = await api.get(`/search-properties/properties?${params.toString()}`);
-      console.log('Search response:', response.data);
+     
       
       return response.data;
     } catch (error) {

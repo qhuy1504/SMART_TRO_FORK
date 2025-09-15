@@ -1,4 +1,5 @@
 import Property from '../../../schemas/Property.js';
+import Comment from '../../../schemas/Comment.js';
 import mongoose from 'mongoose';
 import { fetchProvinces, fetchDistricts, fetchWards } from "../../shared/utils/locationService.js";
 
@@ -6,7 +7,7 @@ const searchController = {
   // Tìm kiếm properties theo nhiều tiêu chí
   searchProperties: async (req, res) => {
     try {
-      console.log('Search params:', req.query);
+      // console.log('Search params:', req.query);
 
       // Pagination params
       const page = parseInt(req.query.page) || 1;
@@ -31,7 +32,7 @@ const searchController = {
       // Build query object
       let query = {
         approvalStatus: 'approved',
-        // status: { $in: ['available', 'rented'] }, // Có thể tìm cả đang cho thuê và đã thuê
+        status: 'available', 
         isDeleted: { $ne: true }
       };
 
@@ -89,17 +90,26 @@ const searchController = {
         }
       }
 
-      console.log('Final query:', JSON.stringify(query, null, 2));
+      // console.log('Final query:', JSON.stringify(query, null, 2));
 
-      // Build sort object
+      // Build sort object - Chỉ ưu tiên promotedAt khi sort theo createdAt
       const sortObj = {};
-      if (sortBy === 'price') {
+      
+      if (sortBy === 'createdAt') {
+        // Chỉ khi sắp xếp theo thời gian tạo thì mới ưu tiên tin được promote
+        sortObj.promotedAt = -1; // Promoted properties first (newest promoted)
+        sortObj.createdAt = sortOrder === 'asc' ? 1 : -1; // Then by creation date
+      } else if (sortBy === 'price' || sortBy === 'rentPrice') {
+        // Sắp xếp theo giá thuần túy, không ưu tiên promoted
         sortObj.rentPrice = sortOrder === 'asc' ? 1 : -1;
       } else if (sortBy === 'area') {
+        // Sắp xếp theo diện tích thuần túy, không ưu tiên promoted
         sortObj.area = sortOrder === 'asc' ? 1 : -1;
       } else if (sortBy === 'views') {
-        sortObj['stats.views'] = sortOrder === 'asc' ? 1 : -1;
+        // Sắp xếp theo lượt xem thuần túy, không ưu tiên promoted
+        sortObj.views = sortOrder === 'asc' ? 1 : -1;
       } else {
+        sortObj.promotedAt = -1; // Always promoted first
         sortObj[sortBy] = sortOrder === 'asc' ? 1 : -1;
       }
 
@@ -109,14 +119,14 @@ const searchController = {
           .sort(sortObj)
           .skip(skip)
           .limit(limit)
-          .populate('owner', 'fullName email phone')
+          .populate('owner', 'fullName email phone avatar')
           .populate('amenities', 'name icon')
           .lean(),
         Property.countDocuments(query),
         fetchProvinces()
       ]);
 
-      console.log(`Found ${total} properties matching criteria`);
+      // console.log(`Found ${total} properties matching criteria`);
 
       // Map tỉnh
       const provinceMap = new Map(provinces.map(p => [String(p.code), p.name]));
@@ -144,6 +154,30 @@ const searchController = {
         }
       }
 
+      // Lấy số lượng comments cho mỗi property (chỉ đếm comments gốc, không đếm replies)
+      const propertyIds = properties.map(p => p._id);
+      const commentsCount = await Comment.aggregate([
+        {
+          $match: {
+            property: { $in: propertyIds },
+            parentComment: null, // Chỉ đếm comments gốc
+            isDeleted: false
+          }
+        },
+        {
+          $group: {
+            _id: '$property',
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+
+      // Tạo map để tra cứu comments count
+      const commentsCountMap = new Map();
+      commentsCount.forEach(item => {
+        commentsCountMap.set(item._id.toString(), item.count);
+      });
+
       // Transform data for frontend
       const transformedProperties = properties.map(property => ({
         _id: property._id,
@@ -156,7 +190,6 @@ const searchController = {
         video: property.video,
         approvalStatus: property.approvalStatus,
         status: property.status,
-        isActive: property.status !== 'inactive',
         contactName: property.contactName,
         contactPhone: property.contactPhone,
         description: property.description,
@@ -182,8 +215,9 @@ const searchController = {
           wardName: wardMap.get(String(property.ward)) || "",
           detailAddress: property.detailAddress
         },
-        views: property.stats?.views || 0,
+        views: property.views || 0,
         favorites: property.stats?.favorites || 0,
+        comments: commentsCountMap.get(property._id.toString()) || 0,
         createdAt: property.createdAt,
         updatedAt: property.updatedAt
       }));
@@ -253,7 +287,7 @@ const searchController = {
         {
           $match: {
             approvalStatus: 'approved',
-            // status: 'available',
+            status: 'available',
             isDeleted: { $ne: true },
             $or: [
               { title: { $regex: searchTerm, $options: 'i' } },

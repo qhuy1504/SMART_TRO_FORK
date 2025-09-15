@@ -60,6 +60,26 @@ header h4 {
   margin: 0;
   white-space: nowrap;
 }
+
+/* Favorites link styling */
+.favorites-link {
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.3s ease;
+}
+
+.favorites-link:hover {
+  transform: translateY(-1px);
+}
+
+.favorites-link h4 {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.favorites-link:hover h4 {
+  color: #27ae60;
+}
 header .language-switcher {
   display: flex;
   gap: 2px;

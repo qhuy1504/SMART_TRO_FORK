@@ -357,7 +357,6 @@ class PropertyController {
                 updatedAt: now
             };
 
-            console.log('Creating property with validated data:', propertyData);
 
             // Tạo property
             const property = await propertyRepository.create(propertyData);
@@ -408,6 +407,7 @@ class PropertyController {
         }
     }
 
+  
 }
 
 export default new PropertyController();

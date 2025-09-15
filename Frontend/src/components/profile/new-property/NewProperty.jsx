@@ -178,8 +178,7 @@ const NewProperty = () => {
           coordinates: { lat: latitude, lng: longitude }
         }));
         setGettingLocation(false);
-        toast.success('Đã lấy vị trí hiện tại thành công!');
-        // console.log('User location:', { lat: latitude, lng: longitude });
+      
       },
       (error) => {
         console.error('Error getting user location:', error);

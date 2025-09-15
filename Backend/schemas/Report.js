@@ -7,7 +7,7 @@ const reportSchema = new mongoose.Schema({
     reporter: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true
+        required: false // Cho phép báo cáo ẩn danh
     },
     reportedProperty: {
         type: mongoose.Schema.Types.ObjectId,
@@ -17,11 +17,11 @@ const reportSchema = new mongoose.Schema({
     reason: {
         type: String,
         enum: [
-            'inappropriate_content',
+            'fake',
+            'inappropriate', 
             'spam',
-            'fake_listing',
-            'wrong_information',
-            'harassment',
+            'duplicate',
+            'price',
             'other'
         ],
         required: true
@@ -29,6 +29,19 @@ const reportSchema = new mongoose.Schema({
     description: {
         type: String,
         trim: true
+    },
+    contactEmail: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    propertyTitle: {
+        type: String,
+        trim: true
+    },
+    propertyOwner: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
     },
     status: {
         type: String,

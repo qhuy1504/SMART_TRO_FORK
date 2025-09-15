@@ -12,6 +12,7 @@ import Login from "../auth/Login"
 import Register from "../auth/Register"
 import ForgotPassword from "../auth/ForgotPassword"
 import VerifyEmail from "../auth/VerifyEmail"
+import ProtectedRoute from "../auth/ProtectedRoute"
 import Dashboard from "../admin/dashboard/Dashboard"
 import RoomsManagement from "../admin/rooms/RoomsManagement"
 import AmenitiesManagement from "../admin/amenities/AmenitiesManagement"
@@ -22,9 +23,11 @@ import ProfileLayout from "../profile/ProfileLayout"
 import AccountManagement from "../profile/account-management/AccountManagement"
 import NewPost from "../profile/new-property/NewProperty"
 import MyPosts from "../profile/my-properties/MyProperties.jsx"
+import Favorites from "../profile/favorites/Favorites"
 import PaymentHistory from "../profile/payment-history/PaymentHistory"
 import PricingProfile from "../profile/pricing/Pricing"
 import PropertiesListing from "../properties/PropertiesListing"
+import PropertyDetail from "../properties/PropertyDetail"
 import PageTitleWrapper from "../common/PageTitleWrapper"
 import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
@@ -105,6 +108,13 @@ const Pages = () => {
               <Footer />
             </>
           } />
+          <Route path='/properties/:id' element={
+            <>
+              <Header />
+              <PropertyDetail />
+              <Footer />
+            </>
+          } />
           <Route path='/login' element={
             <>
               <Header />
@@ -136,26 +146,27 @@ const Pages = () => {
 
           {/* Profile pages with Header */}
           <Route path='/profile' element={
-            <>
+            <ProtectedRoute>
               <Header />
               <ProfileLayout />
-            </>
+            </ProtectedRoute>
           }>
             <Route path='account' element={<AccountManagement />} />
             <Route path='new-post' element={<NewPost />} />
             <Route path='my-posts' element={<MyPosts />} />
+            <Route path='favorites' element={<Favorites />} />
             <Route path='payment-history' element={<PaymentHistory />} />
             <Route path='pricing' element={<PricingProfile />} />
             <Route index element={<AccountManagement />} />
           </Route>
 
           {/* Admin pages without Header and Footer */}
-          <Route path='/admin/dashboard' element={<Dashboard />} />
-          <Route path='/admin/rooms' element={<RoomsManagement />} />
-          <Route path='/admin/amenities' element={<AmenitiesManagement />} />
-          <Route path='/admin/settings' element={<Settings />} />
-          <Route path='/admin/tenants' element={<Tenants />} />
-          <Route path='/admin/contracts' element={<Contracts />} />
+          <Route path='/admin/dashboard' element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path='/admin/rooms' element={<ProtectedRoute><RoomsManagement /></ProtectedRoute>} />
+          <Route path='/admin/amenities' element={<ProtectedRoute><AmenitiesManagement /></ProtectedRoute>} />
+          <Route path='/admin/settings' element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+          <Route path='/admin/tenants' element={<ProtectedRoute><Tenants /></ProtectedRoute>} />
+          <Route path='/admin/contracts' element={<ProtectedRoute><Contracts /></ProtectedRoute>} />
         </Routes>
         </PageTitleWrapper>
       </Router>

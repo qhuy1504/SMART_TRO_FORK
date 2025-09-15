@@ -855,5 +855,24 @@
     "confirm": {
       "deleteVehicle": "Are you sure you want to delete vehicle \"{{licensePlate}}\"?"
     }
+  },
+  "favorites": {
+    "title": "Saved Properties",
+    "subtitle": "You have saved {{count}} properties",
+    "loading": "Loading favorites list...",
+    "authenticating": "Authenticating...",
+    "error": "Error loading favorites list",
+    "retry": "Try again",
+    "empty": {
+      "title": "No saved properties yet",
+      "subtitle": "Discover and save properties you're interested in for easy access later",
+      "browseBtnText": "Browse Properties"
+    },
+    "actions": {
+      "addToFavorites": "Added to favorites",
+      "removeFromFavorites": "Removed from favorites",
+      "loginRequired": "Please login to use this feature",
+      "toggleError": "Error toggling favorite"
+    }
   }
 }

@@ -49,17 +49,24 @@ export const AuthProvider = ({ children }) => {
     const checkAuthStatus = async () => {
       const token = apiUtils.getToken();
       
-      try {
-        // Always try to get profile, even without token (for bypass mode)
-        const response = await authAPI.getProfile();
-        if (response.data && response.data.success) {
-          setUser(response.data.data);
-        }
-      } catch (error) {
-        // If we had a token but it's invalid, clear it
-        if (token) {
+      // Only try to get profile if we have a token
+      if (token) {
+        try {
+          const response = await authAPI.getProfile();
+          if (response.data && response.data.success) {
+            setUser(response.data.data);
+          } else {
+            // Invalid response, clear auth data
+            apiUtils.clearAuthData();
+            setUser(null);
+          }
+        } catch (error) {
+          // Token invalid or expired, clear it
           apiUtils.clearAuthData();
+          setUser(null);
         }
+      } else {
+        // No token, user is not logged in
         setUser(null);
       }
       

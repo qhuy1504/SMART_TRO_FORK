@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import "./auth.css";
 import { authAPI, apiUtils } from "../../services/api";
 import { toast } from 'react-toastify';
@@ -10,6 +10,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 const Login = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [remember, setRemember] = useState(false);
@@ -17,6 +18,9 @@ const Login = () => {
     const [error, setError] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const { setUserData } = useAuth();
+
+    // Get the page user was trying to access before being redirected to login
+    const from = location.state?.from?.pathname || "/";
 
     // Load remembered login khi component mount
     React.useEffect(() => {
@@ -53,7 +57,7 @@ const Login = () => {
                 toast.success(`Chào mừng ${user.fullName}! Đăng nhập thành công.`);
                 setTimeout(() => {
                     setUserData(user);
-                    navigate("/");
+                    navigate(from, { replace: true });
                 }, 2200);
             } else {
                 setTimeout(() => {
@@ -98,7 +102,7 @@ const Login = () => {
                 toast.success(`Chào mừng ${user.fullName}! Đăng nhập Google thành công.`);
                 setTimeout(() => {
                     setUserData(user);
-                    navigate("/");
+                    navigate(from, { replace: true });
                 }, 2200);
             } else {
                 toast.error(res.data?.message || "Đăng nhập Google thất bại");

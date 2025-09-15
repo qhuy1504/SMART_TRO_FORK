@@ -37,6 +37,13 @@ const ProfileLayout = () => {
       path: '/profile/my-posts',
       active: location.pathname === '/profile/my-posts'
     },
+     {
+      id: 'favorites',
+      icon: 'fa-heart',
+      label: t('header.myList'),
+      path: '/profile/favorites',
+      active: location.pathname === '/profile/favorites'
+    },
     {
       id: 'payment-history',
       icon: 'fa-credit-card',

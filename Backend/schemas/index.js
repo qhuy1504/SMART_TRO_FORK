@@ -10,6 +10,8 @@ import OTP from './OTP.js';
 import EmailVerification from './EmailVerification.js';
 import Amenity from './Amenity.js';
 import DepositContract from './DepositContract.js';
+import Report from './Report.js';
+import Comment from './Comment.js';
 
 export default {
     User,
@@ -20,7 +22,9 @@ export default {
     OTP,
     EmailVerification,
     Amenity,
-    DepositContract
+    DepositContract,
+    Report,
+    Comment
 };
 
 export {
@@ -32,5 +36,7 @@ export {
     OTP,
     EmailVerification,
     Amenity,
-    DepositContract
+    DepositContract,
+    Report,
+    Comment
 };

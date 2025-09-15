@@ -857,4 +857,24 @@
       "deleteVehicle": "Bạn có chắc muốn xóa xe \"{{licensePlate}}\"?"
     }
   }
+  ,
+  "favorites": {
+    "title": "Tin đã lưu",
+    "subtitle": "Bạn đã lưu {{count}} tin đăng",
+    "loading": "Đang tải danh sách yêu thích...",
+    "authenticating": "Đang xác thực...",
+    "error": "Lỗi khi tải danh sách yêu thích",
+    "retry": "Thử lại",
+    "empty": {
+      "title": "Chưa có tin đăng nào được lưu",
+      "subtitle": "Khám phá và lưu những tin đăng bạn quan tâm để xem lại dễ dàng hơn",
+      "browseBtnText": "Khám phá tin đăng"
+    },
+    "actions": {
+      "addToFavorites": "Đã thêm vào danh sách yêu thích",
+      "removeFromFavorites": "Đã xóa khỏi danh sách yêu thích",
+      "loginRequired": "Vui lòng đăng nhập để sử dụng tính năng này",
+      "toggleError": "Lỗi khi thao tác yêu thích"
+    }
+  }
 }

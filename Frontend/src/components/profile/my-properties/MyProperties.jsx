@@ -5,10 +5,12 @@ import { myPropertiesAPI } from '../../../services/myPropertiesAPI';
 import EditPropertyModal from '../edit-property-modal/EditPropertyModal';
 import '../ProfilePages.css';
 import './MyProperties.css';
+import { FaEllipsisV, FaComment  } from "react-icons/fa";
+
 
 const MyProperties = () => {
   const { t } = useTranslation();
-  
+
   // States
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,7 +20,7 @@ const MyProperties = () => {
     total: 0,
     totalPages: 0
   });
-  
+
   // Filters & Search
   const [filters, setFilters] = useState({
     approvalStatus: 'all', // all, pending, approved, rejected, hidden
@@ -26,12 +28,17 @@ const MyProperties = () => {
     sortOrder: 'desc',
     search: ''
   });
-  
+
   // Modals
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingProperty, setEditingProperty] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingProperty, setDeletingProperty] = useState(null);
+  const [showToggleModal, setShowToggleModal] = useState(false);
+  const [togglingProperty, setTogglingProperty] = useState(null);
+
+  // Dropdown menu state
+  const [activeDropdown, setActiveDropdown] = useState(null);
 
   // Status options
   const statusOptions = [
@@ -47,6 +54,20 @@ const MyProperties = () => {
     loadProperties();
   }, [filters, pagination.page]);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.property-dropdown')) {
+        setActiveDropdown(null);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
+
   // Load properties from API
   const loadProperties = async () => {
     try {
@@ -56,9 +77,9 @@ const MyProperties = () => {
         page: pagination.page,
         limit: pagination.limit
       };
-      
+
       const response = await myPropertiesAPI.getMyProperties(params);
-      
+
       if (response.success) {
         setProperties(response.data.properties || []);
         setPagination(prev => ({
@@ -147,12 +168,48 @@ const MyProperties = () => {
     }
   };
 
-  // Handle toggle status (hide/show)
-  const handleToggleStatus = async (property) => {
+  // Handle dropdown toggle
+  const handleDropdownToggle = (propertyId) => {
+    setActiveDropdown(activeDropdown === propertyId ? null : propertyId);
+  };
+
+  // Handle promote property to top
+  const handlePromoteProperty = async (property) => {
     try {
-      const response = await myPropertiesAPI.togglePropertyStatus(property._id);
+      // Đóng dropdown
+      setActiveDropdown(null);
+
+      // Call API để promote property lên đầu trang
+      const response = await myPropertiesAPI.promotePropertyToTop(property._id);
       if (response.success) {
-        toast.success(`Đã ${property.isForRent ? 'ẩn' : 'hiện'} tin đăng`);
+        toast.success('Đã đưa tin đăng lên đầu trang thành công');
+        loadProperties(); // Reload list
+      } else {
+        toast.error(response.message || 'Không thể đưa tin đăng lên đầu trang');
+      }
+    } catch (error) {
+      console.error('Error promoting property:', error);
+      toast.error('Lỗi khi đưa tin đăng lên đầu trang');
+    }
+  };
+
+  // Handle toggle status confirmation
+  const handleToggleStatusConfirm = (property) => {
+    setTogglingProperty(property);
+    setShowToggleModal(true);
+  };
+
+  // Handle toggle status (hide/show)
+  const handleToggleStatus = async () => {
+    if (!togglingProperty) return;
+
+    try {
+      const response = await myPropertiesAPI.togglePropertyStatus(togglingProperty._id);
+      if (response.success) {
+        const action = togglingProperty.status === 'available' ? 'ẩn' : 'hiện';
+        toast.success(`Đã ${action} tin đăng`);
+        setShowToggleModal(false);
+        setTogglingProperty(null);
         loadProperties(); // Reload list
       } else {
         toast.error(response.message || 'Không thể thay đổi trạng thái');
@@ -191,10 +248,18 @@ const MyProperties = () => {
 
   // Format price
   const formatPrice = (price) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND'
-    }).format(price);
+    return new Intl.NumberFormat('vi-VN').format(price);
+  };
+
+  // Format large numbers for stats (views, comments, favorites)
+  const formatNumber = (num) => {
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(1) + 'M';
+    }
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'k';
+    }
+    return num.toString();
   };
 
   // Format date
@@ -237,8 +302,8 @@ const MyProperties = () => {
             <div className="filter-group">
               <label>Trạng thái:</label>
               <select
-                value={filters.status}
-                onChange={(e) => handleFilterChange('status', e.target.value)}
+                value={filters.approvalStatus}
+                onChange={(e) => handleFilterChange('approvalStatus', e.target.value)}
               >
                 {statusOptions.map(option => (
                   <option key={option.value} value={option.value}>
@@ -289,12 +354,11 @@ const MyProperties = () => {
             <>
               <div className="properties-grid">
                 {properties.map(property => (
-                  console.log('property:', property),
                   <div key={property._id} className="property-card">
                     <div className="property-image">
                       {property.images && property.images.length > 0 ? (
-                        <img 
-                          src={property.images[0]} 
+                        <img
+                          src={property.images[0]}
                           alt={property.title}
                           onError={(e) => {
                             e.target.src = '/images/placeholder.jpg';
@@ -308,6 +372,30 @@ const MyProperties = () => {
                       <div className="property-status">
                         {getStatusBadge(property.approvalStatus)}
                       </div>
+
+                      {/* Dropdown Menu - chỉ hiện khi approved */}
+                      {property.approvalStatus === 'approved' && (
+                        <div className="property-dropdown">
+                          <button
+                            className="dropdown-toggle"
+                            onClick={() => handleDropdownToggle(property._id)}
+                          >
+                            <FaEllipsisV className="text-black cursor-pointer" />
+                          </button>
+
+                          {activeDropdown === property._id && (
+                            <div className="dropdown-menu">
+                              <button
+                                className="dropdown-item"
+                                onClick={() => handlePromoteProperty(property)}
+                              >
+                                <i className="fa fa-arrow-up"></i>
+                                Đưa tin lên đầu trang
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="property-info">
@@ -315,7 +403,8 @@ const MyProperties = () => {
                       <div className="property-details">
                         <div className="detail-item">
                           <i className="fa fa-money"></i>
-                          <span>{formatPrice(property.rentPrice)}/tháng</span>
+                          <span>{formatPrice(property.rentPrice)}</span>
+                          <span className="currency">VNĐ/tháng</span>
                         </div>
                         <div className="detail-item">
                           <i className="fa fa-expand"></i>
@@ -334,11 +423,15 @@ const MyProperties = () => {
                       <div className="property-stats">
                         <div className="stat-item">
                           <i className="fa fa-eye"></i>
-                          <span>{property.views || 0} lượt xem</span>
+                          <span>{formatNumber(property.views || 0)} lượt xem</span>
+                        </div>
+                        <div className="stat-item">
+                          <i className="fa fa-comment"></i>
+                          <span>{formatNumber(property.comments || 0)} bình luận</span>
                         </div>
                         <div className="stat-item">
                           <i className="fa fa-heart"></i>
-                          <span>{property.favorites || 0} yêu thích</span>
+                          <span>{formatNumber(property.favorites || 0)} yêu thích</span>
                         </div>
                       </div>
 
@@ -350,14 +443,21 @@ const MyProperties = () => {
                           <i className="fa fa-edit"></i>
                           Sửa
                         </button>
-                        
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => handleToggleStatus(property)}
-                        >
-                          <i className={`fa ${property.isForRent ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                          {property.isForRent ? 'Ẩn' : 'Hiện'}
-                        </button>
+
+                        {property.approvalStatus === 'approved' && (
+                          <button
+                            className={`btn btn-sm ${property.status === 'available' ? 'btn-secondary' : 'btn-warning'}`}
+                            onClick={() => handleToggleStatusConfirm(property)}
+                            style={{
+                              backgroundColor: property.status === 'available' ? '#6c757d' : '#fd7e14',
+                              borderColor: property.status === 'available' ? '#6c757d' : '#fd7e14',
+                              color: 'white'
+                            }}
+                          >
+                            <i className={`fa ${property.status === 'available' ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                            {property.status === 'available' ? 'Ẩn' : 'Hiện'}
+                          </button>
+                        )}
 
                         <button
                           className="btn btn-danger btn-delete"
@@ -422,6 +522,49 @@ const MyProperties = () => {
             loadProperties();
           }}
         />
+      )}
+
+      {/* Toggle Status Confirmation Modal */}
+      {showToggleModal && togglingProperty && (
+        <div className="modal-overlay-hidden">
+          <div className="delete-modal">
+            <div className="modal-header">
+              <h3>Xác nhận {togglingProperty.status === 'available' ? 'ẩn' : 'hiện'} tin đăng</h3>
+            </div>
+            <div className="modal-content">
+              <p>Bạn có chắc chắn muốn {togglingProperty.status === 'available' ? 'ẩn' : 'hiện'} tin đăng:</p>
+              <p className="property-title-delete">"{togglingProperty.title}"</p>
+              {togglingProperty.status === 'available' && (
+                <p className="warning-text">
+                  <i className="fa fa-info-circle"></i>
+                  Tin đăng sẽ không hiển thị trên trang chủ khi bị ẩn!
+                </p>
+              )}
+            </div>
+            <div className="modal-actions">
+              <button
+                className="btn-hidden btn-secondary-hidden"
+                onClick={() => {
+                  setShowToggleModal(false);
+                  setTogglingProperty(null);
+                }}
+              >
+                Hủy
+              </button>
+              <button
+                className={`btn ${togglingProperty.status === 'available' ? 'btn-warning' : 'btn-success'}`}
+                onClick={handleToggleStatus}
+                style={{
+                  backgroundColor: togglingProperty.status === 'available' ? '#6c757d' : '#fd7e14',
+                  borderColor: togglingProperty.status === 'available' ? '#6c757d' : '#fd7e14'
+                }}
+              >
+                <i className={`fa ${togglingProperty.status === 'available' ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                {togglingProperty.status === 'available' ? 'Ẩn tin đăng' : 'Hiện tin đăng'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Delete Confirmation Modal */}

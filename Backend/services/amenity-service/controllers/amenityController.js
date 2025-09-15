@@ -68,7 +68,6 @@ class AmenityController {
       };
 
       const result = await amenityRepository.findAll({}, options);
-      console.log('All amenities result:', result);
       
       res.json({
         success: true,

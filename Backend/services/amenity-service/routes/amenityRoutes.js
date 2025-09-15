@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/', authMiddleware, amenityController.getAmenities);
 
 // Get all amenities without owner filtering - for public use
-router.get('/all', authMiddleware, amenityController.getAllAmenities);
+router.get('/all', amenityController.getAllAmenities);
 
 // Get active amenities for dropdown/selection (requires auth)
 router.get('/active', authMiddleware, amenityController.getActiveAmenities);

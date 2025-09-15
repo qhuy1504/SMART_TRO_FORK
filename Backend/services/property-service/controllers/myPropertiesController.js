@@ -2,7 +2,7 @@ import Property from '../../../schemas/Property.js';
 import { validationResult } from 'express-validator';
 import mongoose from 'mongoose';
 import { fetchProvinces, fetchDistricts, fetchWards } from "../../shared/utils/locationService.js";
-
+import propertyRepository from '../repositories/propertyRepository.js';
 import { uploadToCloudinary, deleteFromCloudinary } from '../../shared/utils/cloudinary.js';
 import { format } from 'path';
 
@@ -19,7 +19,7 @@ const myPropertiesController = {
       const skip = (page - 1) * limit;
 
       // Filter params
-      const status = req.query.status || 'all';
+      const approvalStatus = req.query.approvalStatus || 'all';
       const sortBy = req.query.sortBy || 'createdAt';
       const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
       const search = req.query.search || '';
@@ -27,22 +27,15 @@ const myPropertiesController = {
       // Build query
       let query = { owner: userId };
 
-      // Status filter - CẬP NHẬT để sử dụng status thay vì isForRent
-      if (status !== 'all') {
-        if (status === 'hidden') {
+      // ApprovalStatus filter
+      if (approvalStatus !== 'all') {
+        if (approvalStatus === 'hidden') {
+          // Hiển thị các tin đã duyệt nhưng đang bị ẩn
+          query.approvalStatus = 'approved';
           query.status = 'inactive';
-        } else if (status === 'available') {
-          query.status = 'available';
-        } else if (status === 'rented') {
-          query.status = 'rented';
-        } else if (status === 'maintenance') {
-          query.status = 'maintenance';
-        } else if (status === 'draft') {
-          query.status = 'draft';
         } else {
-          // Nếu filter theo approval status
-          query.approvalStatus = status;
-          query.status = { $ne: 'inactive' }; // Không bao gồm status inactive
+          // Filter theo trạng thái duyệt
+          query.approvalStatus = approvalStatus;
         }
       }
 
@@ -61,7 +54,7 @@ const myPropertiesController = {
           .sort(sortObj)
           .skip(skip)
           .limit(limit)
-          .populate('owner', 'name email phone')
+          .populate('owner', 'name email phone avatar')
           .populate('amenities', 'name icon')
           .lean(),
         Property.countDocuments(query),
@@ -99,14 +92,13 @@ const myPropertiesController = {
         images: property.images,
         approvalStatus: property.approvalStatus,
         status: property.status,
-        isActive: property.status !== 'inactive',
         location: {
           provinceName: provinceMap.get(String(property.province)) || "",
           districtName: districtMap.get(String(property.district)) || "",
           wardName: wardMap.get(String(property.ward)) || "",
           detailAddress: property.detailAddress
         },
-        views: property.stats?.views || 0,
+        views: property.views || 0,
         favorites: property.stats?.favorites || 0,
         createdAt: property.createdAt,
         updatedAt: property.updatedAt
@@ -151,7 +143,7 @@ const myPropertiesController = {
       })
       .populate('amenities', 'name icon')
       .lean();
-      console.log("Fetched property EDIT:", property);
+    
 
 
       if (!property) {
@@ -226,21 +218,16 @@ const myPropertiesController = {
       // Build query với điều kiện approvalStatus = 'approved' và isDeleted = false
       let query = { 
         approvalStatus: 'approved',
+        status: { $ne: 'inactive' }, // Mặc định không lấy tin đăng bị ẩn
         isDeleted: { $ne: true }
       };
 
-      // Status filter - chỉ áp dụng cho các property đã được duyệt
+      // Status filter - chỉ áp dụng cho các property đã được duyệt (chỉ có 2 trạng thái)
       if (status !== 'all') {
-        if (status === 'hidden') {
+        if (status === 'inactive') {
           query.status = 'inactive';
         } else if (status === 'available') {
           query.status = 'available';
-        } else if (status === 'rented') {
-          query.status = 'rented';
-        } else if (status === 'maintenance') {
-          query.status = 'maintenance';
-        } else if (status === 'draft') {
-          query.status = 'draft';
         }
       }
 
@@ -249,9 +236,17 @@ const myPropertiesController = {
         query.title = { $regex: search, $options: 'i' };
       }
 
-      // Build sort object
+      // Build sort object - Chỉ ưu tiên promotedAt khi sort theo createdAt
       const sortObj = {};
-      sortObj[sortBy] = sortOrder;
+      
+      if (sortBy === 'createdAt') {
+        // Chỉ khi sắp xếp theo thời gian tạo thì mới ưu tiên tin được promote
+        sortObj.promotedAt = -1; // Promoted properties first (newest promoted)
+        sortObj.createdAt = sortOrder; // Then by creation date
+      } else {
+        // Các tiêu chí sắp xếp khác không ưu tiên promoted
+        sortObj[sortBy] = sortOrder;
+      }
 
       // Lấy data
       const [properties, total, provinces] = await Promise.all([
@@ -259,7 +254,7 @@ const myPropertiesController = {
           .sort(sortObj)
           .skip(skip)
           .limit(limit)
-          .populate('owner', 'fullName email phone')
+          .populate('owner', 'fullName email phone avatar')
           .populate('amenities', 'name icon')
           .lean(),
         Property.countDocuments(query),
@@ -314,7 +309,8 @@ const myPropertiesController = {
           _id: property.owner._id,
           fullName: property.owner.fullName,
           email: property.owner.email,
-          phone: property.owner.phone
+          phone: property.owner.phone,
+          avatar: property.owner.avatar
         },
         location: {
           provinceName: provinceMap.get(String(property.province)) || "",
@@ -322,12 +318,12 @@ const myPropertiesController = {
           wardName: wardMap.get(String(property.ward)) || "",
           detailAddress: property.detailAddress
         },
-        views: property.stats?.views || 0,
+        views: property.views || 0,
         favorites: property.stats?.favorites || 0,
         createdAt: property.createdAt,
         updatedAt: property.updatedAt
       }));
-      console.log("Transformed approved properties:", transformedProperties);
+      // console.log("Transformed approved properties:", transformedProperties);
 
       const totalPages = Math.ceil(total / limit);
 
@@ -355,12 +351,173 @@ const myPropertiesController = {
     }
   },
 
+  // Lấy danh sách tin đăng đã được duyệt theo district và ward
+  getMyApprovedPropertiesByLocation: async (req, res) => {
+    try {
+
+      // Pagination params
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const skip = (page - 1) * limit;
+
+      // Filter params
+      const status = req.query.status || 'all';
+      const sortBy = req.query.sortBy || 'createdAt';
+      const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
+      const search = req.query.search || '';
+      
+      // Location filter params - THÊM MỚI
+      const district = req.query.district || '';
+      const ward = req.query.ward || '';
+
+      // Build query với điều kiện approvalStatus = 'approved' và isDeleted = false
+      let query = { 
+        approvalStatus: 'approved',
+        status: { $ne: 'inactive' },
+        isDeleted: { $ne: true }
+      };
+
+      // Location filters - THÊM MỚI
+      if (district.trim()) {
+        query.district = district;
+      }
+      if (ward.trim()) {
+        query.ward = ward;
+      }
+
+      // Status filter - chỉ áp dụng cho các property đã được duyệt (chỉ có 2 trạng thái)
+      if (status !== 'all') {
+        if (status === 'inactive') {
+          query.status = 'inactive';
+        } else if (status === 'available') {
+          query.status = 'available';
+        }
+      }
+
+      // Search filter
+      if (search.trim()) {
+        query.title = { $regex: search, $options: 'i' };
+      }
+
+      // Build sort object
+      const sortObj = {};
+      sortObj[sortBy] = sortOrder;
+
+      // Lấy data
+      const [properties, total, provinces] = await Promise.all([
+        Property.find(query)
+          .sort(sortObj)
+          .skip(skip)
+          .limit(limit)
+          .populate('owner', 'fullName email phone avatar')
+          .populate('amenities', 'name icon')
+          .lean(),
+        Property.countDocuments(query),
+        fetchProvinces(),
+      ]);
+
+      // Map tỉnh
+      const provinceMap = new Map(provinces.map(p => [String(p.code), p.name]));
+
+      // Lấy districts & wards phụ thuộc provinceCode, districtCode
+      const districtMap = new Map();
+      const wardMap = new Map();
+
+      for (const property of properties) {
+        if (property.province && !districtMap.has(property.district)) {
+          const districts = await fetchDistricts(property.province);
+          districts.forEach(d => districtMap.set(String(d.code), d.name));
+        }
+        if (property.district && !wardMap.has(property.ward)) {
+          const wards = await fetchWards(property.district);
+          wards.forEach(w => wardMap.set(String(w.code), w.name));
+        }
+      }
+
+      // Transform data for frontend
+      const transformedProperties = properties.map(property => ({
+        _id: property._id,
+        title: property.title,
+        category: property.category,
+        rentPrice: property.rentPrice,
+        promotionPrice: property.promotionPrice,
+        area: property.area,
+        images: property.images,
+        approvalStatus: property.approvalStatus,
+        status: property.status,
+        isActive: property.status !== 'inactive',
+        contactName: property.contactName,
+        contactPhone: property.contactPhone,
+        description: property.description,
+        deposit: property.deposit,
+        electricPrice: property.electricPrice,
+        waterPrice: property.waterPrice,
+        maxOccupants: property.maxOccupants,
+        availableDate: property.availableDate,
+        amenities: property.amenities,
+        fullAmenities: property.fullAmenities,
+        timeRules: property.timeRules,
+        houseRules: property.houseRules,
+        video: property.video,
+        coordinates: property.coordinates,
+        owner: {
+          _id: property.owner._id,
+          fullName: property.owner.fullName,
+          email: property.owner.email,
+          phone: property.owner.phone,
+          avatar: property.owner.avatar
+        },
+        location: {
+          provinceName: provinceMap.get(String(property.province)) || "",
+          districtName: districtMap.get(String(property.district)) || "",
+          wardName: wardMap.get(String(property.ward)) || "",
+          detailAddress: property.detailAddress,
+          district: property.district, // THÊM MỚI
+          ward: property.ward // THÊM MỚI
+        },
+        views: property.views || 0,
+        favorites: property.stats?.favorites || 0,
+        createdAt: property.createdAt,
+        updatedAt: property.updatedAt
+      }));
+      // console.log("Transformed approved properties by location:", transformedProperties);
+
+      const totalPages = Math.ceil(total / limit);
+
+      res.json({
+        success: true,
+        message: 'Lấy danh sách tin đăng đã duyệt theo khu vực thành công',
+        data: {
+          properties: transformedProperties,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages
+          },
+          filters: {
+            district,
+            ward
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Error in getMyApprovedPropertiesByLocation:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Lỗi server khi lấy danh sách tin đăng đã duyệt theo khu vực',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  },
+
   // Cập nhật tin đăng
   updateProperty: async (req, res) => {
     try {
       const { propertyId } = req.params;
       const userId = req.user.id || req.user.userId;
-      console.log("req body: ", req.body);
+      // console.log("req body: ", req.body);
 
       // 1. Tìm property
       const existingProperty = await Property.findOne({ _id: propertyId, owner: userId });
@@ -370,7 +527,7 @@ const myPropertiesController = {
           message: 'Không tìm thấy tin đăng hoặc bạn không có quyền chỉnh sửa'
         });
       }
-      console.log("Existing property:", existingProperty);
+      // console.log("Existing property:", existingProperty);
 
       // 2. Validation cơ bản
       const validationErrors = {};
@@ -680,7 +837,7 @@ const myPropertiesController = {
   togglePropertyStatus: async (req, res) => {
     try {
       const { propertyId } = req.params;
-      console.log('Toggling property status:', propertyId);
+      // console.log('Toggling property status:', propertyId);
       const userId = req.user.userId;
 
       const property = await Property.findOne({
@@ -728,6 +885,55 @@ const myPropertiesController = {
     }
   },
 
+  // Đưa tin đăng lên đầu trang (promote to top)
+  promotePropertyToTop: async (req, res) => {
+    try {
+      const { propertyId } = req.params;
+      const userId = req.user.userId;
+
+      const property = await Property.findOne({
+        _id: propertyId,
+        owner: userId,
+        approvalStatus: 'approved'
+      });
+
+      if (!property) {
+        return res.status(404).json({
+          success: false,
+          message: 'Không tìm thấy tin đăng hoặc tin đăng chưa được duyệt'
+        });
+      }
+
+      // Cập nhật createdAt để đưa tin lên đầu trang
+      const updatedProperty = await Property.findByIdAndUpdate(
+        propertyId,
+        {
+          $set: {
+            promotedAt: new Date(),
+            updatedAt: new Date()
+          }
+        },
+        { new: true }
+      );
+
+      res.json({
+        success: true,
+        message: 'Đã đưa tin đăng lên đầu trang thành công',
+        data: {
+          promotedAt: updatedProperty.promotedAt
+        }
+      });
+
+    } catch (error) {
+      console.error('Error in promotePropertyToTop:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Lỗi server khi đưa tin đăng lên đầu trang',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  },
+
   // Thống kê tin đăng của user - CẬP NHẬT để sử dụng status
   getMyPropertiesStats: async (req, res) => {
     try {
@@ -755,7 +961,7 @@ const myPropertiesController = {
               }
             },
             // CẬP NHẬT: Đếm theo status thay vì isForRent
-            hidden: {
+            inactive: {
               $sum: {
                 $cond: [{ $eq: ['$status', 'inactive'] }, 1, 0]
               }
@@ -765,23 +971,16 @@ const myPropertiesController = {
                 $cond: [{ $eq: ['$status', 'available'] }, 1, 0]
               }
             },
-            rented: {
+            inactive: {
               $sum: {
-                $cond: [{ $eq: ['$status', 'rented'] }, 1, 0]
+                $cond: [{ $eq: ['$status', 'inactive'] }, 1, 0]
               }
             },
-            maintenance: {
+            available: {
               $sum: {
-                $cond: [{ $eq: ['$status', 'maintenance'] }, 1, 0]
+                $cond: [{ $eq: ['$status', 'available'] }, 1, 0]
               }
             },
-            draft: {
-              $sum: {
-                $cond: [{ $eq: ['$status', 'draft'] }, 1, 0]
-              }
-            },
-            totalViews: { $sum: '$stats.views' },
-            totalFavorites: { $sum: '$stats.favorites' }
           }
         }
       ]);
@@ -791,7 +990,7 @@ const myPropertiesController = {
         pending: 0,
         approved: 0,
         rejected: 0,
-        hidden: 0,
+        inactive: 0,
         available: 0,
         rented: 0,
         maintenance: 0,
@@ -814,7 +1013,335 @@ const myPropertiesController = {
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
-  }
+  },
+
+    // Lấy chi tiết property theo ID
+    async getPropertyDetail(req, res) {
+        try {
+            const { id } = req.params;
+            if (!id) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'ID property không hợp lệ'
+                });
+            }
+
+            const property = await propertyRepository.getPropertyById(id);
+            if (!property) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Không tìm thấy phòng trọ'
+                });
+            }
+
+            // View increment is now handled by separate endpoint
+            // Do not auto-increment views on detail fetch to avoid double counting
+
+            res.status(200).json({
+                success: true,
+                message: 'Lấy thông tin chi tiết thành công',
+                data: property
+            });
+
+        } catch (error) {
+            console.error('Error in getPropertyDetail:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Lỗi server khi lấy thông tin chi tiết',
+                error: process.env.NODE_ENV === 'development' ? error.message : 'Lỗi server'
+            });
+        }
+    }
+,
+    // Lấy danh sách property liên quan
+    async getRelatedProperties(req, res) {
+        try {
+            const { id } = req.params;
+            const { limit = 6 } = req.query;
+
+            if (!id) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'ID property không hợp lệ'
+                });
+            }
+
+            const currentProperty = await propertyRepository.getPropertyById(id);
+            if (!currentProperty) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Không tìm thấy phòng trọ'
+                });
+            }
+
+            const relatedProperties = await propertyRepository.getRelatedProperties(currentProperty, parseInt(limit));
+
+            res.status(200).json({
+                success: true,
+                message: 'Lấy danh sách phòng trọ liên quan thành công',
+                data: relatedProperties
+            });
+
+        } catch (error) {
+            console.error('Error in getRelatedProperties:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Lỗi server khi lấy danh sách phòng trọ liên quan',
+                error: process.env.NODE_ENV === 'development' ? error.message : 'Lỗi server'
+            });
+        }
+    },
+
+    // Lấy danh sách property nổi bật
+    async getFeaturedProperties(req, res) {
+        try {
+            const { limit = 5 } = req.query;
+
+            const featuredProperties = await propertyRepository.getFeaturedProperties(parseInt(limit));
+
+            res.status(200).json({
+                success: true,
+                message: 'Lấy danh sách phòng trọ nổi bật thành công',
+                data: featuredProperties
+            });
+
+        } catch (error) {
+            console.error('Error in getFeaturedProperties:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Lỗi server khi lấy danh sách phòng trọ nổi bật',
+                error: process.env.NODE_ENV === 'development' ? error.message : 'Lỗi server'
+            });
+        }
+    },
+
+    // Ghi nhận lượt xem
+    async recordView(req, res) {
+        try {
+            const { id } = req.params;
+
+            if (!id) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'ID property không hợp lệ'
+                });
+            }
+
+            await propertyRepository.incrementViews(id);
+
+            res.status(200).json({
+                success: true,
+                message: 'Ghi nhận lượt xem thành công'
+            });
+
+        } catch (error) {
+            console.error('Error in recordView:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Lỗi server khi ghi nhận lượt xem',
+                error: process.env.NODE_ENV === 'development' ? error.message : 'Lỗi server'
+            });
+        }
+    },
+
+    // Get user's favorites
+    getFavorites: async (req, res) => {
+        try {
+            const userId = req.user.userId;
+            
+            // Find properties that user has favorited
+            const favoriteProperties = await Property.find({
+                'stats.favoritedBy': userId,
+                status: { $ne: 'inactive' },
+                approvalStatus: 'approved',
+                isDeleted: { $ne: true }
+            })
+            .populate('owner', 'fullName email phone avatar')
+            .populate('amenities', 'name icon')
+            .sort({ 'stats.lastFavoritedAt': -1 })
+            .lean();
+
+            // Lấy provinces, districts, wards để map tên
+            const [provinces] = await Promise.all([
+                fetchProvinces()
+            ]);
+
+            // Map tỉnh
+            const provinceMap = new Map(provinces.map(p => [String(p.code), p.name]));
+
+            // Lấy districts & wards phụ thuộc provinceCode, districtCode
+            const districtMap = new Map();
+            const wardMap = new Map();
+
+            for (const property of favoriteProperties) {
+                if (property.province && !districtMap.has(property.district)) {
+                    const districts = await fetchDistricts(property.province);
+                    districts.forEach(d => districtMap.set(String(d.code), d.name));
+                }
+                if (property.district && !wardMap.has(property.ward)) {
+                    const wards = await fetchWards(property.district);
+                    wards.forEach(w => wardMap.set(String(w.code), w.name));
+                }
+            }
+            // Format response như getMyApprovedProperties
+            const formattedProperties = favoriteProperties.map(property => ({
+                _id: property._id,
+                title: property.title,
+                category: property.category,
+                rentPrice: property.rentPrice,
+                promotionPrice: property.promotionPrice,
+                area: property.area,
+                images: property.images || [],
+                video: property.video || null,
+                approvalStatus: property.approvalStatus,
+                status: property.status,
+                isActive: property.status !== 'inactive',
+                contactName: property.contactName,
+                contactPhone: property.contactPhone,
+                description: property.description,
+                deposit: property.deposit,
+                electricPrice: property.electricPrice,
+                waterPrice: property.waterPrice,
+                maxOccupants: property.maxOccupants,
+                availableDate: property.availableDate,
+                amenities: property.amenities || [],
+                fullAmenities: property.fullAmenities,
+                timeRules: property.timeRules,
+                houseRules: property.houseRules,
+                coordinates: property.coordinates,
+                owner: {
+                    _id: property.owner._id,
+                    fullName: property.owner.fullName,
+                    email: property.owner.email,
+                    phone: property.owner.phone,
+                    avatar: property.owner.avatar
+                },
+                location: {
+                    provinceName: provinceMap.get(String(property.province)) || "",
+                    districtName: districtMap.get(String(property.district)) || "",
+                    wardName: wardMap.get(String(property.ward)) || "",
+                    detailAddress: property.detailAddress
+                },
+                views: property.stats?.views || 0,
+                favorites: property.stats?.favorites || 0,
+                isFavorited: true,
+                createdAt: property.createdAt,
+                updatedAt: property.updatedAt
+            }));
+
+            res.json({
+                success: true,
+                message: 'Lấy danh sách yêu thích thành công',
+                data: {
+                    favorites: favoriteProperties.map(p => p._id),
+                    properties: formattedProperties,
+                    count: formattedProperties.length
+                }
+            });
+
+        } catch (error) {
+            console.error('Error in getFavorites:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Lỗi server khi lấy danh sách yêu thích',
+                error: process.env.NODE_ENV === 'development' ? error.message : 'Lỗi server'
+            });
+        }
+    },
+
+    // Add to favorites
+    addToFavorites: async (req, res) => {
+        try {
+            const userId = req.user.userId;
+            const propertyId = req.params.propertyId;
+
+            // Validate property exists
+            const property = await Property.findById(propertyId);
+            if (!property) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Không tìm thấy tin đăng'
+                });
+            }
+
+            // Check if already favorited
+            const alreadyFavorited = property.stats.favoritedBy.includes(userId);
+            if (alreadyFavorited) {
+                return res.json({
+                    success: true,
+                    message: 'Tin đăng đã có trong danh sách yêu thích',
+                    data: { alreadyFavorited: true }
+                });
+            }
+
+            // Add to favorites
+            await Property.findByIdAndUpdate(propertyId, {
+                $addToSet: { 'stats.favoritedBy': userId },
+                $inc: { 'stats.favorites': 1 },
+                $set: { 'stats.lastFavoritedAt': new Date() }
+            });
+
+            res.json({
+                success: true,
+                message: 'Đã thêm vào danh sách yêu thích'
+            });
+
+        } catch (error) {
+            console.error('Error in addToFavorites:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Lỗi server khi thêm vào yêu thích',
+                error: process.env.NODE_ENV === 'development' ? error.message : 'Lỗi server'
+            });
+        }
+    },
+
+    // Remove from favorites
+    removeFromFavorites: async (req, res) => {
+        try {
+            const userId = req.user.userId;
+            const propertyId = req.params.propertyId;
+
+            // Validate property exists
+            const property = await Property.findById(propertyId);
+            if (!property) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Không tìm thấy tin đăng'
+                });
+            }
+
+            // Check if favorited
+            const isFavorited = property.stats.favoritedBy.includes(userId);
+            if (!isFavorited) {
+                return res.json({
+                    success: true,
+                    message: 'Tin đăng đã được xóa khỏi danh sách yêu thích',
+                    data: { alreadyRemoved: true }
+                });
+            }
+
+            // Remove from favorites
+            await Property.findByIdAndUpdate(propertyId, {
+                $pull: { 'stats.favoritedBy': userId },
+                $inc: { 'stats.favorites': -1 }
+            });
+
+            res.json({
+                success: true,
+                message: 'Đã xóa khỏi danh sách yêu thích'
+            });
+
+        } catch (error) {
+            console.error('Error in removeFromFavorites:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Lỗi server khi xóa khỏi yêu thích',
+                error: process.env.NODE_ENV === 'development' ? error.message : 'Lỗi server'
+            });
+        }
+    }
+
 };
 
 export default myPropertiesController;
