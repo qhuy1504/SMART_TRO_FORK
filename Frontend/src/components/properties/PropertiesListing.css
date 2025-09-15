@@ -16,6 +16,8 @@
   align-items: flex-start;
   display: grid;
   min-height: calc(100vh - 160px);
+  /* Ensure consistent grid behavior */
+  grid-template-rows: 1fr;
 }
 
 /* Three Column Layout */
@@ -152,10 +154,12 @@
 /* Main Layout - Two Column (Default) */
 .listing-content:not(.three-column-layout) {
   display: grid;
-  grid-template-columns: 1fr 300px;
+  grid-template-columns: 1fr 300px; /* Main content takes remaining space, sidebar fixed 300px */
   gap: 30px;
   align-items: flex-start;
   min-height: calc(100vh - 160px);
+  /* Ensure grid doesn't collapse when content is small */
+  grid-template-rows: 1fr;
 }
 
 /* Sidebar Filters */
@@ -385,6 +389,15 @@
   min-height: calc(100vh - 200px);
   width: 100%;
   box-sizing: border-box;
+  /* Fix layout jumping - ensure consistent width */
+  flex: 1;
+  min-width: 0; /* Prevent flex item from being larger than container */
+}
+
+/* Properties Results Container */
+.properties-results {
+  min-height: 400px; /* Ensure minimum height even when no content */
+  width: 100%;
 }
 
 /* Results Header */
@@ -603,6 +616,11 @@
 .loading-state {
   text-align: center;
   padding: 60px 20px;
+  min-height: 400px; /* Ensure consistent height */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 .loading-spinner {
@@ -615,6 +633,11 @@
 .empty-state {
   text-align: center;
   padding: 80px 20px;
+  min-height: 400px; /* Ensure consistent height */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 .empty-icon {
@@ -2081,4 +2104,60 @@
     height: 22px;
     right: 5px;
   }
+}
+
+/* Loading Spinner Animations */
+@keyframes smoothSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.smooth-spinner {
+  animation: smoothSpin 0.8s linear infinite;
+  transform-origin: center center;
+  will-change: transform;
+  transition: none;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  -moz-backface-visibility: hidden;
+  -ms-backface-visibility: hidden;
+}
+
+/* Size variants for spinner */
+.spinner-small {
+  font-size: 14px;
+}
+
+.spinner-medium {
+  font-size: 16px;
+}
+
+.spinner-large {
+  font-size: 18px;
+}
+
+/* Loading states */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #6c757d;
+}
+
+.loading-state .smooth-spinner {
+  font-size: 24px;
+  color: #00b095ff;
+  margin-bottom: 15px;
+}
+
+.loading-state p {
+  margin: 0;
+  font-size: 16px;
+  color: #6c757d;
 }

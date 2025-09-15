@@ -1,4 +1,5 @@
 import Property from '../../../schemas/Property.js';
+import Comment from '../../../schemas/Comment.js';
 import { validationResult } from 'express-validator';
 import mongoose from 'mongoose';
 import { fetchProvinces, fetchDistricts, fetchWards } from "../../shared/utils/locationService.js";
@@ -81,6 +82,30 @@ const myPropertiesController = {
       }
 
 
+      // Lấy số lượng comments cho mỗi property (chỉ đếm comments gốc, không đếm replies)
+      const propertyIds = properties.map(p => p._id);
+      const commentsCount = await Comment.aggregate([
+        {
+          $match: {
+            property: { $in: propertyIds },
+            parentComment: null, // Chỉ đếm comments gốc
+            isDeleted: false
+          }
+        },
+        {
+          $group: {
+            _id: '$property',
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+
+      // Tạo map để tra cứu comments count
+      const commentsCountMap = new Map();
+      commentsCount.forEach(item => {
+        commentsCountMap.set(item._id.toString(), item.count);
+      });
+
       // Transform data for frontend - CẬP NHẬT để sử dụng status
       const transformedProperties = properties.map(property => ({
         _id: property._id,
@@ -100,6 +125,7 @@ const myPropertiesController = {
         },
         views: property.views || 0,
         favorites: property.stats?.favorites || 0,
+        comments: commentsCountMap.get(property._id.toString()) || 0,
         createdAt: property.createdAt,
         updatedAt: property.updatedAt
       }));

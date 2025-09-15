@@ -12,11 +12,23 @@ import {
 import './PropertyCard.css';
 
 const PropertyCard = ({ property, onPropertyClick, onFavoriteToggle, isLoggedIn }) => {
+    console.log('Rendering PropertyCard for property:', property);
     const navigate = useNavigate();
     const { isFavorited } = useFavorites();
     // Format price
     const formatPrice = (price) => {
         return new Intl.NumberFormat('vi-VN').format(price);
+    };
+
+    // Format large numbers for stats (views, comments, favorites)
+    const formatNumber = (num) => {
+        if (num >= 1000000) {
+            return (num / 1000000).toFixed(1) + 'M';
+        }
+        if (num >= 1000) {
+            return (num / 1000).toFixed(1) + 'k';
+        }
+        return num.toString();
     };
 
     // Format date
@@ -208,7 +220,7 @@ const PropertyCard = ({ property, onPropertyClick, onFavoriteToggle, isLoggedIn 
             </div>
 
             {/* Property Info */}
-            <div className="property-info">
+            <div className="property-info-card">
                 <div className="property-header">
                     <h3 className="property-title" title={property.title}>
                         {property.title}
@@ -221,7 +233,7 @@ const PropertyCard = ({ property, onPropertyClick, onFavoriteToggle, isLoggedIn 
                     </div>
                 </div>
 
-                <div className="property-details">
+                <div className="property-card-detail">
                     <div className="detail-row">
                         <div className="detail-item-card">
                             <FaExpand />
@@ -295,9 +307,8 @@ const PropertyCard = ({ property, onPropertyClick, onFavoriteToggle, isLoggedIn 
                     <div className="property-meta">
                         <div className="meta-item-card">
                             <FaEye />
-                            <span>{property.views || 0} lượt xem</span>
+                            <span>{formatNumber(property.views || 0)} lượt xem</span>
                         </div>
-
                     </div>
                 </div>
 

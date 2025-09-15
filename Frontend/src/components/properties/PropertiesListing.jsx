@@ -8,6 +8,8 @@ import { propertyDetailAPI } from '../../services/propertyDetailAPI';
 import searchPropertiesAPI from '../../services/searchPropertiesAPI';
 import { locationAPI } from '../../services/locationAPI';
 import amenitiesAPI from '../../services/amenitiesAPI';
+
+
 import { useAuth } from '../../contexts/AuthContext';
 import { useFavorites } from '../../contexts/FavoritesContext';
 import { viewTrackingUtils } from '../../utils/viewTrackingUtils';
@@ -78,6 +80,20 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
     totalPages: 0,
     hasNext: false
   });
+  // Spinner component để thống nhất loading indicator
+const LoadingSpinner = ({ size = 'medium', className = '' }) => {
+  const sizeClasses = {
+    small: 'spinner-small',
+    medium: 'spinner-medium', 
+    large: 'spinner-large'
+  };
+  
+  return (
+    <i 
+      className={`fa fa-spinner smooth-spinner ${sizeClasses[size]} ${className}`}
+    ></i>
+  );
+};
 
   // Filters state
   const [filters, setFilters] = useState({
@@ -325,11 +341,11 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
 
   // Load districts when province changes in Hero
   const loadDistrictsHero = async (provinceId) => {
-    console.log('Loading districts for provinceId:', provinceId);
+    
     try {
       setLoadingDistricts(true);
       const districtsRes = await locationAPI.getDistricts(provinceId);
-      console.log('Districts:', districtsRes);
+    
       
       if (districtsRes.success) {
         setDistricts(districtsRes.data || []);
@@ -532,10 +548,7 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
     
     try {
       setSearching(true);
-      console.log('Hero search params:', searchParams);
-
       const response = await searchPropertiesAPI.searchProperties(searchParams);
-      
       if (response.success) {
         setProperties(response.data?.properties || []);
         setPagination({
@@ -646,7 +659,6 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
 
   useEffect(() => {
     if (searchData.provinceId) {
-      console.log('searchData:', searchData);
       loadDistrictsHero(searchData.provinceId);
     } else {
       setDistricts([]);
@@ -1161,9 +1173,9 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
                     value={searchData.provinceId}
                     onChange={(e) => handleHeroInputChange('provinceId', e.target.value)}
                   >
-                    <option value="">Chọn tỉnh/thành phố</option>
-                    {provinces.map(province => (
-                      <option key={province._id} value={province.code || province._id}>
+                    <option key="default-province" value="">Chọn tỉnh/thành phố</option>
+                    {provinces.map((province, index) => (
+                      <option key={`province-${province._id || province.code || index}`} value={province.code || province._id}>
                         {province.name}
                       </option>
                     ))}
@@ -1178,7 +1190,7 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
                     onChange={(e) => handleHeroInputChange('districtId', e.target.value)}
                     disabled={!searchData.provinceId || loadingDistricts}
                   >
-                    <option value="">
+                    <option key="default-district" value="">
                       {!searchData.provinceId 
                         ? "Chọn tỉnh/thành phố trước" 
                         : loadingDistricts 
@@ -1186,8 +1198,8 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
                         : "Chọn quận/huyện"
                       }
                     </option>
-                    {districts.map(district => (
-                      <option key={district._id} value={district.code || district._id}>
+                    {districts.map((district, index) => (
+                      <option key={`district-${district._id || district.code || index}`} value={district.code || district._id}>
                         {district.name}
                       </option>
                     ))}
@@ -1201,8 +1213,8 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
                     value={searchData.category}
                     onChange={(e) => handleHeroInputChange('category', e.target.value)}
                   >
-                    {heroCategories.map(category => (
-                      <option key={category.value} value={category.value}>
+                    {heroCategories.map((category, index) => (
+                      <option key={`category-${category.value || index}`} value={category.value}>
                         {category.label}
                       </option>
                     ))}
@@ -1214,7 +1226,7 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
                   <label>Mức giá</label>
                   <select value={selectedPriceIndex} onChange={handleHeroPriceRangeChange}>
                     {heroPriceRanges.map((range, index) => (
-                      <option key={index} value={index}>
+                      <option key={`price-range-${index}`} value={index}>
                         {range.label}
                       </option>
                     ))}
@@ -1226,7 +1238,7 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
                   <label>Diện tích</label>
                   <select value={selectedAreaIndex} onChange={handleHeroAreaRangeChange}>
                     {heroAreaRanges.map((range, index) => (
-                      <option key={index} value={index}>
+                      <option key={`area-range-${index}`} value={index}>
                         {range.label}
                       </option>
                     ))}
@@ -1255,7 +1267,7 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
                 <button type='submit' className='btn-search' disabled={searching}>
                   {searching ? (
                     <>
-                      <i className='fa fa-spinner fa-spin'></i>
+                      <LoadingSpinner size="small" />
                       Đang tìm kiếm...
                     </>
                   ) : (
@@ -1356,8 +1368,8 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
                     setFilters(prev => ({ ...prev, sortBy, sortOrder }));
                   }}
                 >
-                  {sortOptions.map(option => (
-                    <option key={option.value} value={option.value}>
+                  {sortOptions.map((option, index) => (
+                    <option key={`sort-${option.value || index}`} value={option.value}>
                       {option.label}
                     </option>
                   ))}
@@ -1498,9 +1510,7 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
             <div className="properties-results">
               {loading ? (
                 <div className="loading-state">
-                  <div className="loading-spinner">
-                    <i className="fa fa-spinner fa-spin"></i>
-                  </div>
+                  <LoadingSpinner size="large" />
                   <p>Đang tìm kiếm tin đăng...</p>
                 </div>
               ) : properties.length === 0 ? (
@@ -1535,7 +1545,7 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
                       >
                         {loadingMore ? (
                           <>
-                            <i className="fa fa-spinner fa-spin"></i>
+                            <LoadingSpinner size="small" />
                             Đang tải...
                           </>
                         ) : (
@@ -1576,7 +1586,7 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
                   
                   return (
                     <button
-                      key={index}
+                      key={`sidebar-price-${index}`}
                       className={`price-quick-btn ${isActive ? 'active' : ''}`}
                       onClick={() => handlePriceRangeSelect(range)}
                     >
@@ -1609,7 +1619,7 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
                   
                   return (
                     <button
-                      key={index}
+                      key={`sidebar-area-${index}`}
                       className={`area-quick-btn ${isActive ? 'active' : ''}`}
                       onClick={() => handleAreaRangeSelect(range)}
                     >
