@@ -21,16 +21,20 @@ const getAuthHeaders = () => ({
  * @param {number} page - Page number (default: 1)
  * @param {string} status - Filter status: pending, approved, rejected, all (default: pending)
  * @param {number} limit - Items per page (default: 10)
+ * @param {string} search - Search term for title, contact name, phone (optional)
  */
-export const getPropertiesForAdmin = async (page = 1, status = 'pending', limit = 10) => {
+export const getPropertiesForAdmin = async (page = 1, status = 'pending', limit = 10, search = '') => {
   try {
-    const response = await fetch(
-      `${API_BASE_URL}/admin/properties?page=${page}&status=${status}&limit=${limit}`,
-      {
+    let url = `${API_BASE_URL}/admin/properties?page=${page}&status=${status}&limit=${limit}`;
+    
+    if (search && search.trim()) {
+      url += `&search=${encodeURIComponent(search.trim())}`;
+    }
+    
+    const response = await fetch(url, {
         method: 'GET',
         headers: getAuthHeaders(),
-      }
-    );
+      });
 
     const data = await response.json();
 

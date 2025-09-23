@@ -7,7 +7,7 @@ class AdminPropertyRepository {
     const skip = (page - 1) * limit;
 
     const properties = await Property.find(filter)
-      .populate('owner', 'name email avatar')
+      .populate('owner', 'fullName email avatar phone')
       .sort({ [sortBy]: sortOrder })
       .skip(skip)
       .limit(limit);
@@ -30,7 +30,7 @@ class AdminPropertyRepository {
   // Lấy property theo ID
   async getPropertyById(propertyId) {
     return await Property.findById(propertyId)
-      .populate('owner', 'name email avatar');
+      .populate('owner', 'fullName email avatar phone');
   }
 
   // Duyệt property
@@ -61,7 +61,7 @@ class AdminPropertyRepository {
         rejectedBy: adminId
       },
       { new: true }
-    ).populate('owner', 'name email avatar');
+    ).populate('owner', 'fullName email avatar phone');
 
     return updatedProperty;
   }
@@ -98,7 +98,7 @@ class AdminPropertyRepository {
   // Lấy properties theo status
   async getPropertiesByStatus(status) {
     return await Property.find({ approvalStatus: status })
-      .populate('owner', 'name email avatar')
+      .populate('owner', 'fullName email avatar phone')
       .sort({ createdAt: -1 });
   }
 }

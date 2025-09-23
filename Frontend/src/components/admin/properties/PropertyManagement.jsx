@@ -33,7 +33,7 @@ const PropertyManagement = () => {
         try {
             setLoading(true);
 
-            const data = await adminPropertiesAPI.getPropertiesForAdmin(page, status, 10);
+            const data = await adminPropertiesAPI.getPropertiesForAdmin(page, status, 10, search);
 
             if (data.success) {
                 setProperties(data.data.properties);
@@ -217,6 +217,11 @@ const PropertyManagement = () => {
         loadProperties(1, filter, searchTerm);
     };
 
+    // Handle search input change - only update state, no auto search
+    const handleSearchChange = (e) => {
+        setSearchTerm(e.target.value);
+    };
+
     // Format date
     const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
@@ -343,16 +348,37 @@ const PropertyManagement = () => {
                     <div className="controls-section">
                         <form onSubmit={handleSearch} className="search-form">
                             <div className="search-input-group">
+                                <i className="fa fa-search" style={{ left: '12px'}}></i>
                                 <input
                                     type="text"
                                     placeholder="Tìm kiếm theo tiêu đề, tên liên hệ, số điện thoại..."
                                     value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="search-input"
+                                    onChange={handleSearchChange}
+                                    className={`search-input ${searchTerm ? 'has-clear' : ''}`}
                                 />
-
-                                <i className="fa fa-search"></i>
-
+                                <div className="search-buttons">
+                                    {searchTerm && (
+                                        <button 
+                                            type="button"
+                                            className="clear-search-btn-manager-property"
+                                            onClick={() => {
+                                                setSearchTerm('');
+                                                setCurrentPage(1);
+                                                loadProperties(1, filter, '');
+                                            }}
+                                            title="Xóa tìm kiếm"
+                                        >
+                                            <i className="fa fa-times"></i>
+                                        </button>
+                                    )}
+                                    <button 
+                                        type="submit" 
+                                        className="search-btn-manager-property"
+                                        title="Tìm kiếm"
+                                    >
+                                        <i className="fa fa-search"></i>
+                                    </button>
+                                </div>
                             </div>
                         </form>
 
@@ -606,11 +632,11 @@ const PropertyManagement = () => {
                                     </button>
                                 </div>
 
-                                <div className="modal-content">
-                                    <div className="property-detail-content">
+                                <div className="modal-content-management">
+                                    <div className="property-detail-content-management">
 
 
-                                        <div className="property-details">
+                                        <div className="property-details-content">
                                             <div className="detail-header">
                                                 <h4>{selectedProperty.title}</h4>
                                                 {getStatusBadge(selectedProperty.approvalStatus)}
@@ -672,30 +698,30 @@ const PropertyManagement = () => {
                                                 )}
                                             </div>
 
-                                            <div className="detail-grid">
-                                                <div className="detail-item">
+                                            <div className="detail-grid-management">
+                                                <div className="detail-item-management">
                                                     <strong>Giá thuê:</strong>
                                                     <span>{formatPrice(selectedProperty.rentPrice)}/tháng</span>
                                                 </div>
                                                 {selectedProperty.promotionPrice && (
-                                                    <div className="detail-item">
+                                                    <div className="detail-item-management">
                                                         <strong>Giá khuyến mãi:</strong>
                                                         <span>{formatPrice(selectedProperty.promotionPrice)}/tháng</span>
                                                     </div>
                                                 )}
-                                                <div className="detail-item">
+                                                <div className="detail-item-management">
                                                     <strong>Diện tích:</strong>
                                                     <span>{selectedProperty.area}m²</span>
                                                 </div>
-                                                <div className="detail-item">
+                                                <div className="detail-item-management">
                                                     <strong>Danh mục:</strong>
-                                                    <span>{selectedProperty.category}</span>
+                                                    <span>{formatCategory(selectedProperty.category)}</span>
                                                 </div>
-                                                <div className="detail-item">
+                                                <div className="detail-item-management">
                                                     <strong>Liên hệ:</strong>
                                                     <span>{selectedProperty.contactName} - {selectedProperty.contactPhone}</span>
                                                 </div>
-                                                <div className="detail-item">
+                                                <div className="detail-item-management">
                                                     <strong>Địa chỉ:</strong>
                                                     <span>
                                                         {selectedProperty.detailAddress}, {(() => {
@@ -708,18 +734,18 @@ const PropertyManagement = () => {
                                                         })()}
                                                     </span>
                                                 </div>
-                                                <div className="detail-item">
+                                                <div className="detail-item-management">
                                                     <strong>Ngày đăng:</strong>
                                                     <span>{formatDate(selectedProperty.createdAt)}</span>
                                                 </div>
                                                 {selectedProperty.owner && (
-                                                    <div className="detail-item">
+                                                    <div className="detail-item-management">
                                                         <strong>Chủ sở hữu:</strong>
-                                                        <span>{selectedProperty.owner.name} ({selectedProperty.owner.email})</span>
+                                                        <span>{selectedProperty.owner.fullName} ({selectedProperty.owner.email})</span>
                                                     </div>
                                                 )}
                                                 {selectedProperty.approvalStatus === 'rejected' && selectedProperty.rejectionReason && (
-                                                    <div className="detail-item reject-reason">
+                                                    <div className="detail-item-management reject-reason">
                                                         <strong>Lý do từ chối:</strong>
                                                         <span>{selectedProperty.rejectionReason}</span>
                                                     </div>
@@ -736,22 +762,23 @@ const PropertyManagement = () => {
                                     </div>
 
                                     {selectedProperty.approvalStatus === 'pending' && (
-                                        <div className="modal-actions">
+                                        <div className="modal-actions-management">
+                                              <button
+                                                className="btn-management btn-danger"
+                                                onClick={() => setShowRejectModal(true)}
+                                            >
+                                                <i className="fa fa-times"></i>
+                                                Từ chối bài đăng
+                                            </button>
                                             <button
-                                                className="btn btn-success"
+                                                className="btn-management btn-success"
                                                 onClick={() => handleApproveProperty(selectedProperty._id)}
                                                 disabled={processingPropertyId === selectedProperty._id}
                                             >
                                                 <i className="fa fa-check"></i>
                                                 {processingPropertyId === selectedProperty._id ? 'Đang duyệt...' : 'Duyệt bài đăng'}
                                             </button>
-                                            <button
-                                                className="btn btn-danger"
-                                                onClick={() => setShowRejectModal(true)}
-                                            >
-                                                <i className="fa fa-times"></i>
-                                                Từ chối bài đăng
-                                            </button>
+                                          
                                         </div>
                                     )}
                                 </div>

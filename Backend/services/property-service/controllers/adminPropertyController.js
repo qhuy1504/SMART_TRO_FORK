@@ -17,7 +17,8 @@ class AdminPropertyController {
         filter.$or = [
           { title: { $regex: search, $options: 'i' } },
           { contactName: { $regex: search, $options: 'i' } },
-          { contactPhone: { $regex: search, $options: 'i' } }
+          { contactPhone: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
         ];
       }
 

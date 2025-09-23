@@ -3277,6 +3277,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0 !important;
 }
 
 .page-number-btn:hover:not(:disabled):not(.active) {
@@ -3297,6 +3298,7 @@
 .page-number-btn:disabled {
   cursor: not-allowed;
   opacity: 0.6;
+  padding: 0 !important;
 }
 
 .page-dots {
