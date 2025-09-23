@@ -7,7 +7,8 @@ const chatBotSchema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true
+        required: false,
+        default: null
     },
     sessionId: {
         type: String,
@@ -30,9 +31,9 @@ const chatBotSchema = new mongoose.Schema({
         }
     }],
     searchCriteria: {
-        type: {
+        category: {
             type: String,
-            enum: ['apartment', 'house', 'room', 'boarding_house']
+            enum: ['phong_tro', 'can_ho', 'nha_nguyen_can', 'chung_cu_mini', 'homestay']
         },
         priceRange: {
             min: Number,
@@ -41,11 +42,16 @@ const chatBotSchema = new mongoose.Schema({
         location: {
             province: String,
             district: String,
-            ward: String
+            ward: String,
+            keywords: [String] // Từ khóa địa điểm như "ĐH Bách Khoa", "chợ Bến Thành"
+        },
+        area: {
+            min: Number,
+            max: Number
         },
         amenities: [String],
-        bedrooms: Number,
-        bathrooms: Number
+        maxOccupants: String,
+        extractedKeywords: [String] // Các từ khóa được AI extract từ tin nhắn
     },
     recommendations: [{
         property: {
@@ -53,8 +59,22 @@ const chatBotSchema = new mongoose.Schema({
             ref: 'Property'
         },
         score: Number,
-        reason: String
+        reason: String,
+        matchedCriteria: [String] // Danh sách tiêu chí phù hợp
     }],
+    lastInteraction: {
+        type: Date,
+        default: Date.now
+    },
+    context: {
+        intent: String, // "search", "question", "greeting", etc.
+        confidence: Number,
+        entities: [{
+            type: String,
+            value: String,
+            confidence: Number
+        }]
+    },
     isActive: {
         type: Boolean,
         default: true
@@ -62,5 +82,10 @@ const chatBotSchema = new mongoose.Schema({
 }, {
     timestamps: true
 });
+
+// Indexes
+chatBotSchema.index({ sessionId: 1 });
+chatBotSchema.index({ user: 1, isActive: 1 });
+chatBotSchema.index({ lastInteraction: -1 });
 
 export default mongoose.model('ChatBot', chatBotSchema);

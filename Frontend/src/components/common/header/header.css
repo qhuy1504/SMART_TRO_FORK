@@ -66,6 +66,7 @@ header h4 {
   text-decoration: none;
   color: inherit;
   transition: all 0.3s ease;
+  color: black;
 }
 
 .favorites-link:hover {

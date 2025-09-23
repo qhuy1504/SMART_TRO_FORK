@@ -11,6 +11,7 @@ import { locationAPI } from '../../services/locationAPI';
 import { reportsAPI } from '../../services/reportsAPI';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFavorites } from '../../contexts/FavoritesContext';
+import ChatBot from '../chatbot/ChatBot';
 import {
   FaMapMarkerAlt,
   FaRuler,
@@ -45,7 +46,9 @@ import {
   FaSync
 } from 'react-icons/fa';
 import Comments from './Comments';
+
 import './PropertyDetail.css';
+import './PropertiesListing.css'; // Import cho LoadingSpinner styles
 
 // Fix Leaflet default marker icon issue
 delete L.Icon.Default.prototype._getIconUrl;
@@ -94,16 +97,21 @@ const PropertyDetail = () => {
   const [nearbyProperties, setNearbyProperties] = useState([]);
   const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
   const [suggestedSearches, setSuggestedSearches] = useState([]);
-  const [isLoadingNearby, setIsLoadingNearby] = useState(false);
   const [showGoToTop, setShowGoToTop] = useState(false);
-
 
   // Load property detail
   useEffect(() => {
     if (id) {
+      console.log('PropertyDetail: ID changed to', id, 'Setting loading to true');
+      // Scroll to top when loading new property
+      window.scrollTo(0, 0);
+      
+      // Force loading state
+      setLoading(true);
+      setError(null);
+      setProperty(null);
+      
       loadPropertyDetail();
-      loadRelatedProperties();
-      loadFeaturedProperties();
     }
   }, [id]);
 
@@ -302,6 +310,12 @@ const PropertyDetail = () => {
           await loadAddressInfo(response.data.province, response.data.district, response.data.ward);
         }
 
+        // Load all related data
+        await Promise.all([
+          loadRelatedProperties(),
+          loadFeaturedProperties()
+        ]);
+
         // View tracking is now handled only by PropertyCard when clicked
         // No automatic view tracking on page load to avoid double counting
       } else {
@@ -407,8 +421,6 @@ const PropertyDetail = () => {
     if (!property || !addressInfo.districtName) return;
 
     try {
-      setIsLoadingNearby(true);
-
       // Tìm kiếm theo district và ward
       const response = await myPropertiesAPI.getMyApprovedPropertiesLocation({
         limit: 12,
@@ -426,10 +438,28 @@ const PropertyDetail = () => {
       }
     } catch (error) {
       console.error('Error loading nearby properties:', error);
-    } finally {
-      setIsLoadingNearby(false);
     }
   };
+
+    // Spinner component để thống nhất loading indicator
+const LoadingSpinner = ({ size = 'medium', className = '' }) => {
+  const sizeClasses = {
+    small: '16px',
+    medium: '24px', 
+    large: '32px'
+  };
+  
+  return (
+    <i 
+      className={`fa fa-spinner ${className}`}
+      style={{
+        fontSize: sizeClasses[size],
+        animation: 'spin 1s linear infinite',
+        color: '#00b095ff'
+      }}
+    ></i>
+  );
+};
 
   // Tạo gợi ý tìm kiếm
   const generateSuggestedSearches = () => {
@@ -673,12 +703,11 @@ Xem chi tiết tại: ${window.location.href}`;
   };
 
   if (loading) {
+    console.log('PropertyDetail: Rendering loading state');
     return (
       <div className="property-detail-loading">
-        <div className="loading-spinner">
-          <i className="fa fa-spinner fa-spin"></i>
-        </div>
-        <p>Đang tải thông tin tin đăng...</p>
+        <LoadingSpinner size="large" />
+        <p>Đang tải thông tin tin đăng và dữ liệu liên quan...</p>
       </div>
     );
   }
@@ -1151,7 +1180,7 @@ Xem chi tiết tại: ${window.location.href}`;
         </div>
         {/* Comments Section */}
         <div className="comments-section-wrapper">
-          <Comments propertyId={property._id} />
+          <Comments propertyId={property._id} propertyOwnerId={property.owner?._id} />
         </div>
 
         {/* Search Suggestions Section */}
@@ -1319,16 +1348,6 @@ Xem chi tiết tại: ${window.location.href}`;
                 </div>
               )}
             </div>
-          </div>
-        )}
-
-        {/* Loading state for nearby properties */}
-        {isLoadingNearby && (
-          <div className="nearby-loading">
-            <div className="loading-spinner">
-              <i className="fa fa-spinner fa-spin"></i>
-            </div>
-            <p>Đang tải tin đăng cùng khu vực...</p>
           </div>
         )}
       </div>
@@ -1729,6 +1748,15 @@ Xem chi tiết tại: ${window.location.href}`;
           </div>
         </div>
       )}
+
+      {/* ChatBot Component */}
+      <ChatBot 
+        onPropertySearch={(properties) => {
+          // Handle property search results from chatbot in PropertyDetail
+          console.log('Properties from chatbot in PropertyDetail:', properties);
+        }}
+        formatPrice={formatPrice}
+      />
 
       {showGoToTop && (
         <button

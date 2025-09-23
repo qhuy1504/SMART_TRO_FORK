@@ -1,4 +1,8 @@
 /* Property Detail Styles */
+body{
+  background-color: #f8fafc !important; /* Force light background */
+  color: #1a202c !important; /* Force dark text */
+}
 .property-detail {
   min-height: 100vh;
   background-color: #f8f9fa;
@@ -107,6 +111,7 @@
   min-height: 400px;
   flex-direction: column;
   text-align: center;
+  background-color: none !important;
 }
 
 .loading-spinner {

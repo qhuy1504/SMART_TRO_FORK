@@ -16,6 +16,7 @@ import searchRoutes from './property-service/routes/searchPropertiesRoutes.js';
 import depositContractRoutes from '../routes/depositContractRoutes.js';
 import reportRoutes from './report-service/routes/reportRoutes.js';
 import commentRoutes from './comment-service/routes/commentRoutes.js';
+import chatbotRoutes from './chatbot-service/routes/chatbotRoutes.js';
 
 const router = express.Router();
 
@@ -34,6 +35,7 @@ router.use('/api/search-properties', searchRoutes);
 router.use('/api/deposit-contracts', depositContractRoutes);
 router.use('/api/reports', reportRoutes);
 router.use('/api/comments', commentRoutes);
+router.use('/api/chatbot', chatbotRoutes);
 
 
 // API documentation route

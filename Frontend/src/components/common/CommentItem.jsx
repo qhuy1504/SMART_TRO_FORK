@@ -190,7 +190,7 @@ const CommentForm = ({ propertyId, onCommentAdded, parentComment = null, onCance
   );
 };
 
-const CommentItem = ({ comment, onCommentUpdated, onCommentDeleted, onReplyAdded, level = 0, compact = false }) => {
+const CommentItem = ({ comment, propertyOwnerId, onCommentUpdated, onCommentDeleted, onReplyAdded, level = 0, compact = false }) => {
   const { user } = useAuth();
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
@@ -203,6 +203,7 @@ const CommentItem = ({ comment, onCommentUpdated, onCommentDeleted, onReplyAdded
   const [showDropdown, setShowDropdown] = useState(false);
 
   const isOwner = user && comment.user && comment.user._id === user._id;
+  const isPropertyOwner = propertyOwnerId && comment.user && comment.user._id === propertyOwnerId;
   const maxReplyLevel = 2; // Giới hạn độ sâu reply
   const maxVisibleReplies = 2; // Hiện tối đa 2 replies ban đầu
 
@@ -504,7 +505,12 @@ const CommentItem = ({ comment, onCommentUpdated, onCommentDeleted, onReplyAdded
             )}
           </div>
           <div className="user-comment">
-            <h4 className="user-name">{comment.user.fullName}</h4>
+            <div className="user-name-container">
+              <h4 className="user-name">{comment.user.fullName}</h4>
+              {isPropertyOwner && (
+                <span className="author-tag">Tác giả</span>
+              )}
+            </div>
             <span className="comment-date">
               <FaClock />
               {getDisplayDate().time}
@@ -684,6 +690,7 @@ const CommentItem = ({ comment, onCommentUpdated, onCommentDeleted, onReplyAdded
             <CommentItem
               key={reply._id}
               comment={reply}
+              propertyOwnerId={propertyOwnerId}
               onCommentUpdated={onCommentUpdated}
               onCommentDeleted={onCommentDeleted}
               onReplyAdded={onReplyAdded}

@@ -2,22 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { propertiesViewAPI } from '../../services/propertiesAPI';
 import { myPropertiesAPI } from '../../services/myPropertiesAPI';
 import { propertyDetailAPI } from '../../services/propertyDetailAPI';
 import searchPropertiesAPI from '../../services/searchPropertiesAPI';
 import { locationAPI } from '../../services/locationAPI';
 import amenitiesAPI from '../../services/amenitiesAPI';
-
-
 import { useAuth } from '../../contexts/AuthContext';
 import { useFavorites } from '../../contexts/FavoritesContext';
 import { viewTrackingUtils } from '../../utils/viewTrackingUtils';
 import PropertyCard from './PropertyCard';
-import Heading from "../common/Heading";
+import ChatBot from '../chatbot/ChatBot';
 import {
   FaMapMarkerAlt,
-  FaCheckCircle,
   FaSync,
   FaCalendarAlt,
   FaNewspaper,
@@ -25,12 +21,13 @@ import {
   FaMoneyBillWave,
   FaExpand,
   FaClock,
-  FaArrowUp 
+  FaArrowUp
 } from 'react-icons/fa';
 import './PropertiesListing.css';
 
+
+
 const PropertiesListing = ({ isHomePage = false, searchResults = null, searchParams: externalSearchParams = null }) => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
@@ -55,9 +52,9 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
   
   // Go to top button state
   const [showGoToTop, setShowGoToTop] = useState(false);
-  const [searching, setSearching] = useState(false);
   const [selectedPriceIndex, setSelectedPriceIndex] = useState(0);
   const [selectedAreaIndex, setSelectedAreaIndex] = useState(0);
+  const [searching, setSearching] = useState(false);
 
   // Search data for Hero form
   const [searchData, setSearchData] = useState({
@@ -226,6 +223,8 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+
 
   // Handle external search results (from Hero component)
   useEffect(() => {
@@ -1132,11 +1131,10 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
     });
   };
 
+
+
   // Format price
   const formatPrice = (price) => {
-    if (price >= 1000000) {
-      return `${(price / 1000000).toFixed(1)} triệu`;
-    }
     return new Intl.NumberFormat('vi-VN').format(price);
   };
 
@@ -1819,7 +1817,16 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
           </div>
         </div>
       )}
-      
+
+      {/* ChatBot Component */}
+      <ChatBot 
+        onPropertySearch={(properties) => {
+          // Handle property search results from chatbot
+          console.log('Properties from chatbot:', properties);
+        }}
+        formatPrice={formatPrice}
+      />
+
       {/* Go to Top Button */}
       {showGoToTop && (
         <button 
@@ -1830,6 +1837,9 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
          <FaArrowUp  size={20} className="text-black" />
         </button>
       )}
+
+      
+
     </div>
   );
 };

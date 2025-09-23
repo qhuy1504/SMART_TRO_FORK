@@ -1795,3 +1795,27 @@
         border-color: #3a3b3c;
     }
 }
+
+/* Author Tag Styles */
+.user-name-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.author-tag {
+    background: linear-gradient(135deg, #1877f2, #42a5f5);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 1px 3px rgba(24, 119, 242, 0.3);
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    margin-top: 5px;
+}

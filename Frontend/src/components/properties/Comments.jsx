@@ -11,7 +11,7 @@ import {
 } from 'react-icons/fa';
 import './Comments.css';
 
-const Comments = ({ propertyId }) => {
+const Comments = ({ propertyId, propertyOwnerId }) => {
     const [comments, setComments] = useState([]);
     const [stats, setStats] = useState({
         totalComments: 0,
@@ -318,6 +318,7 @@ const Comments = ({ propertyId }) => {
                                 <div key={comment._id} className="comment-item-wrapper">
                                     <CommentItem
                                         comment={comment}
+                                        propertyOwnerId={propertyOwnerId}
                                         onCommentUpdated={handleCommentUpdated}
                                         onCommentDeleted={handleCommentDeleted}
                                         onReplyAdded={handleReplyAdded}

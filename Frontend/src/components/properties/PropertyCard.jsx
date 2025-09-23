@@ -12,7 +12,6 @@ import {
 import './PropertyCard.css';
 
 const PropertyCard = ({ property, onPropertyClick, onFavoriteToggle, isLoggedIn }) => {
-    console.log('Rendering PropertyCard for property:', property);
     const navigate = useNavigate();
     const { isFavorited } = useFavorites();
     // Format price

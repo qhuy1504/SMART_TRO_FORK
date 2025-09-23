@@ -28,6 +28,7 @@ const searchController = {
         sortBy = 'createdAt',
         sortOrder = 'desc'
       } = req.query;
+      console.log('Search parameters:', req.query);
 
       // Build query object
       let query = {
