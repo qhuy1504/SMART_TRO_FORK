@@ -25,9 +25,17 @@ import {
 } from 'react-icons/fa';
 import './PropertiesListing.css';
 
-
-
-const PropertiesListing = ({ isHomePage = false, searchResults = null, searchParams: externalSearchParams = null }) => {
+/**
+ * Component PropertiesListing - Trang danh sách bất động sản
+ * 
+ * Chức năng chính:
+ * - properties-listing: Container chính chứa toàn bộ giao diện danh sách tin đăng
+ * - hero search: Form tìm kiếm lớn cho phép lọc theo địa điểm, loại hình, giá, diện tích, tiện ích
+ * - Hiển thị danh sách tin đăng với phân trang 12 tin/trang
+ * - Sidebar với các bộ lọc nhanh và thông tin bổ sung
+ * - Tự động hiển thị hero search khi không có kết quả tìm kiếm từ bên ngoài
+ */
+const PropertiesListing = ({ searchResults = null, searchParams: externalSearchParams = null }) => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
@@ -36,7 +44,6 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
   // States
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [searchInput, setSearchInput] = useState(searchParams.get('search') || '');
 
   // Location data
@@ -72,10 +79,11 @@ const PropertiesListing = ({ isHomePage = false, searchResults = null, searchPar
   // Pagination
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: isHomePage ? 8 : 12, // Show fewer items on home page
+    limit: 12,
     total: 0,
     totalPages: 0,
-    hasNext: false
+    hasNext: false,
+    hasPrev: false
   });
   // Spinner component để thống nhất loading indicator
 const LoadingSpinner = ({ size = 'medium', className = '' }) => {
@@ -207,12 +215,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
     }
   }, [filters, provinces, searchResults]);
 
-  // Load more when page changes
-  useEffect(() => {
-    if (pagination.page > 1) {
-      loadProperties(false);
-    }
-  }, [pagination.page]);
+  // Page changes are now handled by handlePageChange function
 
   // Go to top button visibility
   useEffect(() => {
@@ -226,9 +229,10 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
 
 
 
-  // Handle external search results (from Hero component)
+  // Xử lý kết quả tìm kiếm từ bên ngoài (từ Hero search hoặc các component khác)
   useEffect(() => {
-    if (searchResults && isHomePage) {
+    if (searchResults) {
+      // Cập nhật danh sách tin đăng từ kết quả tìm kiếm bên ngoài
       setProperties(searchResults.properties || []);
       setPagination(prev => ({
         ...prev,
@@ -237,13 +241,13 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
         hasNext: searchResults.pagination?.hasNext || false,
         page: 1
       }));
-    } else if (searchResults === null && isHomePage) {
-      // Reset to load all properties when search is cleared
+    } else if (searchResults === null) {
+      // Đặt lại để tải tất cả tin đăng khi xóa tìm kiếm
       if (provinces.length > 0) {
         loadProperties(true);
       }
     }
-  }, [searchResults, isHomePage, provinces.length]);
+  }, [searchResults, provinces.length]);
 
   // Load initial data (provinces and amenities)
   const loadInitialData = async () => {
@@ -266,19 +270,23 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
   };
 
   // Load properties
-  const loadProperties = async (reset = false, customFilters = null) => {
+  const loadProperties = async (reset = false, customFilters = null, targetPage = null) => {
     try {
-      if (reset) {
-        setLoading(true);
-        setPagination(prev => ({ ...prev, page: 1 }));
-      } else {
-        setLoadingMore(true);
+      setLoading(true);
+      
+      const currentPage = targetPage || (reset ? 1 : pagination.page);
+      if (reset || targetPage) {
+        setPagination(prev => ({ 
+          ...prev, 
+          page: currentPage,
+          hasPrev: currentPage > 1
+        }));
       }
 
       const searchFilters = customFilters || filters;
       const params = {
         ...searchFilters,
-        page: reset ? 1 : pagination.page,
+        page: currentPage,
         limit: pagination.limit
       };
       // console.log('Loading properties with params:', params);
@@ -291,50 +299,43 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
       });
 
       let response;
-      // Always use search API when there are any filters applied or search term
+      // Kiểm tra xem có bộ lọc nào được áp dụng không
       const hasFilters = searchFilters.search || searchFilters.provinceId || searchFilters.districtId || 
                         searchFilters.wardId || searchFilters.category || searchFilters.minPrice || 
                         searchFilters.maxPrice || searchFilters.minArea || searchFilters.maxArea || 
                         (searchFilters.amenities && searchFilters.amenities.length > 0);
 
-      if (hasFilters || !isHomePage) {
-        // Use search API when filters are applied or not on home page
+      if (hasFilters) {
+        // Sử dụng search API khi có bộ lọc được áp dụng
         response = await searchPropertiesAPI.searchProperties(params);
       } else {
-        // Use general properties API only when no filters and on home page
+        // Sử dụng API tổng quát khi không có bộ lọc nào
         response = await myPropertiesAPI.getMyApprovedProperties(params);
       }
 
       if (response.success) {
         const newProperties = response.data?.properties || [];
-
-        if (reset) {
-          setProperties(newProperties);
-        } else {
-          setProperties(prev => [...prev, ...newProperties]);
-        }
+        
+        // Luôn thay thế toàn bộ danh sách properties cho phân trang
+        setProperties(newProperties);
 
         setPagination(prev => ({
           ...prev,
           total: response.data?.pagination?.total || 0,
           totalPages: response.data?.pagination?.totalPages || 0,
-          hasNext: response.data?.pagination?.hasNext || false
+          hasNext: response.data?.pagination?.hasNext || false,
+          hasPrev: (targetPage || prev.page) > 1
         }));
       } else {
-        if (reset) {
-          setProperties([]);
-        }
+        setProperties([]);
         toast.error('Không thể tải danh sách tin đăng');
       }
     } catch (error) {
       console.error('Error loading properties:', error);
       toast.error('Lỗi khi tải danh sách tin đăng');
-      if (reset) {
-        setProperties([]);
-      }
+      setProperties([]);
     } finally {
       setLoading(false);
-      setLoadingMore(false);
     }
   };
 
@@ -1113,13 +1114,21 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
     navigate(`/properties/${propertyId}`);
   };
 
-  // Load more properties
-  const loadMore = () => {
-    if (pagination.hasNext && !loadingMore) {
+  // Handle page change for pagination
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages && !loading) {
       setPagination(prev => ({
         ...prev,
-        page: prev.page + 1
+        page: newPage,
+        hasPrev: newPage > 1,
+        hasNext: newPage < pagination.totalPages
       }));
+      
+      // Load properties for the new page
+      loadProperties(true, null, newPage);
+      
+      // Scroll to top when changing page
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -1139,9 +1148,9 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
   };
 
   return (
-    <div className={`properties-listing ${(isHomePage || (!isHomePage && !searchResults)) ? 'home-mode' : ''}`}>
-      {/* Hero Section for Home Page and Properties Page */}
-      {(isHomePage || (!isHomePage && !searchResults)) && (
+    <div className={`properties-listing ${!searchResults ? 'home-mode' : ''}`}>
+      {/* Phần Hero Search - Form tìm kiếm chính */}
+      {!searchResults && (
         <section className='hero'>
             {/* Left Decorative Image */}
       <div className="left-decoration-listing">
@@ -1162,9 +1171,10 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
 
       </div>
           <div className='container'>
+            {/* Form tìm kiếm Hero - Cho phép tìm kiếm theo địa điểm, loại hình, giá, diện tích */}
             <form className='hero-search-form' onSubmit={handleHeroSearch}>
               <div className='search-grid'>
-                {/* Location */}
+                {/* Chọn tỉnh/thành phố */}
                 <div className='search-box-hero'>
                   <label>Tỉnh/Thành phố</label>
                   <select
@@ -1180,7 +1190,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                   </select>
                 </div>
 
-                {/* District */}
+                {/* Chọn quận/huyện */}
                 <div className='search-box-hero'>
                   <label>Quận/Huyện</label>
                   <select
@@ -1204,7 +1214,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                   </select>
                 </div>
 
-                {/* Category */}
+                {/* Chọn loại hình bất động sản */}
                 <div className='search-box-hero'>
                   <label>Loại hình</label>
                   <select
@@ -1219,7 +1229,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                   </select>
                 </div>
 
-                {/* Price Range */}
+                {/* Chọn khoảng giá thuê */}
                 <div className='search-box-hero'>
                   <label>Mức giá</label>
                   <select value={selectedPriceIndex} onChange={handleHeroPriceRangeChange}>
@@ -1231,7 +1241,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                   </select>
                 </div>
 
-                {/* Area Range */}
+                {/* Chọn khoảng diện tích */}
                 <div className='search-box-hero'>
                   <label>Diện tích</label>
                   <select value={selectedAreaIndex} onChange={handleHeroAreaRangeChange}>
@@ -1243,7 +1253,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                   </select>
                 </div>
 
-                {/* Amenities Modal Button */}
+                {/* Nút mở modal chọn tiện ích */}
                 <div className='search-box-hero'>
                   <label>Tiện ích</label>
                   <button 
@@ -1260,7 +1270,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                 </div>
               </div>
 
-              {/* Search Buttons */}
+              {/* Các nút thao tác tìm kiếm và đặt lại */}
               <div className='search-buttons-row'>
                 <button type='submit' className='btn-search' disabled={searching}>
                   {searching ? (
@@ -1338,8 +1348,8 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
           </div>
         </div>
 
-        <div className={`listing-content ${(isHomePage || (!isHomePage && !searchResults)) ? 'home-layout' : ''}`}>
-          {/* Main Content */}
+        <div className={`listing-content ${!searchResults ? 'home-layout' : ''}`}>
+          {/* Nội dung chính - Chứa danh sách tin đăng và các bộ lọc */}
           <div className="main-content">
             {/* Results Header */}
             <div className="results-header">
@@ -1533,26 +1543,93 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                     ))}
                   </div>
 
-                  {/* Load More Button */}
-                  {pagination.hasNext && (
-                    <div className="load-more-container">
-                      <button
-                        className="btn btn-outline load-more-btn"
-                        onClick={loadMore}
-                        disabled={loadingMore}
-                      >
-                        {loadingMore ? (
-                          <>
-                            <LoadingSpinner size="small" />
-                            Đang tải...
-                          </>
-                        ) : (
-                          <>
-                            <i className="fa fa-plus"></i>
-                            Xem thêm ({pagination.total - properties.length} tin)
-                          </>
-                        )}
-                      </button>
+                  {/* Pagination Controls */}
+                  {pagination.totalPages > 1 && (
+                    <div className="pagination-container">
+                      <div className="pagination-info">
+                        <span>Trang {pagination.page} của {pagination.totalPages} ({pagination.total} tin đăng)</span>
+                      </div>
+                      <div className="pagination-controls">
+                        {/* Previous Button */}
+                        <button
+                          className="pagination-btn prev-btn"
+                          onClick={() => handlePageChange(pagination.page - 1)}
+                          disabled={!pagination.hasPrev || loading}
+                          title="Trang trước"
+                        >
+                          <i className="fa fa-chevron-left"></i>
+                          Trước
+                        </button>
+
+                        {/* Page Numbers */}
+                        <div className="page-numbers">
+                          {/* First page */}
+                          {pagination.page > 3 && (
+                            <>
+                              <button
+                                className="page-number-btn"
+                                onClick={() => handlePageChange(1)}
+                                disabled={loading}
+                              >
+                                1
+                              </button>
+                              {pagination.page > 4 && <span className="page-dots">...</span>}
+                            </>
+                          )}
+
+                          {/* Previous pages */}
+                          {pagination.page > 1 && (
+                            <button
+                              className="page-number-btn"
+                              onClick={() => handlePageChange(pagination.page - 1)}
+                              disabled={loading}
+                            >
+                              {pagination.page - 1}
+                            </button>
+                          )}
+
+                          {/* Current page */}
+                          <button className="page-number-btn active" disabled>
+                            {pagination.page}
+                          </button>
+
+                          {/* Next pages */}
+                          {pagination.page < pagination.totalPages && (
+                            <button
+                              className="page-number-btn"
+                              onClick={() => handlePageChange(pagination.page + 1)}
+                              disabled={loading}
+                            >
+                              {pagination.page + 1}
+                            </button>
+                          )}
+
+                          {/* Last page */}
+                          {pagination.page < pagination.totalPages - 2 && (
+                            <>
+                              {pagination.page < pagination.totalPages - 3 && <span className="page-dots">...</span>}
+                              <button
+                                className="page-number-btn"
+                                onClick={() => handlePageChange(pagination.totalPages)}
+                                disabled={loading}
+                              >
+                                {pagination.totalPages}
+                              </button>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Next Button */}
+                        <button
+                          className="pagination-btn next-btn"
+                          onClick={() => handlePageChange(pagination.page + 1)}
+                          disabled={!pagination.hasNext || loading}
+                          title="Trang sau"
+                        >
+                          Sau
+                          <i className="fa fa-chevron-right"></i>
+                        </button>
+                      </div>
                     </div>
                   )}
                 </>
@@ -1560,9 +1637,9 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
             </div>
           </div>
 
-          {/* Right Sidebar */}
+          {/* Thanh bên phải - Chứa các bộ lọc nhanh và thông tin bổ sung */}
           <div className="right-sidebar">
-            {/* Price Quick Filter */}
+            {/* Bộ lọc nhanh theo khoảng giá */}
             <div className="sidebar-widget">
               <h4 className="widget-title">
                 <FaMoneyBillWave />
