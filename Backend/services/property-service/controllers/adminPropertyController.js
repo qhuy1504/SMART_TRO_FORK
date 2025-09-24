@@ -4,7 +4,7 @@ class AdminPropertyController {
   // Lấy danh sách properties cho admin
   async getPropertiesForAdmin(req, res) {
     try {
-      const { page = 1, limit = 10, status = 'all', search = '' } = req.query;
+      const { page = 1, limit = 12, status = 'all', search = '' } = req.query;
       
       // Build filter
       let filter = {};
@@ -48,7 +48,7 @@ class AdminPropertyController {
   async approveProperty(req, res) {
     try {
       const { propertyId } = req.params;
-      const adminId = req.user.id;
+      const adminId = req.user.userId;
 
       // Kiểm tra property tồn tại
       const property = await adminPropertyRepository.getPropertyById(propertyId);
@@ -93,7 +93,7 @@ class AdminPropertyController {
     try {
       const { propertyId } = req.params;
       const { reason } = req.body;
-      const adminId = req.user.id;
+       const adminId = req.user.userId;
 
       // Validate lý do từ chối
       if (!reason || !reason.trim()) {

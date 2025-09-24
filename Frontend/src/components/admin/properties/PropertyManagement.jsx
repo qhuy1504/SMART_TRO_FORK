@@ -348,7 +348,7 @@ const PropertyManagement = () => {
                     <div className="controls-section">
                         <form onSubmit={handleSearch} className="search-form">
                             <div className="search-input-group">
-                                <i className="fa fa-search" style={{ left: '12px'}}></i>
+                                <i className="fa fa-search" style={{ left: '12px' }}></i>
                                 <input
                                     type="text"
                                     placeholder="Tìm kiếm theo tiêu đề, tên liên hệ, số điện thoại..."
@@ -358,7 +358,7 @@ const PropertyManagement = () => {
                                 />
                                 <div className="search-buttons">
                                     {searchTerm && (
-                                        <button 
+                                        <button
                                             type="button"
                                             className="clear-search-btn-manager-property"
                                             onClick={() => {
@@ -371,8 +371,8 @@ const PropertyManagement = () => {
                                             <i className="fa fa-times"></i>
                                         </button>
                                     )}
-                                    <button 
-                                        type="submit" 
+                                    <button
+                                        type="submit"
                                         className="search-btn-manager-property"
                                         title="Tìm kiếm"
                                     >
@@ -432,7 +432,7 @@ const PropertyManagement = () => {
                                     <table className="properties-table">
                                         <thead>
                                             <tr>
-                                                <th style={{ width: '80px' }}>Hình ảnh</th>
+                                                <th style={{ width: '80px' }}>Hình</th>
                                                 <th style={{ width: '35%' }}>Thông tin, Liên hệ</th>
                                                 <th style={{ width: '20%' }}>Địa chỉ, Giá</th>
                                                 <th style={{ width: '20%' }}>Trạng thái, Ngày đăng</th>
@@ -499,26 +499,23 @@ const PropertyManagement = () => {
                                                         <div className="date-section">
                                                             <span>{formatDate(property.createdAt)}</span>
                                                         </div>
-                                                        {property.rejectionReason && (
+
+                                                    </td>
+                                                    <td className="reason-cell">
+                                                        {property.rejectionReason ? (
                                                             <div className="reason-section">
                                                                 <span className="reason-text">
                                                                     <i className="fa fa-exclamation-triangle"></i>
                                                                     {property.rejectionReason.length > 30
                                                                         ? property.rejectionReason.substring(0, 30) + '...'
-                                                                        : property.rejectionReason
-                                                                    }
+                                                                        : property.rejectionReason}
                                                                 </span>
                                                             </div>
+                                                        ) : (
+                                                            <span className="reason-text"></span> 
                                                         )}
                                                     </td>
-                                                    <td className="reason-cell">
-                                                        {property.approvalStatus === 'rejected' && property.rejectionReason ? (
-                                                            <div className="full-reason">
-                                                                {property.rejectionReason}
 
-                                                            </div>
-                                                        ) : null}
-                                                    </td>
                                                     <td className="actions-cell">
                                                         <div className="action-buttons-compact">
                                                             <button
@@ -763,7 +760,7 @@ const PropertyManagement = () => {
 
                                     {selectedProperty.approvalStatus === 'pending' && (
                                         <div className="modal-actions-management">
-                                              <button
+                                            <button
                                                 className="btn-management btn-danger"
                                                 onClick={() => setShowRejectModal(true)}
                                             >
@@ -778,7 +775,7 @@ const PropertyManagement = () => {
                                                 <i className="fa fa-check"></i>
                                                 {processingPropertyId === selectedProperty._id ? 'Đang duyệt...' : 'Duyệt bài đăng'}
                                             </button>
-                                          
+
                                         </div>
                                     )}
                                 </div>
@@ -788,7 +785,7 @@ const PropertyManagement = () => {
 
                     {/* Reject Modal */}
                     {showRejectModal && (
-                        <div className="modal-overlay" onClick={() => setShowRejectModal(false)}>
+                        <div className="modal-overlay-reject" onClick={() => setShowRejectModal(false)}>
                             <div className="reject-modal" onClick={(e) => e.stopPropagation()}>
                                 <div className="modal-header-reject">
                                     <h3>Từ chối bài đăng</h3>

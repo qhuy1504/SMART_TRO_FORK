@@ -93,39 +93,89 @@ const searchController = {
 
       // console.log('Final query:', JSON.stringify(query, null, 2));
 
-      // Build sort object - Chỉ ưu tiên promotedAt khi sort theo createdAt
-      const sortObj = {};
+      // Build sort object - Ưu tiên approvedAt nếu có, fallback về createdAt
+      let properties, total, provinces;
       
       if (sortBy === 'createdAt') {
-        // Chỉ khi sắp xếp theo thời gian tạo thì mới ưu tiên tin được promote
-        sortObj.promotedAt = -1; // Promoted properties first (newest promoted)
-        sortObj.createdAt = sortOrder === 'asc' ? 1 : -1; // Then by creation date
-      } else if (sortBy === 'price' || sortBy === 'rentPrice') {
-        // Sắp xếp theo giá thuần túy, không ưu tiên promoted
-        sortObj.rentPrice = sortOrder === 'asc' ? 1 : -1;
-      } else if (sortBy === 'area') {
-        // Sắp xếp theo diện tích thuần túy, không ưu tiên promoted
-        sortObj.area = sortOrder === 'asc' ? 1 : -1;
-      } else if (sortBy === 'views') {
-        // Sắp xếp theo lượt xem thuần túy, không ưu tiên promoted
-        sortObj.views = sortOrder === 'asc' ? 1 : -1;
+        // Sắp xếp theo thời gian: promoted first, sau đó approvedAt nếu có, fallback về createdAt
+        // Sử dụng aggregation pipeline để handle logic: approvedAt nếu có, fallback về createdAt
+        [properties, total, provinces] = await Promise.all([
+          Property.aggregate([
+            { $match: query },
+            {
+              $addFields: {
+                // Tạo field tạm để sort: dùng approvedAt nếu có, không thì dùng createdAt
+                sortDate: {
+                  $ifNull: ['$approvedAt', '$createdAt']
+                }
+              }
+            },
+            { 
+              $sort: { 
+                promotedAt: -1, // Promoted first
+                sortDate: sortOrder === 'asc' ? 1 : -1 // Then by sortDate
+              } 
+            },
+            { $skip: skip },
+            { $limit: limit },
+            {
+              $lookup: {
+                from: 'users',
+                localField: 'owner',
+                foreignField: '_id',
+                as: 'owner',
+                pipeline: [{ $project: { fullName: 1, email: 1, phone: 1, avatar: 1 } }]
+              }
+            },
+            {
+              $lookup: {
+                from: 'amenities',
+                localField: 'amenities',
+                foreignField: '_id',
+                as: 'amenities',
+                pipeline: [{ $project: { name: 1, icon: 1 } }]
+              }
+            },
+            {
+              $addFields: {
+                owner: { $arrayElemAt: ['$owner', 0] }
+              }
+            }
+          ]),
+          Property.countDocuments(query),
+          fetchProvinces()
+        ]);
       } else {
-        sortObj.promotedAt = -1; // Always promoted first
-        sortObj[sortBy] = sortOrder === 'asc' ? 1 : -1;
-      }
+        // Các sort khác sử dụng find bình thường
+        const sortObj = {};
+        
+        if (sortBy === 'price' || sortBy === 'rentPrice') {
+          // Sắp xếp theo giá thuần túy, không ưu tiên promoted
+          sortObj.rentPrice = sortOrder === 'asc' ? 1 : -1;
+        } else if (sortBy === 'area') {
+          // Sắp xếp theo diện tích thuần túy, không ưu tiên promoted
+          sortObj.area = sortOrder === 'asc' ? 1 : -1;
+        } else if (sortBy === 'views') {
+          // Sắp xếp theo lượt xem thuần túy, không ưu tiên promoted
+          sortObj.views = sortOrder === 'asc' ? 1 : -1;
+        } else {
+          sortObj.promotedAt = -1; // Always promoted first
+          sortObj[sortBy] = sortOrder === 'asc' ? 1 : -1;
+        }
 
-      // Execute search
-      const [properties, total, provinces] = await Promise.all([
-        Property.find(query)
-          .sort(sortObj)
-          .skip(skip)
-          .limit(limit)
-          .populate('owner', 'fullName email phone avatar')
-          .populate('amenities', 'name icon')
-          .lean(),
-        Property.countDocuments(query),
-        fetchProvinces()
-      ]);
+        // Execute search với find bình thường
+        [properties, total, provinces] = await Promise.all([
+          Property.find(query)
+            .sort(sortObj)
+            .skip(skip)
+            .limit(limit)
+            .populate('owner', 'fullName email phone avatar')
+            .populate('amenities', 'name icon')
+            .lean(),
+          Property.countDocuments(query),
+          fetchProvinces()
+        ]);
+      }
 
       // console.log(`Found ${total} properties matching criteria`);
 

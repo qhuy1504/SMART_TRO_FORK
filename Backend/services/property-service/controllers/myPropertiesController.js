@@ -115,8 +115,10 @@ const myPropertiesController = {
         promotionPrice: property.promotionPrice,
         area: property.area,
         images: property.images,
+        description: property.description,
         approvalStatus: property.approvalStatus,
         status: property.status,
+        rejectionReason: property.rejectionReason, // Thêm lý do từ chối
         location: {
           provinceName: provinceMap.get(String(property.province)) || "",
           districtName: districtMap.get(String(property.district)) || "",

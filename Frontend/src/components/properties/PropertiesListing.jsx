@@ -1055,32 +1055,8 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
     return activeFilters;
   };
 
-  // Handle amenity toggle
-  const handleAmenityToggle = (amenityId) => {
-    setFilters(prev => {
-      const amenities = prev.amenities.includes(amenityId)
-        ? prev.amenities.filter(id => id !== amenityId)
-        : [...prev.amenities, amenityId];
-      return { ...prev, amenities };
-    });
-  };
+ 
 
-  // Update URL with current filters
-  const updateURL = () => {
-    const params = new URLSearchParams();
-
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value && value !== '') {
-        if (key === 'amenities' && Array.isArray(value) && value.length > 0) {
-          params.set(key, value.join(','));
-        } else if (key !== 'amenities') {
-          params.set(key, value);
-        }
-      }
-    });
-
-    setSearchParams(params);
-  };
 
   // Handle favorite toggle
   const handleFavoriteToggle = async (propertyId, currentFavoriteStatus) => {

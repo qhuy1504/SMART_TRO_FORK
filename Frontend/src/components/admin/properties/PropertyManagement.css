@@ -553,10 +553,9 @@
 }
 
 .reason-section .reason-text {
-    font-size: 10px;
+    font-size: 13px;
     color: var(--red-600, #dc2626);
     background: var(--red-50, #fef2f2);
-    padding: 2px 4px;
     border-radius: 3px;
     display: inline-block;
     max-width: 100%;
@@ -1129,6 +1128,21 @@
     }
 }
 
+
+.modal-overlay-reject {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    padding: 20px;
+    overflow-y: auto;
+}
 .reject-modal {
     background: linear-gradient(145deg, #ffffff, #fefefe);
     border-radius: 28px;

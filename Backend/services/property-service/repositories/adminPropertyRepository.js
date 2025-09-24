@@ -40,12 +40,13 @@ class AdminPropertyRepository {
       {
         approvalStatus: 'approved',
         approvedAt: new Date(),
+        promotedAt: new Date(),
         approvedBy: adminId,
         createdAt: new Date(), // Reset createdAt như yêu cầu
         rejectionReason: undefined // Xóa lý do từ chối cũ nếu có
       },
       { new: true }
-    ).populate('owner', 'name email avatar');
+    ).populate('owner', 'fullName email avatar phone');
 
     return updatedProperty;
   }

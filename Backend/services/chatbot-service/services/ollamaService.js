@@ -439,7 +439,7 @@ Trả về duy nhất JSON hợp lệ, không thêm bất kỳ chữ nào khác,
           // Bỏ stop để không cắt JSON giữa chừng
         }
       }, {
-        timeout: 50000,
+        timeout: 60000,
         headers: {
           'Content-Type': 'application/json'
         }

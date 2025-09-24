@@ -36,6 +36,8 @@ const MyProperties = () => {
   const [deletingProperty, setDeletingProperty] = useState(null);
   const [showToggleModal, setShowToggleModal] = useState(false);
   const [togglingProperty, setTogglingProperty] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedProperty, setSelectedProperty] = useState(null);
 
   // Dropdown menu state
   const [activeDropdown, setActiveDropdown] = useState(null);
@@ -226,6 +228,12 @@ const MyProperties = () => {
       ...prev,
       page: newPage
     }));
+  };
+
+  // Handle view property detail
+  const handleViewDetail = (property) => {
+    setSelectedProperty(property);
+    setShowDetailModal(true);
   };
 
   // Get status badge
@@ -444,6 +452,17 @@ const MyProperties = () => {
                           Sửa
                         </button>
 
+                        {property.approvalStatus === 'rejected' && (
+                          <button
+                            className="btn btn-info btn-view-detail"
+                            onClick={() => handleViewDetail(property)}
+                            title="Xem chi tiết và lý do từ chối"
+                          >
+                            <i className="fa fa-eye"></i>
+                            Lý do
+                          </button>
+                        )}
+
                         {property.approvalStatus === 'approved' && (
                           <button
                             className={`btn btn-sm ${property.status === 'available' ? 'btn-secondary' : 'btn-warning'}`}
@@ -508,6 +527,81 @@ const MyProperties = () => {
         </div>
       </div>
 
+      {/* Property Detail Modal */}
+      {showDetailModal && selectedProperty && (
+        <div className="modal-overlay-reason-my-properties" onClick={() => setShowDetailModal(false)}>
+          <div className="property-detail-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-management">
+              <h3>Chi tiết bài đăng</h3>
+              <button
+                className="close-btn-management"
+                onClick={() => setShowDetailModal(false)}
+              >
+                <i className="fa fa-times"></i>
+              </button>
+            </div>
+
+            <div className="modal-content-management">
+              <div className="property-detail-content-management">
+                <div className="detail-header">
+                  <h4>{selectedProperty.title}</h4>
+                  {getStatusBadge(selectedProperty.approvalStatus)}
+                </div>
+
+                {selectedProperty.images && selectedProperty.images.length > 0 && (
+                  <div className="property-images">
+                    <img
+                      src={selectedProperty.images[0]}
+                      alt={selectedProperty.title}
+                      className="detail-main-image"
+                      onError={(e) => {
+                        e.target.src = '/images/placeholder.jpg';
+                      }}
+                    />
+                  </div>
+                )}
+
+                <div className="property-info-detail">
+                  <div className="detail-item">
+                    <strong>Giá thuê:</strong>
+                    <span>{formatPrice(selectedProperty.rentPrice)} VNĐ/tháng</span>
+                  </div>
+                  <div className="detail-item">
+                    <strong>Diện tích:</strong>
+                    <span>{selectedProperty.area}m²</span>
+                  </div>
+                  <div className="detail-item">
+                    <strong>Địa chỉ:</strong>
+                    <span>
+                      {selectedProperty.location?.detailAddress}, {selectedProperty.location?.wardName}, 
+                      {selectedProperty.location?.districtName}, {selectedProperty.location?.provinceName}
+                    </span>
+                  </div>
+                  <div className="detail-item">
+                    <strong>Ngày đăng:</strong>
+                    <span>{formatDate(selectedProperty.createdAt)}</span>
+                  </div>
+                  
+                  {selectedProperty.approvalStatus === 'rejected' && selectedProperty.rejectionReason && (
+                    <div className="detail-item reject-reason">
+                      <strong>Lý do từ chối:</strong>
+                      <span className="rejection-text">{selectedProperty.rejectionReason}</span>
+                    </div>
+                  )}
+                </div>
+
+                {selectedProperty.description && (
+                  <div className="description">
+                    <strong>Mô tả:</strong>
+                    <p>{selectedProperty.description}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Edit Property Modal */}
       {showEditModal && editingProperty && (
         <EditPropertyModal
@@ -569,10 +663,19 @@ const MyProperties = () => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && deletingProperty && (
-        <div className="modal-overlay">
+        <div className="modal-overlay-management">
           <div className="delete-modal">
-            <div className="modal-header">
+            <div className="modal-header-management">
               <h3>Xác nhận xóa tin đăng</h3>
+              <button
+                className="close-btn-management"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeletingProperty(null);
+                }}
+              >
+                <i className="fa fa-times"></i>
+              </button>
             </div>
             <div className="modal-content">
               <p>Bạn có chắc chắn muốn xóa tin đăng:</p>

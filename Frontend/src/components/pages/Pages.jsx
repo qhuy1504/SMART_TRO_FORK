@@ -13,6 +13,7 @@ import Register from "../auth/Register"
 import ForgotPassword from "../auth/ForgotPassword"
 import VerifyEmail from "../auth/VerifyEmail"
 import ProtectedRoute from "../auth/ProtectedRoute"
+import AdminProtectedRoute from "../auth/AdminProtectedRoute"
 import Dashboard from "../admin/dashboard/Dashboard"
 import PropertyManagement from "../admin/properties/PropertyManagement"
 import RoomsManagement from "../admin/rooms/RoomsManagement"
@@ -161,9 +162,9 @@ const Pages = () => {
             <Route index element={<AccountManagement />} />
           </Route>
 
-          {/* Admin pages without Header and Footer */}
+          {/* Admin pages without Header and Footer - Chỉ admin mới truy cập được */}
           <Route path='/admin/dashboard' element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path='/admin/properties' element={<ProtectedRoute><PropertyManagement /></ProtectedRoute>} />
+          <Route path='/admin/properties' element={<AdminProtectedRoute><PropertyManagement /></AdminProtectedRoute>} />
           <Route path='/admin/rooms' element={<ProtectedRoute><RoomsManagement /></ProtectedRoute>} />
           <Route path='/admin/amenities' element={<ProtectedRoute><AmenitiesManagement /></ProtectedRoute>} />
           <Route path='/admin/settings' element={<ProtectedRoute><Settings /></ProtectedRoute>} />
