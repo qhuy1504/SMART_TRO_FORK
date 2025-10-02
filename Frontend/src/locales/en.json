@@ -2,6 +2,7 @@
   "sidebar": {
     "dashboard": "Dashboard",
     "properties": "Property Management",
+    "report-properties": "Property Reports",
     "rooms": "Room Management",
     "amenities": "Amenity Management",
     "users": "User Management",

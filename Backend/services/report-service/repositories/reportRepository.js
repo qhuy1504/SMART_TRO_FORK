@@ -15,7 +15,7 @@ class ReportRepository {
     try {
       const report = new Report({
         reporter: reportData.reportedBy,
-        reportedProperty: reportData.propertyId,
+        property: reportData.propertyId,
         reason: reportData.reason,
         description: reportData.description,
         contactEmail: reportData.contactEmail,
@@ -34,9 +34,9 @@ class ReportRepository {
   async findExistingReport(propertyId, reportedBy) {
     try {
       return await Report.findOne({
-        reportedProperty: propertyId,
+        property: propertyId,
         reporter: reportedBy,
-        status: { $in: ['pending', 'reviewed'] }
+        status: 'pending'
       });
     } catch (error) {
       throw error;
@@ -83,16 +83,16 @@ class ReportRepository {
 
       // Lọc theo property
       if (propertyId) {
-        filter.reportedProperty = propertyId;
+        filter.property = propertyId;
       }
 
       const skip = (page - 1) * limit;
 
       const reports = await Report
         .find(filter)
-        .populate('reportedProperty', 'title rentPrice images detailAddress approvalStatus')
+        .populate('property', 'title rentPrice images detailAddress approvalStatus')
         .populate('reporter', 'fullName email')
-        .populate('reviewedBy', 'fullName email')
+        .populate('processedBy', 'fullName email')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
@@ -120,9 +120,9 @@ class ReportRepository {
         reportId,
         {
           status: updateData.status,
-          reviewedBy: updateData.handledBy,
-          reviewedAt: updateData.handledAt,
-          adminNotes: updateData.adminNote
+          processedBy: updateData.processedBy,
+          processedAt: updateData.processedAt,
+          actionTaken: updateData.actionTaken
         },
         { new: true }
       );
@@ -151,9 +151,9 @@ class ReportRepository {
     try {
       return await Report
         .findById(reportId)
-        .populate('reportedProperty', 'title rentPrice images detailAddress approvalStatus owner')
+        .populate('property', 'title rentPrice images detailAddress approvalStatus owner')
         .populate('reporter', 'fullName email')
-        .populate('reviewedBy', 'fullName email');
+        .populate('processedBy', 'fullName email');
     } catch (error) {
       throw error;
     }

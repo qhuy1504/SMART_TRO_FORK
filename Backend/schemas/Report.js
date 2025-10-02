@@ -9,7 +9,7 @@ const reportSchema = new mongoose.Schema({
         ref: 'User',
         required: false // Cho phép báo cáo ẩn danh
     },
-    reportedProperty: {
+    property: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Property',
         required: true
@@ -45,19 +45,37 @@ const reportSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['pending', 'reviewed', 'resolved', 'rejected'],
+        enum: ['pending', 'resolved', 'dismissed'],
         default: 'pending'
     },
-    adminNotes: {
+    severity: {
+        type: String,
+        enum: ['low', 'medium', 'high'],
+        default: 'medium'
+    },
+    // Thông tin xử lý bởi admin
+    actionTaken: {
         type: String,
         trim: true
     },
-    reviewedBy: {
+    processedBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     },
-    reviewedAt: {
+    processedAt: {
         type: Date
+    },
+    // Soft delete
+    isDeleted: {
+        type: Boolean,
+        default: false
+    },
+    deletedAt: {
+        type: Date
+    },
+    deletedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
     }
 }, {
     timestamps: true

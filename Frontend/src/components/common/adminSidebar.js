@@ -21,7 +21,8 @@ import {
   House,
   People,
   EditDocument,
-  Category
+  Category,
+  Report
 } from "@mui/icons-material";
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -44,15 +45,27 @@ const SideBar = () => {
   const [role, setRole] = useState("");
   const [loadingUser, setLoadingUser] = useState(true);
 
-  const menuItems = useMemo(() => [
-    { text: t('sidebar.dashboard'), icon: <Dashboard />, path: "/admin/dashboard" },
-    { text: t('sidebar.rooms'), icon: <House />, path: "/admin/rooms" },
-    { text: t('sidebar.amenities'), icon: <Category />, path: "/admin/amenities" },
-    { text: t('sidebar.tenants'), icon: <People />, path: "/admin/tenants" },
-    { text: t('sidebar.contracts'), icon: <EditDocument />, path: "/admin/contracts" },
-    { text: t('sidebar.properties'), icon: <EditDocument />, path: "/admin/properties" },
-    { text: t('sidebar.settings'), icon: <Settings />, path: "/admin/settings" }
+  // Định nghĩa tất cả menu items với roles được phép truy cập
+  const allMenuItems = useMemo(() => [
+    { text: t('sidebar.dashboard'), icon: <Dashboard />, path: "/admin/dashboard", roles: ['admin', 'landlord'] },
+    { text: t('sidebar.rooms'), icon: <House />, path: "/admin/rooms", roles: ['landlord'] },
+    { text: t('sidebar.amenities'), icon: <Category />, path: "/admin/amenities", roles: ['landlord'] },
+    { text: t('sidebar.tenants'), icon: <People />, path: "/admin/tenants", roles: ['landlord'] },
+    { text: t('sidebar.contracts'), icon: <EditDocument />, path: "/admin/contracts", roles: ['landlord'] },
+    { text: t('sidebar.properties'), icon: <EditDocument />, path: "/admin/properties", roles: ['admin'] },
+    { text: t('sidebar.report-properties'), icon: <Report />, path: "/admin/report-properties", roles: ['admin'] },
+    { text: t('sidebar.settings'), icon: <Settings />, path: "/admin/settings", roles: ['admin', 'landlord'] }
   ], [t]);
+
+  // Lọc menu items dựa trên role của user
+  const menuItems = useMemo(() => {
+    if (!role) return allMenuItems; // Hiển thị tất cả nếu chưa load role
+    
+    return allMenuItems.filter(item => {
+      if (!item.roles) return true; // Hiển thị item nếu không có giới hạn role
+      return item.roles.includes(role);
+    });
+  }, [allMenuItems, role]);
 
   // Load current user profile - only once per token
   useEffect(() => {

@@ -151,7 +151,7 @@ const Register = () => {
                         </select>
                         {error && <div style={{color:'#dc2626',fontSize:'14px',marginBottom:'8px'}}>{error}</div>}
                         {success && <div style={{color:'#16a34a',fontSize:'14px',marginBottom:'8px'}}>{success}</div>}
-                        <button type="submit" className="btn-primary" disabled={loading}>
+                        <button type="submit" className="btn-primary-register" disabled={loading}>
                             {uploadingAvatar ? (
                                 <>
                                     <i className="fa fa-cloud-upload" style={{marginRight: '8px'}}></i>

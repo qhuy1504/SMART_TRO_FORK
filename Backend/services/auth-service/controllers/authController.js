@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { User, OTP } from '../../../schemas/index.js';
-import { generateOTP, sendOTPEmail, sendPasswordChangeNotification } from '../emailService.js';
+import { generateOTP, sendOTPEmail, sendPasswordChangeNotification } from '../../emailService.js';
 
 // Regex pattern cho mật khẩu mạnh
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;

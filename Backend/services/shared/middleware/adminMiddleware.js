@@ -1,23 +1,39 @@
 /**
- * Admin Middleware - Kiểm tra quyền admin
+ * Admin Only Middleware - Đảm bảo chỉ admin mới có thể truy cập
  */
-const adminMiddleware = (req, res, next) => {
+export const adminMiddleware = (req, res, next) => {
     try {
+        // Bypass trong development nếu cần
         if (process.env.BYPASS_AUTH === 'true') {
+            req.user = req.user || { role: 'admin', userId: 'admin' };
             return next();
         }
-        if (req.user.role !== 'admin') {
-            return res.status(403).json({
+
+        // Kiểm tra user đã được authenticate
+        if (!req.user) {
+            return res.status(401).json({
                 success: false,
-                message: 'Chỉ admin mới có quyền truy cập'
+                message: 'Vui lòng đăng nhập để tiếp tục'
             });
         }
 
+        // Kiểm tra role admin
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Chỉ admin mới có quyền truy cập chức năng này'
+            });
+        }
+
+        // Log admin action để audit
+        console.log(`Admin action: ${req.method} ${req.originalUrl} by ${req.user.userId}`);
+        
         next();
     } catch (error) {
+        console.error('Error in adminOnly middleware:', error);
         return res.status(500).json({
             success: false,
-            message: 'Lỗi kiểm tra quyền admin'
+            message: 'Lỗi kiểm tra quyền truy cập'
         });
     }
 };

@@ -2,6 +2,9 @@ import reportRepository from '../repositories/reportRepository.js';
 
 // Báo cáo tin đăng
 const reportProperty = async (req, res) => {
+  console.log('Report Property Request Body:', req.body);
+  console.log('Report Property Request Params:', req.params);
+  console.log('Report Property Request User:', req.user);
   try {
     const { propertyId } = req.params;
     const { reason, description, contactEmail, reportedBy, propertyOwner, propertyTitle } = req.body;
@@ -29,12 +32,12 @@ const reportProperty = async (req, res) => {
 
     // Tạo báo cáo mới
     const reportData = {
-      propertyId,
+      property: propertyId,
       propertyTitle: propertyTitle || property.title,
       reason,
       description,
       contactEmail,
-      reportedBy: reportedBy || null,
+      reporter: reportedBy || null,
       propertyOwner: propertyOwner || property.owner,
       status: 'pending'
     };
@@ -110,10 +113,10 @@ const handlePropertyReport = async (req, res) => {
     const { action, note } = req.body;
     const adminId = req.user?.id; // Từ middleware auth
 
-    if (!['approve', 'reject', 'reviewing'].includes(action)) {
+    if (!['resolve', 'dismiss'].includes(action)) {
       return res.status(400).json({
         success: false,
-        message: 'Action không hợp lệ'
+        message: 'Action không hợp lệ. Chỉ chấp nhận "resolve" hoặc "dismiss"'
       });
     }
 
@@ -127,26 +130,26 @@ const handlePropertyReport = async (req, res) => {
 
     // Cập nhật trạng thái báo cáo
     const updateData = {
-      status: action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'reviewing',
-      handledBy: adminId,
-      handledAt: new Date(),
-      adminNote: note
+      status: action === 'resolve' ? 'resolved' : 'dismissed',
+      processedBy: adminId,
+      processedAt: new Date(),
+      actionTaken: note
     };
 
     const updatedReport = await reportRepository.updateReport(reportId, updateData);
 
-    // Nếu approve, có thể ẩn property hoặc thực hiện action khác
-    if (action === 'approve') {
-      await reportRepository.handleApprovedReport(report.propertyId);
+    // Nếu resolve, có thể ẩn property hoặc thực hiện action khác
+    if (action === 'resolve') {
+      await reportRepository.handleApprovedReport(report.property);
     }
 
     res.status(200).json({
       success: true,
-      message: `Báo cáo đã được ${action === 'approve' ? 'chấp nhận' : action === 'reject' ? 'từ chối' : 'chuyển sang xem xét'}`,
+      message: `Báo cáo đã được ${action === 'resolve' ? 'xử lý' : 'bỏ qua'}`,
       data: {
         reportId: updatedReport._id,
         status: updatedReport.status,
-        handledAt: updatedReport.handledAt
+        processedAt: updatedReport.processedAt
       }
     });
 

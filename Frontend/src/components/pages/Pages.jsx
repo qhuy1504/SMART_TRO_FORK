@@ -30,6 +30,7 @@ import PaymentHistory from "../profile/payment-history/PaymentHistory"
 import PricingProfile from "../profile/pricing/Pricing"
 import PropertiesListing from "../properties/PropertiesListing"
 import PropertyDetail from "../properties/PropertyDetail"
+import ReportProperties from "../admin/report-properties/ReportManagement"
 import PageTitleWrapper from "../common/PageTitleWrapper"
 import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
@@ -165,6 +166,7 @@ const Pages = () => {
           {/* Admin pages without Header and Footer - Chỉ admin mới truy cập được */}
           <Route path='/admin/dashboard' element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path='/admin/properties' element={<AdminProtectedRoute><PropertyManagement /></AdminProtectedRoute>} />
+          <Route path='/admin/report-properties' element={<AdminProtectedRoute><ReportProperties /></AdminProtectedRoute>} />
           <Route path='/admin/rooms' element={<ProtectedRoute><RoomsManagement /></ProtectedRoute>} />
           <Route path='/admin/amenities' element={<ProtectedRoute><AmenitiesManagement /></ProtectedRoute>} />
           <Route path='/admin/settings' element={<ProtectedRoute><Settings /></ProtectedRoute>} />
