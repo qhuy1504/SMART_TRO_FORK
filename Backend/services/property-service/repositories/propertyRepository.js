@@ -322,6 +322,18 @@ class PropertyRepository {
             throw new Error(`Error getting featured properties: ${error.message}`);
         }
     }
+
+    // Đếm số bài đăng của user (để tính postOrder)
+    async countUserProperties(userId) {
+        try {
+            return await Property.countDocuments({ 
+                owner: userId,
+                isDeleted: { $ne: true } // Không tính các bài đã bị xóa
+            });
+        } catch (error) {
+            throw new Error(`Error counting user properties: ${error.message}`);
+        }
+    }
 }
 
 export default new PropertyRepository();

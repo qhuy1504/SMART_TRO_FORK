@@ -1,7 +1,7 @@
 /* NewPost.css */
-.modal-overlay {
+.modal-overlay-new-property {
   position: fixed;
-  top: 30px;
+  top: 70px;
   left: 0;
   right: 0;
   bottom: 0;
@@ -13,6 +13,24 @@
   padding: 20px;
   overflow-y: auto;
 
+}
+.form-group-new-property {
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  margin-top: 25px;
+}
+.full-amenities-label{
+  margin-left: 10px;
+  color: #3b82f6;
+  font-size: 20px;
+  font-weight: bold;
+}
+.form-group-new-property input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: #007bff; /* Màu xanh đẹp kiểu Bootstrap */
+  cursor: pointer;
 }
 
 .post-modal {
@@ -70,7 +88,7 @@
 .post-form {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
   min-height: 0;
 }
 
@@ -533,9 +551,8 @@
   border-radius: 0 0 12px 12px;
   flex-shrink: 0;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-  position: sticky;
-  bottom: 0;
-  z-index: 9999;
+  /* Loại bỏ position sticky để nút nằm tự nhiên ở cuối */
+  position: relative;
 }
 
 .coordinate-item{
@@ -545,7 +562,7 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-  .modal-overlay {
+  .modal-overlay-new-property {
     padding: 10px;
     align-items: flex-start;
     padding-top: 20px;
@@ -559,15 +576,13 @@
   
   .form-content {
     padding: 16px;
-    padding-bottom: 80px; /* Thêm padding để tránh che nút */
   }
 
   .form-actions-management {
     padding: 16px;
     flex-direction: row;
     gap: 12px;
-    position: sticky;
-    bottom: 0;
+    position: relative;
     background: white;
     border-top: 2px solid #e5e7eb;
   }

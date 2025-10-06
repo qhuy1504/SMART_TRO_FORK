@@ -14,6 +14,7 @@ import DepositContract from './DepositContract.js';
 import Report from './Report.js';
 import Comment from './Comment.js';
 import Invoice from './Invoice.js';
+import PropertyPackage from './PropertiesPackage.js';
 
 export default {
     User,
@@ -28,7 +29,8 @@ export default {
     DepositContract,
     Report,
     Comment,
-    Invoice
+    Invoice,
+    PropertyPackage
 };
 
 export {
@@ -44,5 +46,6 @@ export {
     DepositContract,
     Report,
     Comment,
-    Invoice
+    Invoice,
+    PropertyPackage
 };

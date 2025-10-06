@@ -200,6 +200,14 @@ const propertySchema = new mongoose.Schema({
             default: 0
         }
     },
+    postOrder: {
+        type: Number,
+        default: null // Thứ tự bài đăng của user này
+    },
+    isPaid: {
+        type: Boolean,
+        default: false // Đã thanh toán hay chưa
+    },
 
     // Thời gian promote tin đăng lên đầu trang
     promotedAt: {

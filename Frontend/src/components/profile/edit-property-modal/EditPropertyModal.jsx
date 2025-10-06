@@ -955,7 +955,7 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
 
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay-edit-property" onClick={onClose}>
       <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Chỉnh sửa tin đăng</h3>

@@ -22,7 +22,8 @@ import {
   People,
   EditDocument,
   Category,
-  Report
+  Report,
+  WorkspacePremium
 } from "@mui/icons-material";
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -54,6 +55,7 @@ const SideBar = () => {
     { text: t('sidebar.contracts'), icon: <EditDocument />, path: "/admin/contracts", roles: ['landlord'] },
     { text: t('sidebar.properties'), icon: <EditDocument />, path: "/admin/properties", roles: ['admin'] },
     { text: t('sidebar.report-properties'), icon: <Report />, path: "/admin/report-properties", roles: ['admin'] },
+    { text: t('sidebar.properties-packages'), icon: <WorkspacePremium />, path: "/admin/properties-packages", roles: ['admin'] },
     { text: t('sidebar.settings'), icon: <Settings />, path: "/admin/settings", roles: ['admin', 'landlord'] }
   ], [t]);
 

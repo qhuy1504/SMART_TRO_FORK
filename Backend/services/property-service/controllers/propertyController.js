@@ -510,6 +510,15 @@ class PropertyController {
 
             console.log('Final propertyData coordinates:', propertyData.coordinates);
 
+            // Tính postOrder dựa trên số bài đăng hiện tại của user
+            const userPropertiesCount = await propertyRepository.countUserProperties(userId);
+            propertyData.postOrder = userPropertiesCount + 1;
+            
+            // Xác định trạng thái thanh toán: 3 bài đầu miễn phí, từ bài thứ 4 cần thanh toán
+            propertyData.isPaid = propertyData.postOrder <= 3;
+            
+            console.log(`User ${userId} creating property #${propertyData.postOrder}, isPaid: ${propertyData.isPaid}`);
+
             // Tạo property
             const property = await propertyRepository.create(propertyData);
 
@@ -527,6 +536,9 @@ class PropertyController {
                     id: property._id,
                     title: property.title,
                     approvalStatus: property.approvalStatus,
+                    postOrder: property.postOrder,
+                    isPaid: property.isPaid,
+                    needsPayment: property.postOrder > 3 && !property.isPaid, // Cần thanh toán hay không
                     createdAt: property.createdAt,
                     mediaUploaded: {
                         images: imageUrls.length,

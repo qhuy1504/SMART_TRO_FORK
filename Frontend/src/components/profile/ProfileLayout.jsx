@@ -64,6 +64,13 @@ const ProfileLayout = () => {
       label: t('profile.layout.sidebar.account'),
       path: '/profile/account',
       active: location.pathname === '/profile/account'
+    },
+      {
+      id: 'properties-package',
+      icon: 'fa-user-cog',
+      label: t('profile.layout.sidebar.propertiesPackage'),
+      path: '/profile/properties-package',
+      active: location.pathname === '/profile/properties-package'
     }
   ];
 

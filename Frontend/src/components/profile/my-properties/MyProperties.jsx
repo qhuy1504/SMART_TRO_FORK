@@ -5,6 +5,7 @@ import { myPropertiesAPI } from '../../../services/myPropertiesAPI';
 import EditPropertyModal from '../edit-property-modal/EditPropertyModal';
 import '../ProfilePages.css';
 import './MyProperties.css';
+import './PaymentTags.css';
 import { FaEllipsisV, FaComment  } from "react-icons/fa";
 
 
@@ -198,6 +199,15 @@ const MyProperties = () => {
     }
   };
 
+  // Handle payment - redirect to payment page
+  const handlePayment = (property) => {
+    // Đóng dropdown nếu đang mở
+    setActiveDropdown(null);
+    
+    // Navigate to payment page với property ID
+    window.location.href = `/profile/properties-package?propertyId=${property._id}`;
+  };
+
   // Handle toggle status confirmation
   const handleToggleStatusConfirm = (property) => {
     setTogglingProperty(property);
@@ -286,7 +296,7 @@ const MyProperties = () => {
 
   return (
     <div className="profile-page">
-      <div className="page-header">
+      <div className="page-header-my-properties">
         <h2>
           <i className="fa fa-list"></i>
           Quản lý tin đăng của tôi
@@ -384,8 +394,8 @@ const MyProperties = () => {
                         {getStatusBadge(property.approvalStatus)}
                       </div>
 
-                      {/* Dropdown Menu - chỉ hiện khi approved */}
-                      {property.approvalStatus === 'approved' && (
+                      {/* Dropdown Menu - hiện với pending, approved và rejected */}
+                      {(property.approvalStatus === 'pending' || property.approvalStatus === 'approved' || property.approvalStatus === 'rejected') && (
                         <div className="property-dropdown">
                           <button
                             className="dropdown-toggle"
@@ -396,12 +406,32 @@ const MyProperties = () => {
 
                           {activeDropdown === property._id && (
                             <div className="dropdown-menu">
+                              {property.approvalStatus === 'approved' && (
+                                <>
+                                  <button
+                                    className="dropdown-item"
+                                    onClick={() => handlePromoteProperty(property)}
+                                  >
+                                    <i className="fa fa-arrow-up"></i>
+                                    Đưa tin lên đầu trang
+                                  </button>
+                                  <button
+                                    className="dropdown-item"
+                                    onClick={() => handleToggleStatusConfirm(property)}
+                                  >
+                                    <i className={`fa ${property.status === 'available' ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                    {property.status === 'available' ? 'Ẩn tin đăng' : 'Hiện tin đăng'}
+                                  </button>
+                                </>
+                              )}
+                              
+                              {/* Nút xóa - hiển thị cho tất cả trạng thái */}
                               <button
-                                className="dropdown-item"
-                                onClick={() => handlePromoteProperty(property)}
+                                className="dropdown-item delete-item"
+                                onClick={() => handleDeleteConfirm(property)}
                               >
-                                <i className="fa fa-arrow-up"></i>
-                                Đưa tin lên đầu trang
+                                <i className="fa fa-trash"></i>
+                                Xóa tin đăng
                               </button>
                             </div>
                           )}
@@ -446,15 +476,53 @@ const MyProperties = () => {
                         </div>
                       </div>
 
-                      <div className="property-actions">
-                        <button
-                          className="btn btn-outline btn-edit"
-                          onClick={() => handleEdit(property)}
-                        >
-                          <i className="fa fa-edit"></i>
-                          Sửa
-                        </button>
+                      {/* Payment Status Tag - hiển thị cho bài từ thứ 4 trở đi */}
+                      {property.postOrder && property.postOrder > 3 && !property.isPaid && (
+                        <div className="payment-status-tag">
+                          <span className="unpaid-tag">
+                            <i className="fa fa-exclamation-triangle"></i>
+                            CHƯA THANH TOÁN
+                          </span>
+                        </div>
+                      )}
 
+                      <div className="property-actions">
+                        {/* Nút Sửa - chỉ hiện ở pending và approved, không hiện ở rejected */}
+                        {property.approvalStatus !== 'rejected' && (
+                          <button
+                            className="btn btn-outline btn-edit"
+                            onClick={() => handleEdit(property)}
+                          >
+                            <i className="fa fa-edit"></i>
+                            Sửa
+                          </button>
+                        )}
+
+                        {/* Logic thanh toán dựa trên thứ tự bài đăng */}
+                        {property.approvalStatus === 'pending' && (
+                          <>
+                            {/* 3 bài đầu: Miễn phí, không hiện nút thanh toán */}
+                            {(!property.postOrder || property.postOrder <= 3) ? (
+                              <div className="free-post-notice">
+                                <span className="free-tag">
+                                  <i className="fa fa-gift"></i>
+                                  MIỄN PHÍ
+                                </span>
+                              </div>
+                            ) : (
+                              /* Từ bài thứ 4: Hiển thị nút thanh toán */
+                              <button
+                                className="btn btn-primary btn-payment"
+                                onClick={() => handlePayment(property)}
+                              >
+                                <i className="fa fa-credit-card"></i>
+                                Thanh toán
+                              </button>
+                            )}
+                          </>
+                        )}
+
+                        {/* Trạng thái rejected: chỉ Lý do + Dropdown */}
                         {property.approvalStatus === 'rejected' && (
                           <button
                             className="btn btn-info btn-view-detail"
@@ -465,29 +533,6 @@ const MyProperties = () => {
                             Lý do
                           </button>
                         )}
-
-                        {property.approvalStatus === 'approved' && (
-                          <button
-                            className={`btn btn-sm ${property.status === 'available' ? 'btn-secondary' : 'btn-warning'}`}
-                            onClick={() => handleToggleStatusConfirm(property)}
-                            style={{
-                              backgroundColor: property.status === 'available' ? '#6c757d' : '#fd7e14',
-                              borderColor: property.status === 'available' ? '#6c757d' : '#fd7e14',
-                              color: 'white'
-                            }}
-                          >
-                            <i className={`fa ${property.status === 'available' ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                            {property.status === 'available' ? 'Ẩn' : 'Hiện'}
-                          </button>
-                        )}
-
-                        <button
-                          className="btn btn-danger btn-delete"
-                          onClick={() => handleDeleteConfirm(property)}
-                        >
-                          <i className="fa fa-trash"></i>
-                          Xóa
-                        </button>
                       </div>
                     </div>
                   </div>
