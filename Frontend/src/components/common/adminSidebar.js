@@ -23,6 +23,7 @@ import {
   EditDocument,
   Category,
   Report,
+  WorkspacePremium,
   Payment
 } from "@mui/icons-material";
 import { useState, useEffect, useMemo } from "react";
@@ -56,6 +57,7 @@ const SideBar = () => {
     { text: t('sidebar.payments'), icon: <Payment />, path: "/admin/payments", roles: ['landlord'] },
     { text: t('sidebar.properties'), icon: <EditDocument />, path: "/admin/properties", roles: ['admin'] },
     { text: t('sidebar.report-properties'), icon: <Report />, path: "/admin/report-properties", roles: ['admin'] },
+    { text: t('sidebar.properties-packages'), icon: <WorkspacePremium />, path: "/admin/properties-packages", roles: ['admin'] },
     { text: t('sidebar.settings'), icon: <Settings />, path: "/admin/settings", roles: ['admin', 'landlord'] }
   ], [t]);
 

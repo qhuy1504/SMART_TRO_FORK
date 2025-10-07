@@ -266,6 +266,8 @@ class UserController {
                     userId: user._id, 
                     email: user.email, 
                     role: user.role,
+                    fullName: user.fullName,
+                    phone: user.phone,
                     sessionToken: sessionId
                 },
                 process.env.JWT_SECRET,
@@ -392,6 +394,8 @@ class UserController {
                     userId: user._id, 
                     email: user.email, 
                     role: user.role,
+                    fullName: user.fullName,
+                    phone: user.phone,
                     sessionToken: sessionId
                 },
                 process.env.JWT_SECRET,
@@ -752,6 +756,8 @@ class UserController {
                     userId: user._id, 
                     email: user.email, 
                     role: user.role,
+                    fullName: user.fullName,
+                    phone: user.phone,
                     sessionToken: sessionToken // Thêm sessionToken vào JWT
                 },
                 process.env.JWT_SECRET,

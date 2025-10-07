@@ -479,6 +479,7 @@
   text-decoration: none;
   min-width: 70px;
   justify-content: center;
+  white-space: nowrap;
 }
 
 .content-card-my-properties {
@@ -495,15 +496,13 @@
 
 /* Nút Sửa - Màu xanh dương */
 .btn-edit {
-  background: linear-gradient(135deg, #00aa36, #037720);
+  background: #ff6600;
   color: white;
-  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+
 }
 
 .btn-edit:hover {
-  background: linear-gradient(135deg, #026b16, #00978f);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.4);
+  background-color: darkorange;
 }
 
 /* Nút Hiện/Ẩn - Màu cam */
@@ -530,6 +529,32 @@
   background: linear-gradient(135deg, #c82333, #a71e2a);
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(220, 53, 69, 0.4);
+}
+
+/* Nút Thanh toán - Màu xanh lá */
+.btn-payment {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+}
+
+.btn-payment:hover {
+  background: linear-gradient(135deg, #20c997, #17a2b8);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(40, 167, 69, 0.4);
+}
+
+/* Nút Lý do - Màu xanh dương nhạt */
+.btn-view-detail {
+  background: linear-gradient(135deg, #17a2b8, #138496);
+  color: white;
+  box-shadow: 0 2px 4px rgba(23, 162, 184, 0.3);
+}
+
+.btn-view-detail:hover {
+  background: linear-gradient(135deg, #138496, #0f6674);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(23, 162, 184, 0.4);
 }
 
 /* Pagination */
@@ -848,6 +873,21 @@
   z-index: 1000;
   animation: fadeInDown 0.2s ease;
 }
+.page-header-my-properties {
+    text-align: center;
+    border-bottom: 3px solid #f3f4f6;
+}
+.page-header-my-properties h2 {
+    margin: 0;
+    font-size: 28px;
+    color: #333;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 10px;
+}
 
 .currency {
   font-size: 14px;
@@ -884,6 +924,17 @@
   background-color: #f8f9fa;
   color: #007bff;
 }
+
+.dropdown-item.delete-item {
+  color: #dc3545;
+  border-top: 1px solid #f1f1f1;
+}
+
+.dropdown-item.delete-item:hover {
+  background-color: #fff5f5;
+  color: #dc3545;
+}
+
 
 .dropdown-item i {
   font-size: 12px;
@@ -1273,3 +1324,5 @@
     font-size: 16px;
   }
 }
+
+/* Đóng CSS file */

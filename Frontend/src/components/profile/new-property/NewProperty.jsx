@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi';
@@ -54,6 +55,7 @@ const geocodeAddress = async (address) => {
 
 const NewProperty = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const videoInputRef = useRef(null);
   const lastAddressRef = useRef("");
@@ -192,7 +194,7 @@ const NewProperty = () => {
       (position) => {
         const { latitude, longitude } = position.coords;
         const userCoords = { lat: latitude, lng: longitude };
-        console.log("User location:", userCoords);
+        // console.log("User location:", userCoords);
         
         // Đánh dấu là đã được set thủ công
         isManuallySetRef.current = true;
@@ -242,7 +244,7 @@ const NewProperty = () => {
     );
   };
 
-  // Initialize user location when component mounts
+  // Initialize user location and user info when component mounts
   useEffect(() => {
     // Đảm bảo coordinates luôn có giá trị ban đầu
     if (!formData.coordinates || !formData.coordinates.lat || !formData.coordinates.lng) {
@@ -253,6 +255,8 @@ const NewProperty = () => {
       lastCoordsRef.current = defaultCenter;
     }
     getUserLocation();
+    
+    // Không auto-fill thông tin liên hệ - để user tự nhập
   }, []);
 
   // Show toast when there are media errors (images or videos)
@@ -285,7 +289,7 @@ const NewProperty = () => {
 
   // Debug rejected files state changes
   useEffect(() => {
-    console.log('🔄 rejectedFiles state changed:', rejectedFiles);
+    // console.log('rejectedFiles state changed:', rejectedFiles);
   }, [rejectedFiles]);
 
   // Load amenities from API
@@ -977,6 +981,23 @@ const handleVideoUpload = (e) => {
 
         setShowModal(false);
 
+        // Logic redirect dựa trên postOrder
+        const needsPayment = result.data?.needsPayment || false;
+        const propertyId = result.data?.id;
+        
+        console.log('Post created - postOrder:', result.data?.postOrder, 'needsPayment:', needsPayment);
+        
+        // Delay để toast hiển thị trước khi redirect
+        setTimeout(() => {
+          if (needsPayment && propertyId) {
+            // Từ bài thứ 4 trở đi: redirect đến trang thanh toán
+            navigate(`/profile/properties-package?propertyId=${propertyId}`);
+          } else {
+            // 3 bài đầu miễn phí: redirect về MyProperties
+            navigate('/profile/my-posts');
+          }
+        }, 2000);
+
         // Không reset form nếu có files bị từ chối để user có thể chỉnh sửa
         if (!result.data?.rejectedFiles?.images?.length && !result.data?.rejectedFiles?.videos?.length) {
           // Reset form chỉ khi không có files bị từ chối
@@ -1173,7 +1194,7 @@ const handleVideoUpload = (e) => {
 
       {/* Modal */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+        <div className="modal-overlay-new-property" onClick={() => setShowModal(false)}>
           <div className="post-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Tạo tin đăng mới</h3>
@@ -1182,7 +1203,7 @@ const handleVideoUpload = (e) => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="post-new-property">
+            <form onSubmit={handleSubmit} className="post-form">
               <div className="form-content">
                 {/* Thông tin chủ nhà */}
                 <div className="form-section-new-property">
@@ -1225,6 +1246,7 @@ const handleVideoUpload = (e) => {
                         name="contactName"
                         value={formData.contactName}
                         onChange={handleInputChange}
+                        placeholder="VD: Nguyễn Văn A"
                         className={errors.contactName ? 'error' : ''}
                       />
                       {errors.contactName && <span className="error-text">{errors.contactName}</span>}
@@ -1382,13 +1404,14 @@ const handleVideoUpload = (e) => {
                 <div className="form-section-new-property">
                   <h4>Tiện ích cho thuê</h4>
 
-                  <div className="form-group">
-                    <label>
+                  <div className="form-group-new-property">
+                    <label className="full-amenities-label">
                       <input
                         type="checkbox"
                         name="fullAmenities"
                         checked={formData.fullAmenities}
                         onChange={handleInputChange}
+                        style={{ marginRight: '8px', fontSize: '16px' }}
                       />
                       Full tiện ích
                     </label>

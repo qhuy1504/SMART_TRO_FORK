@@ -20,6 +20,7 @@ import chatbotRoutes from './chatbot-service/routes/chatbotRoutes.js';
 import adminPropertyRoutes from './property-service/routes/adminPropertyRoutes.js';
 import adminReportPropertyRoutes from './report-service/routes/adminReportPropertyRoutes.js';
 import invoiceRoutes from './invoice-service/routes/invoiceRoutes.js';
+import propertiesPackageRoutes from './properties-package-service/routes/propertiesPackageRoutes.js';
 
 const router = express.Router();
 
@@ -42,6 +43,7 @@ router.use('/api/chatbot', chatbotRoutes);
 router.use('/api/admin', adminPropertyRoutes);
 router.use('/api/admin/report-properties', adminReportPropertyRoutes);
 router.use('/api/invoices', invoiceRoutes);
+router.use('/api/properties-packages', propertiesPackageRoutes);
 
 
 // API documentation route
@@ -62,7 +64,7 @@ router.get('/api', (req, res) => {
             myProperties: '/api/my-properties',
             reports: '/api/reports',
             comments: '/api/comments',
-            upload: '/api/upload',
+            propertiesPackages: '/api/properties-packages',
             moderation: '/api/moderation'
         },
         documentation: {

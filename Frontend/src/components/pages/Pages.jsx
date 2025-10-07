@@ -32,6 +32,8 @@ import PricingProfile from "../profile/pricing/Pricing"
 import PropertiesListing from "../properties/PropertiesListing"
 import PropertyDetail from "../properties/PropertyDetail"
 import ReportProperties from "../admin/report-properties/ReportManagement"
+import PropertiesPackagesManagement from "../admin/properties-packages/PropertiesPackagesManagement"
+import PropertiesPackage from "../profile/properties-package/PropertiesPackage.jsx"
 import PageTitleWrapper from "../common/PageTitleWrapper"
 import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
@@ -119,6 +121,7 @@ const Pages = () => {
               <Footer />
             </>
           } />
+     
           <Route path='/login' element={
             <>
               <Header />
@@ -161,6 +164,7 @@ const Pages = () => {
             <Route path='favorites' element={<Favorites />} />
             <Route path='payment-history' element={<PaymentHistory />} />
             <Route path='pricing' element={<PricingProfile />} />
+            <Route path='properties-package' element={<PropertiesPackage />} />
             <Route index element={<AccountManagement />} />
           </Route>
 
@@ -170,6 +174,7 @@ const Pages = () => {
           <Route path='/admin/report-properties' element={<AdminProtectedRoute><ReportProperties /></AdminProtectedRoute>} />
           <Route path='/admin/rooms' element={<ProtectedRoute><RoomsManagement /></ProtectedRoute>} />
           <Route path='/admin/amenities' element={<ProtectedRoute><AmenitiesManagement /></ProtectedRoute>} />
+          <Route path='/admin/properties-packages' element={<AdminProtectedRoute><PropertiesPackagesManagement /></AdminProtectedRoute>} />
           <Route path='/admin/settings' element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path='/admin/tenants' element={<ProtectedRoute><Tenants /></ProtectedRoute>} />
           <Route path='/admin/contracts' element={<ProtectedRoute><Contracts /></ProtectedRoute>} />

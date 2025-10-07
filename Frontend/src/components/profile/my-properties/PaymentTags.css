@@ -1,0 +1,107 @@
+/* Payment Status Tags for MyProperties.jsx /. */
+
+.payment-status-tag {
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: center;
+
+}
+
+.unpaid-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: linear-gradient(45deg, #d10000, #ff2739) !important;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+  animation: pulse 2s infinite;
+  border: none;
+  position: relative;
+    top: -505px;
+}
+
+.free-post-notice {
+  display: flex;
+  justify-content: center;
+  margin: 5px 0;
+}
+
+.free-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: linear-gradient(45deg, #28a745, #20c997);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+  border: none;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 4px 16px rgba(255, 107, 107, 0.6);
+    transform: scale(1.02);
+  }
+  100% {
+    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+    transform: scale(1);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .unpaid-tag,
+  .free-tag {
+    font-size: 10px;
+    padding: 4px 8px;
+    gap: 3px;
+  }
+  
+  .payment-status-tag {
+    margin-bottom: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .unpaid-tag,
+  .free-tag {
+    font-size: 9px;
+    padding: 3px 6px;
+  }
+}
+
+/* Property actions spacing adjustment */
+.property-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.property-actions .btn {
+  flex: 1;
+  min-width: 80px;
+  max-width: 120px;
+}
+
+/* Ensure tags don't interfere with existing layout */
+.property-card .payment-status-tag + .property-actions {
+  margin-top: 5px;
+}

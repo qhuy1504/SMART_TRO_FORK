@@ -118,6 +118,8 @@ const myPropertiesController = {
         description: property.description,
         approvalStatus: property.approvalStatus,
         status: property.status,
+        postOrder: property.postOrder, // Thứ tự bài đăng
+        isPaid: property.isPaid, // Đã thanh toán hay chưa
         rejectionReason: property.rejectionReason, // Thêm lý do từ chối
         location: {
           provinceName: provinceMap.get(String(property.province)) || "",
