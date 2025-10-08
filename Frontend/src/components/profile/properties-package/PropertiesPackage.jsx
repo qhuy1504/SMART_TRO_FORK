@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import PropertiesPackageAPI from '../../../services/PropertiesPackageAPI.js';
 import './PropertiesPackage.css';
+import { name } from 'dayjs/locale/vi.js';
 
 const PropertiesPackage = () => {
   const [searchParams] = useSearchParams();
@@ -101,6 +102,7 @@ const PropertiesPackage = () => {
         durationType,
         addFastRent
       );
+      console.log('Price calculation response:', response);
       
       if (response.success) {
         setPricing(response.data);
@@ -152,20 +154,38 @@ const PropertiesPackage = () => {
       return;
     }
 
-    // TODO: Integrate with payment system
-    toast.success('Đang chuyển hướng đến trang thanh toán...');
+    if (!currentPackage) {
+      toast.error('Vui lòng chọn gói tin đăng');
+      return;
+    }
+
+    toast.info('Đang chuyển hướng đến trang thanh toán...');
     
-    // For now, redirect to payment page with pricing data
+    // Prepare payment data
     const paymentData = {
       propertyId,
-      packageInfo: pricing.packageInfo,
+      packageInfo: {
+        ...pricing.packageInfo,
+        packageId: currentPackage._id, // Ensure we have package ID
+        _id: currentPackage._id,
+        name: currentPackage.name,
+        displayName: currentPackage.displayName,
+        dailyPrice: currentPackage.dailyPrice,
+      },
       pricing: pricing.pricing,
-      timeline: pricing.timeline,
+      timeline: {
+        ...pricing.timeline,
+        duration,
+        durationType,
+        durationDisplay: formatDurationDisplay()
+      },
       paymentMethod: selectedPayment
     };
     
-    // Navigate to payment page (you'll need to create this route)
-    navigate('/payment', { state: paymentData });
+    console.log('Payment data:', paymentData);
+    
+    // Navigate to payment page
+    navigate('/profile/payment', { state: paymentData });
   };
 
   // Back to my posts
@@ -219,6 +239,14 @@ const PropertiesPackage = () => {
   return (
     <div className="profile-content">
       <div className="property-package-container">
+          {/* Back Button - Top Left */}
+          <div className="top-back-button">
+            <button className="btn-back-top" onClick={handleBack}>
+              <i className="fa fa-arrow-left"></i>
+              Quay lại danh sách tin
+            </button>
+          </div>
+
           <div className="package-main-content">
             <div className="page-header-admin">
               <h2>
@@ -332,12 +360,7 @@ const PropertiesPackage = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="action-buttons">
-              <button className="btn-back" onClick={handleBack}>
-                <i className="fa fa-arrow-left"></i>
-                Quay lại
-              </button>
-              
+            <div className="action-button-payment">
               <button className="btn-payment" onClick={handlePayment} disabled={!pricing}>
                 <i className="fa fa-credit-card"></i>
                 Thanh toán

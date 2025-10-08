@@ -208,6 +208,35 @@ const propertySchema = new mongoose.Schema({
         type: Boolean,
         default: false // Đã thanh toán hay chưa
     },
+    packageStatus: {
+        type: String,
+        enum: ['active', 'cancelled', 'expired'],
+        default: 'active' // Trạng thái gói: active, cancelled, expired
+    },
+
+    // Thông tin gói đã mua
+    packageInfo: {
+        packageId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'PropertiesPackage'
+        },
+        packageName: String,
+        displayName: String,
+        priority: Number,
+        color: String,
+        stars: Number,
+        startDate: Date,
+        expiryDate: Date,
+        isActive: {
+            type: Boolean,
+            default: false
+        },
+        cancelledAt: Date,
+        isCancelled: {
+            type: Boolean,
+            default: false
+        }
+    },
 
     // Thời gian promote tin đăng lên đầu trang
     promotedAt: {
@@ -235,6 +264,7 @@ propertySchema.index({ promotedAt: -1 }); // Index for promoted properties
 propertySchema.index({ owner: 1, approvalStatus: 1 });
 propertySchema.index({ owner: 1, isDeleted: 1 });
 propertySchema.index({ owner: 1, createdAt: -1 });
+propertySchema.index({ owner: 1, packageStatus: 1 }); // Index for package status queries
 propertySchema.index({ promotedAt: -1, createdAt: -1 }); // Compound index for sorting
 
 propertySchema.pre(/^find/, function (next) {

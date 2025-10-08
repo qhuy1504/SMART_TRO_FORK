@@ -327,8 +327,8 @@ class PropertyRepository {
     async countUserProperties(userId) {
         try {
             return await Property.countDocuments({ 
-                owner: userId,
-                isDeleted: { $ne: true } // Không tính các bài đã bị xóa
+                owner: userId
+                // Tính tất cả bài đăng (kể cả đã xóa) để tránh lợi dụng
             });
         } catch (error) {
             throw new Error(`Error counting user properties: ${error.message}`);

@@ -199,14 +199,14 @@ export const sendWarningEmail = async ({ to, ownerName, propertyTitle, reason, r
                     
                     <div style="background-color: #d1ecf1; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #17a2b8;">
                         <p style="margin: 0; color: #0c5460;">
-                            ℹ️ <strong>Lưu ý:</strong> Đây là cảnh báo đầu tiên. Nếu tiếp tục vi phạm, bài đăng có thể bị ẩn hoặc xóa khỏi hệ thống.
+                            ℹ️ <strong>Lưu ý:</strong> Đây là cảnh báo đầu tiên. Nếu tiếp tục vi phạm, bài đăng có thể bị xóa khỏi hệ thống.
                         </p>
                     </div>
                     
                     <div style="text-align: center; margin: 30px 0;">
                         <a href="${process.env.FRONTEND_URL}/profile/my-posts" 
                            style="background-color: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">
-                            📝 Chỉnh sửa bài đăng
+                            Chỉnh sửa bài đăng
                         </a>
                     </div>
                     
@@ -228,7 +228,7 @@ export const sendWarningEmail = async ({ to, ownerName, propertyTitle, reason, r
     }
 };
 
-// Gửi email thông báo bài đăng bị ẩn
+// Gửi email thông báo bài đăng bị xóa
 export const sendPropertyHiddenEmail = async ({ to, ownerName, propertyTitle, reason, reportReason }) => {
         const getReasonInVietnamese = (reason) => {
         const reasonMapping = {
@@ -248,34 +248,34 @@ export const sendPropertyHiddenEmail = async ({ to, ownerName, propertyTitle, re
         const mailOptions = {
             from: process.env.GMAIL_USER,
             to: to,
-            subject: 'Bài đăng của bạn đã bị ẩn - Smart Trọ',
+            subject: 'Bài đăng của bạn đã bị xóa - Smart Trọ',
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                     <h2 style="color: #333; text-align: center;">Smart Trọ</h2>
                     <div style="background-color: #f8d7da; padding: 20px; border-radius: 8px; border-left: 4px solid #dc3545; margin: 20px 0;">
-                        <h3 style="color: #721c24; margin-top: 0;">Bài đăng đã bị ẩn</h3>
+                        <h3 style="color: #721c24; margin-top: 0;">Bài đăng đã bị xóa</h3>
                     </div>
                     
                     <p>Xin chào <strong>${ownerName}</strong>,</p>
-                    <p>Chúng tôi rất tiếc phải thông báo rằng bài đăng của bạn đã bị ẩn khỏi hệ thống do vi phạm chính sách.</p>
-                    
+                    <p>Chúng tôi rất tiếc phải thông báo rằng bài đăng của bạn đã bị xóa khỏi hệ thống do vi phạm chính sách.</p>
+
                     <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                        <h4 style="color: #495057; margin-top: 0;">📋 Thông tin bài đăng bị ẩn:</h4>
+                        <h4 style="color: #495057; margin-top: 0;">Thông tin bài đăng bị xóa:</h4>
                         <p><strong>Tiêu đề:</strong> ${propertyTitle}</p>
                         <p><strong>Lý do báo cáo:</strong> ${getReasonInVietnamese(reportReason)}</p>
-                        <p><strong>Trạng thái:</strong> <span style="color: #dc3545; font-weight: bold;">Đã bị ẩn</span></p>
+                        <p><strong>Trạng thái:</strong> <span style="color: #dc3545; font-weight: bold;">Đã bị xóa</span></p>
                     </div>
                     
                     <div style="background-color: #f8d7da; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc3545;">
-                        <h2 style="color: #721c24; margin-top: 0;">📝 Lý do ẩn bài đăng:</h2>
+                        <h2 style="color: #721c24; margin-top: 0;">Lý do xóa bài đăng:</h2>
                         <p style="color: #721c24; margin: 0;">${reason}</p>
                     </div>
                     
-                    <h4 style="color: #dc3545;">🔒 Hậu quả:</h4>
+                    <h4 style="color: #dc3545;">Hậu quả:</h4>
                     <ul style="color: #495057;">
                         <li>Bài đăng không còn hiển thị công khai trên hệ thống</li>
                         <li>Người dùng khác không thể tìm kiếm hoặc xem bài đăng này</li>
-                        <li>Bài đăng sẽ được đánh dấu là "đã ẩn" trong quản lý của bạn</li>
+                        <li>Bài đăng sẽ được đánh dấu là "đã xóa" trong quản lý của bạn</li>
                     </ul>
                     
                     <h4 style="color: #007bff;">📞 Liên hệ hỗ trợ:</h4>

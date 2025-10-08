@@ -120,6 +120,7 @@ const myPropertiesController = {
         status: property.status,
         postOrder: property.postOrder, // Thứ tự bài đăng
         isPaid: property.isPaid, // Đã thanh toán hay chưa
+        packageStatus: property.packageStatus || 'active', // Trạng thái gói: active, cancelled, expired
         rejectionReason: property.rejectionReason, // Thêm lý do từ chối
         location: {
           provinceName: provinceMap.get(String(property.province)) || "",
@@ -130,6 +131,7 @@ const myPropertiesController = {
         views: property.views || 0,
         favorites: property.stats?.favorites || 0,
         comments: commentsCountMap.get(property._id.toString()) || 0,
+        packageInfo: property.packageInfo || {},
         createdAt: property.createdAt,
         updatedAt: property.updatedAt
       }));
@@ -1456,6 +1458,72 @@ const myPropertiesController = {
             res.status(500).json({
                 success: false,
                 message: 'Lỗi server khi xóa khỏi yêu thích',
+                error: process.env.NODE_ENV === 'development' ? error.message : 'Lỗi server'
+            });
+        }
+    },
+
+    // Hủy gói tin đăng
+    cancelPropertyPackage: async (req, res) => {
+        try {
+            const { propertyId } = req.params;
+            const userId = req.user.userId;
+
+            // Kiểm tra property tồn tại và thuộc về user
+            const property = await Property.findOne({
+                _id: propertyId,
+                owner: userId,
+                isDeleted: false
+            });
+
+            if (!property) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Không tìm thấy tin đăng'
+                });
+            }
+
+            // Kiểm tra xem property có đang sử dụng gói không
+            if (!property.packageInfo || !property.packageInfo.isActive || !property.isPaid) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Tin đăng không có gói đang hoạt động để hủy'
+                });
+            }
+
+            // Hủy gói tin - lưu lại lịch sử và set trạng thái đã hủy
+            property.packageInfo = {
+                packageId: property.packageInfo.packageId, // Giữ lại ID gói cũ để lịch sử
+                packageName: property.packageInfo.packageName, // Giữ lại tên gói cũ
+                displayName: property.packageInfo.displayName, // Giữ lại tên hiển thị
+                priority: 5, // Reset về priority mặc định
+                color: '#6c757d',
+                stars: 0,
+                startDate: property.packageInfo.startDate, // Giữ lại ngày bắt đầu
+                expiryDate: property.packageInfo.expiryDate, // Giữ lại ngày hết hạn
+                cancelledAt: new Date(), // Thêm ngày hủy
+                isActive: false, // Set không hoạt động
+                isCancelled: true // Đánh dấu đã hủy
+            };
+            property.isPaid = true; // Vẫn giữ trạng thái đã thanh toán
+            property.packageStatus = 'cancelled'; // Thêm trạng thái gói: active, cancelled, expired
+
+            await property.save();
+
+            res.json({
+                success: true,
+                message: 'Đã hủy gói tin thành công',
+                data: {
+                    propertyId: property._id,
+                    title: property.title
+                }
+            });
+
+        } catch (error) {
+            console.error('Error in cancelPropertyPackage:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Lỗi server khi hủy gói tin',
                 error: process.env.NODE_ENV === 'development' ? error.message : 'Lỗi server'
             });
         }

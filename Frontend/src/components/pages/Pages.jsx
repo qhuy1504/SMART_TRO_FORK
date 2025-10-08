@@ -34,6 +34,7 @@ import PropertyDetail from "../properties/PropertyDetail"
 import ReportProperties from "../admin/report-properties/ReportManagement"
 import PropertiesPackagesManagement from "../admin/properties-packages/PropertiesPackagesManagement"
 import PropertiesPackage from "../profile/properties-package/PropertiesPackage.jsx"
+import Payment from "../profile/payment/Payment.jsx"
 import PageTitleWrapper from "../common/PageTitleWrapper"
 import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
@@ -165,6 +166,7 @@ const Pages = () => {
             <Route path='payment-history' element={<PaymentHistory />} />
             <Route path='pricing' element={<PricingProfile />} />
             <Route path='properties-package' element={<PropertiesPackage />} />
+            <Route path='payment' element={<Payment />} />
             <Route index element={<AccountManagement />} />
           </Route>
 

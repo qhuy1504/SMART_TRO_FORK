@@ -24,6 +24,7 @@ router.put(
 router.delete('/:propertyId', authMiddleware, myPropertiesController.deleteProperty);
 router.patch('/:propertyId/toggle-status', authMiddleware, myPropertiesController.togglePropertyStatus);
 router.patch('/:propertyId/promote-to-top', authMiddleware, myPropertiesController.promotePropertyToTop);
+router.patch('/:propertyId/cancel-package', authMiddleware, myPropertiesController.cancelPropertyPackage);
 
 // Favorites routes
 router.get('/favorites', authMiddleware, myPropertiesController.getFavorites);

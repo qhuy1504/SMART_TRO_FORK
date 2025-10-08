@@ -212,4 +212,18 @@ export const myPropertiesAPI = {
       };
     }
   },
+
+  // Hủy gói tin đăng
+  cancelPropertyPackage: async (propertyId) => {
+    try {
+      const response = await api.patch(`/my-properties/${propertyId}/cancel-package`);
+      return response.data;
+    } catch (error) {
+      console.error('Error canceling property package:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Lỗi khi hủy gói tin'
+      };
+    }
+  },
 };

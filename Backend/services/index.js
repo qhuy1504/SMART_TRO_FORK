@@ -6,7 +6,7 @@ import userRoutes from './user-service/routes/userRoutes.js';
 import propertyRoutes from './property-service/routes/propertyRoutes.js';
 import roomRoutes from './room-service/routes/roomRoutes.js';
 import tenantRoutes from './tenant-service/routes/tenantRoutes.js';
-// import paymentRoutes from './payment-service/routes/paymentRoutes.js';
+import paymentRoutes from './payment-service/routes/paymentRoutes.js';
 import contractRoutes from './contract-service/routes/contractRoutes.js';
 import authRoutes from './auth-service/routes/authRoutes.js';
 import amenityRoutes from './amenity-service/routes/amenityRoutes.js';
@@ -22,6 +22,7 @@ import adminReportPropertyRoutes from './report-service/routes/adminReportProper
 import invoiceRoutes from './invoice-service/routes/invoiceRoutes.js';
 import propertiesPackageRoutes from './properties-package-service/routes/propertiesPackageRoutes.js';
 
+
 const router = express.Router();
 
 // Service routes
@@ -29,7 +30,7 @@ router.use('/api/users', userRoutes);
 router.use('/api/properties', propertyRoutes);
 router.use('/api/rooms', roomRoutes);
 router.use('/api/tenants', tenantRoutes);
-// router.use('/api/payments', paymentRoutes);
+router.use('/api/payments', paymentRoutes);
 router.use('/api/contracts', contractRoutes);
 router.use('/api/auth', authRoutes);
 router.use('/api/amenities', amenityRoutes);
@@ -44,6 +45,7 @@ router.use('/api/admin', adminPropertyRoutes);
 router.use('/api/admin/report-properties', adminReportPropertyRoutes);
 router.use('/api/invoices', invoiceRoutes);
 router.use('/api/properties-packages', propertiesPackageRoutes);
+
 
 
 // API documentation route

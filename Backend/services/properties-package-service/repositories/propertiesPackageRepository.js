@@ -6,7 +6,7 @@ class PropertiesPackageRepository {
   async getAllPackages() {
     try {
       return await PropertiesPackage.find({})
-        .sort({ priority: 1, isActive: -1 });
+        .sort({ priority: 1, dailyPrice: -1, isActive: -1 });
     } catch (error) {
       throw new Error(`Error getting packages: ${error.message}`);
     }

@@ -40,6 +40,14 @@ const MyProperties = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState(null);
 
+  // Package Info Modal
+  const [showPackageModal, setShowPackageModal] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState(null);
+  
+  // Cancel Package Modal
+  const [showCancelPackageModal, setShowCancelPackageModal] = useState(false);
+  const [cancelingPackage, setCancelingPackage] = useState(null);
+
   // Rejected files state
   const [rejectedFiles, setRejectedFiles] = useState({ images: [], video: [] });
 
@@ -85,8 +93,10 @@ const MyProperties = () => {
       };
 
       const response = await myPropertiesAPI.getMyProperties(params);
+      console.log('Properties API Response:', response);
 
       if (response.success) {
+        console.log('Properties loaded:', response.data.properties);
         setProperties(response.data.properties || []);
         setPagination(prev => ({
           ...prev,
@@ -135,7 +145,7 @@ const MyProperties = () => {
   const handleEdit = async (property) => {
     try {
       const response = await myPropertiesAPI.getPropertyForEdit(property._id);
-      console.log('Edit send property data:', response);
+    
       if (response.success) {
         setEditingProperty(response.data);
         setShowEditModal(true);
@@ -249,6 +259,39 @@ const MyProperties = () => {
     setShowDetailModal(true);
   };
 
+  // Handle view package info
+  const handleViewPackageInfo = (property) => {
+    setSelectedPackage(property);
+    setShowPackageModal(true);
+  };
+
+  // Handle cancel package confirmation
+  const handleCancelPackageConfirm = (property) => {
+    setCancelingPackage(property);
+    setShowCancelPackageModal(true);
+    setShowPackageModal(false); // Đóng modal thông tin gói
+  };
+
+  // Handle cancel package
+  const handleCancelPackage = async () => {
+    if (!cancelingPackage) return;
+
+    try {
+      const response = await myPropertiesAPI.cancelPropertyPackage(cancelingPackage._id);
+      if (response.success) {
+        toast.success('Đã hủy gói tin thành công');
+        setShowCancelPackageModal(false);
+        setCancelingPackage(null);
+        loadProperties(); // Reload list để cập nhật trạng thái
+      } else {
+        toast.error(response.message || 'Không thể hủy gói tin');
+      }
+    } catch (error) {
+      console.error('Error canceling package:', error);
+      toast.error('Lỗi khi hủy gói tin');
+    }
+  };
+
   // Get status badge
   const getStatusBadge = (status) => {
     const statusConfig = {
@@ -292,6 +335,42 @@ const MyProperties = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  // Calculate days remaining until expiry
+  const getDaysRemaining = (expiryDate) => {
+    const today = new Date();
+    const expiry = new Date(expiryDate);
+    const diffTime = expiry - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+      return 'Đã hết hạn';
+    } else if (diffDays === 0) {
+      return 'Hết hạn hôm nay';
+    } else if (diffDays === 1) {
+      return 'Còn 1 ngày';
+    } else {
+      return `Còn ${diffDays} ngày`;
+    }
+  };
+
+  // Get CSS class based on days remaining
+  const getDaysRemainingClass = (expiryDate) => {
+    const today = new Date();
+    const expiry = new Date(expiryDate);
+    const diffTime = expiry - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+      return 'expired';
+    } else if (diffDays <= 3) {
+      return 'critical';
+    } else if (diffDays <= 7) {
+      return 'warning';
+    } else {
+      return 'safe';
+    }
   };
 
   return (
@@ -393,8 +472,27 @@ const MyProperties = () => {
                       <div className="property-status">
                         {getStatusBadge(property.approvalStatus)}
                       </div>
-
-                      {/* Dropdown Menu - hiện với pending, approved và rejected */}
+                      {/* Payment Status Tag - hiển thị cho bài từ thứ 4 trở đi */}
+                      {property.postOrder && property.postOrder > 3 && (
+                        <div className="payment-status-tag">
+                          {property.packageStatus === 'cancelled' ? (
+                            <span className="cancelled-tag">
+                              <i className="fa fa-ban"></i>
+                              ĐÃ HỦY GÓI
+                            </span>
+                          ) : property.isPaid ? (
+                            <span className="paid-tag">
+                              <i className="fa fa-check-circle"></i>
+                              ĐÃ THANH TOÁN
+                            </span>
+                          ) : (
+                            <span className="unpaid-tag">
+                              <i className="fa fa-exclamation-triangle"></i>
+                              CHƯA THANH TOÁN
+                            </span>
+                          )}
+                        </div>
+                      )}                      {/* Dropdown Menu - hiện với pending, approved và rejected */}
                       {(property.approvalStatus === 'pending' || property.approvalStatus === 'approved' || property.approvalStatus === 'rejected') && (
                         <div className="property-dropdown">
                           <button
@@ -461,6 +559,8 @@ const MyProperties = () => {
                         </div>
                       </div>
 
+                     
+
                       <div className="property-stats">
                         <div className="stat-item">
                           <i className="fa fa-eye"></i>
@@ -475,16 +575,23 @@ const MyProperties = () => {
                           <span>{formatNumber(property.favorites || 0)} yêu thích</span>
                         </div>
                       </div>
+                       {/* Fixed section cho package và payment status */}
+                      <div className="package-payment-fixed-section">
+                        {/* Package Info Button - chỉ hiển thị button khi có packageInfo, đã thanh toán và gói chưa bị hủy */}
+                        {property.packageInfo && property.packageInfo.isActive && property.isPaid && property.packageStatus !== 'cancelled' && (
+                          <div className="package-button-section">
+                            <button
+                              className="btn btn-package-info"
+                              onClick={() => handleViewPackageInfo(property)}
+                            >
+                              <i className="fa fa-star"></i>
+                              GÓI ĐANG SỬ DỤNG
+                            </button>
+                          </div>
+                        )}
 
-                      {/* Payment Status Tag - hiển thị cho bài từ thứ 4 trở đi */}
-                      {property.postOrder && property.postOrder > 3 && !property.isPaid && (
-                        <div className="payment-status-tag">
-                          <span className="unpaid-tag">
-                            <i className="fa fa-exclamation-triangle"></i>
-                            CHƯA THANH TOÁN
-                          </span>
-                        </div>
-                      )}
+                      
+                      </div>
 
                       <div className="property-actions">
                         {/* Nút Sửa - chỉ hiện ở pending và approved, không hiện ở rejected */}
@@ -510,14 +617,16 @@ const MyProperties = () => {
                                 </span>
                               </div>
                             ) : (
-                              /* Từ bài thứ 4: Hiển thị nút thanh toán */
-                              <button
-                                className="btn btn-primary btn-payment"
-                                onClick={() => handlePayment(property)}
-                              >
-                                <i className="fa fa-credit-card"></i>
-                                Thanh toán
-                              </button>
+                              /* Từ bài thứ 4: Hiển thị nút thanh toán khi chưa thanh toán HOẶC đã hủy gói */
+                              (!property.isPaid || property.packageStatus === 'cancelled') && (
+                                <button
+                                  className="btn btn-primary btn-payment"
+                                  onClick={() => handlePayment(property)}
+                                >
+                                  <i className="fa fa-credit-card"></i>
+                                  {property.packageStatus === 'cancelled' ? 'Chọn gói mới' : 'Thanh toán'}
+                                </button>
+                              )
                             )}
                           </>
                         )}
@@ -574,6 +683,252 @@ const MyProperties = () => {
           )}
         </div>
       </div>
+
+      {/* Package Info Modal */}
+      {showPackageModal && selectedPackage && (
+        <div className="modal-overlay-package" onClick={() => setShowPackageModal(false)}>
+          <div className="package-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-package">
+              <h2>
+                <i className="fa fa-star"></i>
+                Thông tin gói tin
+              </h2>
+              <button
+                className="close-btn-package"
+                onClick={() => setShowPackageModal(false)}
+              >
+                <i className="fa fa-times"></i>
+              </button>
+            </div>
+
+            <div className="modal-content-package">
+              <div className="package-detail-content">
+        
+
+                <div className="package-info-detail">
+                  <div className="package-name-detail">
+                    <span className={`package-badge-large priority-${selectedPackage.packageInfo.priority}`}>
+                      {selectedPackage.packageInfo.displayName}
+                    </span>
+                    {selectedPackage.packageInfo.stars > 0 && (
+                      <div className="package-stars-large">
+                        {[...Array(selectedPackage.packageInfo.stars)].map((_, i) => (
+                          <i key={i} className="fa fa-star star-icon-large"></i>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="package-features">
+                    <h5>
+                      <i className="fa fa-list"></i>
+                      Đặc quyền gói tin
+                    </h5>
+                    <div className="features-grid">
+                      <div className="feature-item">
+                        <i className="fa fa-arrow-up text-success"></i>
+                        <span>Tin được ưu tiên hiển thị</span>
+                      </div>
+                      <div className="feature-item">
+                        <i className="fa fa-arrow-up text-success"></i>
+                        <span>Độ ưu tiên: {selectedPackage.packageInfo.priority}</span>
+                      </div>
+                      {selectedPackage.packageInfo.stars > 0 && (
+                        <div className="feature-item">
+                          <i className="fa fa-star text-warning"></i>
+                          <span>Đánh giá: {selectedPackage.packageInfo.stars} sao</span>
+                        </div>
+                      )}
+                      {selectedPackage.packageInfo.color && (
+                        <div className="feature-item">
+                          <i className="fa fa-palette text-info"></i>
+                          <span>
+                            Màu nổi bật: 
+                            <span 
+                              className="color-swatch" 
+                              style={{ backgroundColor: selectedPackage.packageInfo.color }}
+                              title={selectedPackage.packageInfo.color}
+                            ></span>
+                          </span>
+                        </div>
+                      )}
+                      <div className="feature-item">
+                        <i className="fa fa-check-circle text-success"></i>
+                        <span>Tin được duyệt nhanh hơn</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="package-timeline">
+                    <h5>
+                      <i className="fa fa-calendar"></i>
+                      Thời gian sử dụng
+                    </h5>
+                    <div className="timeline-items">
+                      <div className="timeline-item">
+                        <div className="timeline-icon start">
+                          <i className="fa fa-play-circle"></i>
+                        </div>
+                        <div className="timeline-content">
+                          <strong>Ngày bắt đầu</strong>
+                          <span>{formatDate(selectedPackage.packageInfo.startDate)}</span>
+                        </div>
+                      </div>
+                      <div className="timeline-item">
+                        <div className="timeline-icon end">
+                          <i className="fa fa-stop-circle"></i>
+                        </div>
+                        <div className="timeline-content">
+                          <strong>Ngày hết hạn</strong>
+                          <span>{formatDate(selectedPackage.packageInfo.expiryDate)}</span>
+                        </div>
+                      </div>
+                      <div className="timeline-item">
+                        <div className={`timeline-icon remaining ${getDaysRemainingClass(selectedPackage.packageInfo.expiryDate)}`}>
+                          <i className="fa fa-clock"></i>
+                        </div>
+                        <div className="timeline-content">
+                          <strong>Thời gian còn lại</strong>
+                          <span className={`remaining-text ${getDaysRemainingClass(selectedPackage.packageInfo.expiryDate)}`}>
+                            {getDaysRemaining(selectedPackage.packageInfo.expiryDate)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="package-stats">
+                    <h5>
+                      <i className="fa fa-chart-bar"></i>
+                      Hiệu quả tin đăng
+                    </h5>
+                    <div className="stats-grid">
+                      <div className="stat-card">
+                        <div className="stat-icon">
+                          <i className="fa fa-eye"></i>
+                        </div>
+                        <div className="stat-content">
+                          <strong>{formatNumber(selectedPackage.views || 0)}</strong>
+                          <span>Lượt xem</span>
+                        </div>
+                      </div>
+                      <div className="stat-card">
+                        <div className="stat-icon">
+                          <i className="fa fa-comment"></i>
+                        </div>
+                        <div className="stat-content">
+                          <strong>{formatNumber(selectedPackage.comments || 0)}</strong>
+                          <span>Bình luận</span>
+                        </div>
+                      </div>
+                      <div className="stat-card">
+                        <div className="stat-icon">
+                          <i className="fa fa-heart"></i>
+                        </div>
+                        <div className="stat-content">
+                          <strong>{formatNumber(selectedPackage.favorites || 0)}</strong>
+                          <span>Yêu thích</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="modal-footer-package">
+              <button
+                className="btn btn-cancel-package"
+                onClick={() => handleCancelPackageConfirm(selectedPackage)}
+              >
+                <i className="fa fa-times-circle"></i>
+                Hủy gói
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Package Confirmation Modal */}
+      {showCancelPackageModal && cancelingPackage && (
+        <div className="modal-overlay-cancel-package">
+          <div className="cancel-package-modal">
+            <div className="modal-header-cancel-package">
+              <h3>
+                <i className="fa fa-exclamation-triangle text-warning"></i>
+                Xác nhận hủy gói tin
+              </h3>
+              <button
+                className="close-btn-cancel-package"
+                onClick={() => {
+                  setShowCancelPackageModal(false);
+                  setCancelingPackage(null);
+                }}
+              >
+                <i className="fa fa-times"></i>
+              </button>
+            </div>
+            
+            <div className="modal-content-cancel-package">
+              <div className="cancel-package-info">
+                <div className="property-info-cancel">
+                  <h4>Tin đăng: "{cancelingPackage.title}"</h4>
+                  <div className="package-info-cancel">
+                    <span className={`package-badge priority-${cancelingPackage.packageInfo.priority}`}>
+                      {cancelingPackage.packageInfo.displayName}
+                    </span>
+                    <div className="package-time-remaining">
+                      <i className="fa fa-clock"></i>
+                      <span className={`remaining-text ${getDaysRemainingClass(cancelingPackage.packageInfo.expiryDate)}`}>
+                        {getDaysRemaining(cancelingPackage.packageInfo.expiryDate)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="warning-content">
+                  <div className="warning-item">
+                    <i className="fa fa-info-circle text-info"></i>
+                    <span>Sau khi hủy gói, tin đăng sẽ trở về trạng thái thường và mất các đặc quyền của gói tin.</span>
+                  </div>
+                  <div className="warning-item">
+                    <i className="fa fa-exclamation-triangle text-warning"></i>
+                    <span>Thời gian sử dụng còn lại sẽ không được hoàn lại.</span>
+                  </div>
+                  <div className="warning-item">
+                    <i className="fa fa-ban text-danger"></i>
+                    <span>Hành động này không thể hoàn tác!</span>
+                  </div>
+                </div>
+                
+                <div className="confirmation-question">
+                  <strong>Bạn có chắc chắn muốn hủy gói tin này không?</strong>
+                </div>
+              </div>
+            </div>
+            
+            <div className="modal-actions-cancel-package">
+              <button
+                className="btn btn-secondary-cancel"
+                onClick={() => {
+                  setShowCancelPackageModal(false);
+                  setCancelingPackage(null);
+                }}
+              >
+                <i className="fa fa-arrow-left"></i>
+                Quay lại
+              </button>
+              <button
+                className="btn btn-danger-cancel"
+                onClick={handleCancelPackage}
+              >
+                <i className="fa fa-times-circle"></i>
+                Xác nhận hủy gói
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Property Detail Modal */}
       {showDetailModal && selectedProperty && (
