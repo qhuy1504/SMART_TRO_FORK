@@ -7008,3 +7008,171 @@ div.modal.vehicle-modal .empty-section .empty-content button.btn-primary {
   text-transform: none;
   letter-spacing: 0;
 }
+
+/* Mark as Expiring Confirmation Modal */
+.room-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  padding: 20px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.room-confirm-modal {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 520px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideDown 0.3s ease;
+  overflow: hidden;
+  position: relative;
+  z-index: 10002;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.room-confirm-header {
+  padding: 24px 28px;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #93c5fd;
+}
+
+.room-confirm-icon {
+  font-size: 28px;
+  color: #2563eb;
+}
+
+.room-confirm-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e40af;
+}
+
+.room-confirm-body {
+  padding: 28px;
+}
+
+.room-confirm-body p {
+  margin: 0 0 16px 0;
+  font-size: 15px;
+  color: #334155;
+  line-height: 1.6;
+}
+
+.room-confirm-body p:last-child {
+  margin-bottom: 0;
+}
+
+.room-confirm-body strong {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.room-confirm-info {
+  background: #f0f9ff;
+  border-left: 4px solid #3b82f6;
+  padding: 16px;
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.room-confirm-info i {
+  color: #3b82f6;
+  margin-top: 2px;
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+.room-confirm-info div {
+  flex: 1;
+}
+
+.room-confirm-info p {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #1e40af;
+  font-weight: 600;
+}
+
+.room-confirm-info ul {
+  margin: 0;
+  padding-left: 20px;
+  list-style: disc;
+}
+
+.room-confirm-info li {
+  font-size: 14px;
+  color: #334155;
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+
+.room-confirm-footer {
+  padding: 20px 28px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.room-confirm-btn-cancel,
+.room-confirm-btn-confirm {
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.room-confirm-btn-cancel {
+  background: white;
+  color: #64748b;
+  border: 2px solid #e2e8f0;
+}
+
+.room-confirm-btn-cancel:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.room-confirm-btn-confirm {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+}
+
+.room-confirm-btn-confirm:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -6px rgba(59, 130, 246, 0.5);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}

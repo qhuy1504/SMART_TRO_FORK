@@ -98,6 +98,15 @@ const RoomsManagement = () => {
   // Room Transfer Modal States
   const [showRoomTransferModal, setShowRoomTransferModal] = useState(false);
   const [selectedRoomForTransfer, setSelectedRoomForTransfer] = useState(null);
+  
+  // Expiring Confirm Modal States
+  const [showExpiringConfirmModal, setShowExpiringConfirmModal] = useState(false);
+  const [selectedRoomForExpiring, setSelectedRoomForExpiring] = useState(null);
+  
+  // Cancel Expiring Modal States
+  const [showCancelExpiringModal, setShowCancelExpiringModal] = useState(false);
+  const [selectedRoomForCancelExpiring, setSelectedRoomForCancelExpiring] = useState(null);
+  
   const [currentRoomContract, setCurrentRoomContract] = useState(null);
   const [availableRoomsForTransfer, setAvailableRoomsForTransfer] = useState([]);
   const [loadingAvailableRooms, setLoadingAvailableRooms] = useState(false);
@@ -859,6 +868,7 @@ const RoomsManagement = () => {
         // Chuẩn bị dữ liệu tenant
         const tenantPayload = {
           fullName: tenantData.tenantName,
+          email: tenantData.tenantEmail,
           phone: tenantData.tenantPhone,
           identificationNumber: tenantData.tenantId,
           landlord: null, // Sẽ được backend tự động gán
@@ -1306,6 +1316,7 @@ const RoomsManagement = () => {
           tenants: finalTenants.map(tenant => ({
             _id: tenant._id, // Lưu ID để update
             tenantName: tenant.fullName || '',
+            tenantEmail: tenant.email || '',
             tenantPhone: tenant.phone || '',
             tenantId: tenant.identificationNumber || '', // Sửa từ idCard thành identificationNumber
             tenantImages: tenant.images || []
@@ -2445,16 +2456,108 @@ const RoomsManagement = () => {
   };
 
   const handleMarkAsExpiring = async (room) => {
-    if (window.confirm(t('rooms.messages.confirmMarkExpiring'))) {
-      try {
-        await roomsAPI.updateRoom(room.id, { status: 'expiring' });
-        showToast('success', t('rooms.messages.markedAsExpiring'));
-        fetchRooms();
-      } catch (error) {
-        console.error('Error marking room as expiring:', error);
-        showToast('error', t('rooms.messages.errorMarkingExpiring'));
+    setSelectedRoomForExpiring(room);
+    setShowExpiringConfirmModal(true);
+  };
+
+  const confirmMarkAsExpiring = async () => {
+    if (!selectedRoomForExpiring) return;
+    
+    setShowExpiringConfirmModal(false);
+    
+    try {
+      // 1. Cập nhật trạng thái phòng
+      await roomsAPI.updateRoom(selectedRoomForExpiring.id, { status: 'expiring' });
+      
+      // 2. Lấy tất cả hợp đồng đang hoạt động của phòng
+      const contractsRes = await contractsAPI.getContractsByRoom(selectedRoomForExpiring.id);
+      
+      if (contractsRes.success && contractsRes.data) {
+        const activeContracts = Array.isArray(contractsRes.data) 
+          ? contractsRes.data.filter(c => c.status === 'active')
+          : (contractsRes.data.status === 'active' ? [contractsRes.data] : []);
+        
+        if (activeContracts.length > 0) {
+          // 3. Cập nhật trạng thái tất cả hợp đồng đang hoạt động
+          const updatePromises = activeContracts.map(contract => 
+            contractsAPI.updateContract(contract._id, { status: 'expiring' })
+          );
+          
+          await Promise.all(updatePromises);
+          
+          showToast('success', `Đã đánh dấu phòng và ${activeContracts.length} hợp đồng sắp kết thúc`);
+        } else {
+          showToast('success', t('rooms.messages.markedAsExpiring') || 'Đã đánh dấu phòng sắp kết thúc');
+        }
+      } else {
+        showToast('success', t('rooms.messages.markedAsExpiring') || 'Đã đánh dấu phòng sắp kết thúc');
       }
+      
+      fetchRooms();
+    } catch (error) {
+      console.error('Error marking room as expiring:', error);
+      showToast('error', t('rooms.messages.errorMarkingExpiring') || 'Lỗi khi đánh dấu sắp kết thúc');
+    } finally {
+      setSelectedRoomForExpiring(null);
     }
+  };
+
+  const cancelMarkAsExpiring = () => {
+    setShowExpiringConfirmModal(false);
+    setSelectedRoomForExpiring(null);
+  };
+
+  // Handle cancel expiring status - revert back to rented/active
+  const handleCancelExpiring = (room) => {
+    setSelectedRoomForCancelExpiring(room);
+    setShowCancelExpiringModal(true);
+  };
+
+  const confirmCancelExpiring = async () => {
+    if (!selectedRoomForCancelExpiring) return;
+    
+    setShowCancelExpiringModal(false);
+    
+    try {
+      // 1. Cập nhật trạng thái phòng về 'rented'
+      await roomsAPI.updateRoom(selectedRoomForCancelExpiring.id, { status: 'rented' });
+      
+      // 2. Lấy tất cả hợp đồng đang sắp kết thúc của phòng
+      const contractsRes = await contractsAPI.getContractsByRoom(selectedRoomForCancelExpiring.id);
+      
+      if (contractsRes.success && contractsRes.data) {
+        const expiringContracts = Array.isArray(contractsRes.data) 
+          ? contractsRes.data.filter(c => c.status === 'expiring')
+          : (contractsRes.data.status === 'expiring' ? [contractsRes.data] : []);
+        
+        if (expiringContracts.length > 0) {
+          // 3. Cập nhật trạng thái tất cả hợp đồng về 'active'
+          const updatePromises = expiringContracts.map(contract => 
+            contractsAPI.updateContract(contract._id, { status: 'active' })
+          );
+          
+          await Promise.all(updatePromises);
+          
+          showToast('success', `Đã hủy báo kết thúc phòng và ${expiringContracts.length} hợp đồng`);
+        } else {
+          showToast('success', 'Đã hủy báo kết thúc phòng');
+        }
+      } else {
+        showToast('success', 'Đã hủy báo kết thúc phòng');
+      }
+      
+      fetchRooms();
+    } catch (error) {
+      console.error('Error cancelling expiring status:', error);
+      showToast('error', 'Lỗi khi hủy báo kết thúc');
+    } finally {
+      setSelectedRoomForCancelExpiring(null);
+    }
+  };
+
+  const cancelCancelExpiring = () => {
+    setShowCancelExpiringModal(false);
+    setSelectedRoomForCancelExpiring(null);
   };
 
   // Handle deposit contract form changes
@@ -3202,6 +3305,18 @@ const RoomsManagement = () => {
                                     >
                                       <i className="fas fa-clock"></i>
                                       {t('rooms.actions.markAsExpiring')}
+                                    </button>
+                                  )}
+                                  {room.status === 'expiring' && (
+                                    <button
+                                      className="action-menu-item success"
+                                      onClick={() => {
+                                        handleCancelExpiring(room);
+                                        setOpenActionMenu(null);
+                                      }}
+                                    >
+                                      <i className="fas fa-undo"></i>
+                                      Hủy báo kết thúc
                                     </button>
                                   )}
                                   <button
@@ -6217,6 +6332,76 @@ const RoomsManagement = () => {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Mark as Expiring Confirmation Modal */}
+    {showExpiringConfirmModal && selectedRoomForExpiring && (
+      <div className="room-modal-overlay" onClick={cancelMarkAsExpiring}>
+        <div className="room-confirm-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="room-confirm-header">
+            <i className="fas fa-exclamation-circle room-confirm-icon"></i>
+            <h3>Xác nhận đánh dấu sắp kết thúc</h3>
+          </div>
+          <div className="room-confirm-body">
+            <p>Bạn có chắc chắn muốn đánh dấu phòng <strong>{selectedRoomForExpiring.roomNumber}</strong> sắp kết thúc?</p>
+            <div className="room-confirm-info">
+              <i className="fas fa-info-circle"></i>
+              <div>
+                <p><strong>Hành động này sẽ:</strong></p>
+                <ul>
+                  <li>Chuyển trạng thái phòng sang "Sắp kết thúc"</li>
+                  <li>Cập nhật trạng thái các hợp đồng đang hoạt động sang "Sắp kết thúc"</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div className="room-confirm-footer">
+            <button className="room-confirm-btn-cancel" onClick={cancelMarkAsExpiring}>
+              <i className="fas fa-times"></i>
+              Hủy
+            </button>
+            <button className="room-confirm-btn-confirm" onClick={confirmMarkAsExpiring}>
+              <i className="fas fa-check"></i>
+              Xác nhận
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Cancel Expiring Confirmation Modal */}
+    {showCancelExpiringModal && selectedRoomForCancelExpiring && (
+      <div className="room-modal-overlay" onClick={cancelCancelExpiring}>
+        <div className="room-confirm-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="room-confirm-header">
+            <i className="fas fa-undo room-confirm-icon"></i>
+            <h3>Xác nhận hủy báo kết thúc</h3>
+          </div>
+          <div className="room-confirm-body">
+            <p>Bạn có chắc chắn muốn hủy báo kết thúc phòng <strong>{selectedRoomForCancelExpiring.roomNumber}</strong>?</p>
+            <div className="room-confirm-info">
+              <i className="fas fa-info-circle"></i>
+              <div>
+                <p><strong>Hành động này sẽ:</strong></p>
+                <ul>
+                  <li>Chuyển trạng thái phòng về "Đã thuê"</li>
+                  <li>Cập nhật trạng thái các hợp đồng về "Đang hoạt động"</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div className="room-confirm-footer">
+            <button className="room-confirm-btn-cancel" onClick={cancelCancelExpiring}>
+              <i className="fas fa-times"></i>
+              Hủy
+            </button>
+            <button className="room-confirm-btn-confirm" onClick={confirmCancelExpiring}>
+              <i className="fas fa-check"></i>
+              Xác nhận
+            </button>
           </div>
         </div>
       </div>
