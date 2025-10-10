@@ -40,9 +40,25 @@ const myPropertiesController = {
         }
       }
 
-      // Search filter
+      // Search filter - tìm kiếm theo tiêu đề hoặc mã tin
       if (search.trim()) {
-        query.title = { $regex: search, $options: 'i' };
+        const searchTerm = search.trim();
+        
+        // Nếu search term có đúng 6 ký tự và chỉ chứa số/chữ cái, tìm theo mã tin
+        if (searchTerm.length === 6 && /^[a-fA-F0-9]{6}$/.test(searchTerm)) {
+          // Tìm kiếm theo 6 ký tự cuối của ObjectId (mã tin)
+          // Sử dụng $expr và $regexMatch để tìm kiếm trong chuỗi ObjectId
+          query.$expr = {
+            $regexMatch: {
+              input: { $toString: "$_id" },
+              regex: searchTerm.toLowerCase() + '$',
+              options: 'i'
+            }
+          };
+        } else {
+          // Tìm kiếm theo tiêu đề
+          query.title = { $regex: searchTerm, $options: 'i' };
+        }
       }
 
       // Build sort object

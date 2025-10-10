@@ -21,6 +21,7 @@ import adminPropertyRoutes from './property-service/routes/adminPropertyRoutes.j
 import adminReportPropertyRoutes from './report-service/routes/adminReportPropertyRoutes.js';
 import invoiceRoutes from './invoice-service/routes/invoiceRoutes.js';
 import propertiesPackageRoutes from './properties-package-service/routes/propertiesPackageRoutes.js';
+import paymentHistoryRoutes from './payment-service/routes/paymentHistoryRoutes.js';
 
 
 const router = express.Router();
@@ -45,6 +46,7 @@ router.use('/api/admin', adminPropertyRoutes);
 router.use('/api/admin/report-properties', adminReportPropertyRoutes);
 router.use('/api/invoices', invoiceRoutes);
 router.use('/api/properties-packages', propertiesPackageRoutes);
+router.use('/api/payment-history', paymentHistoryRoutes);
 
 
 

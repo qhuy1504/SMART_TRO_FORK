@@ -39,7 +39,7 @@
 
 .search-box i {
   position: absolute;
-  left: 18px;
+  left: 12px;
   top: 50%;
   transform: translateY(-50%);
   font-size: 18px;
@@ -47,11 +47,13 @@
   /* màu primary */
   pointer-events: none;
   transition: color 0.3s ease;
+
 }
 
 .search-box input {
   width: 100%;
-  padding: 14px 16px 14px 50px;
+  padding: 14px 100px 14px 50px;
+  /* Tăng padding-right để có chỗ cho cả 2 button */
   border: 1px solid #007bff;
   border-radius: 999px;
   /* pill shape */
@@ -62,6 +64,73 @@
   transition: all 0.3s ease;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
+
+/* Clear Search Button */
+.clear-search-btn-my-properties {
+  position: absolute;
+  right: 55px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #6c757d;
+  border: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(108, 117, 125, 0.3);
+  padding: 0 !important;
+}
+
+.clear-search-btn-my-properties i {
+  color: white;
+  pointer-events: none;
+  font-size: 12px;
+  left: 7px !important;
+  position: absolute;
+}
+
+.clear-search-btn-my-properties:hover {
+  background: #5a6268;
+  box-shadow: 0 3px 8px rgba(108, 117, 125, 0.4);
+}
+
+/* Search Button */
+.search-btn-my-properties {
+  position: absolute;
+  right: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #007bff;
+  color: white;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+  padding: 0 !important;
+}
+
+.search-btn-my-properties i {
+  color: white;
+}
+
+.search-btn-my-properties:hover {
+  background: darkblue;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
+}
+
+
 
 .search-box input::placeholder {
   color: #999;
@@ -79,6 +148,47 @@
   color: #007bff;
 }
 
+/* Search hint */
+.search-hint {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #e3f2fd;
+  color: #1565c0;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  border: 1px solid #90caf9;
+  animation: slideDown 0.2s ease;
+  z-index: 10;
+
+}
+
+.search-hint i {
+  font-size: 12px;
+  color: #1565c0;
+
+}
+.search-hint span {
+  margin-left: 10px;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 /* Filter group */
 .filter-group {
@@ -231,12 +341,12 @@
 
 .property-status {
   position: absolute;
-  top: 10px;
+  top: 40px;
   left: 10px;
 }
 
 /* Status Badges - Cập nhật màu nổi bật */
-.status-badge {
+.status-badge-my-properties {
   padding: 6px 12px;
   border-radius: 16px;
   font-size: 12px;
@@ -250,7 +360,7 @@
 }
 
 .status-pending {
-  background: linear-gradient(135deg, #ffc107, #ff8f00);
+  background: #ff9900 !important;
   color: white;
   border: none;
   animation: pulse 2s infinite;
@@ -739,21 +849,22 @@
   overflow-y: auto;
 
 }
+
 .modal-overlay-reason-my-properties {
-    position: fixed;
-    top: 70px;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(44, 62, 80, 0.7));
-    backdrop-filter: blur(8px);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
-    padding: 20px;
-    overflow-y: auto;
-    animation: fadeIn 0.3s ease-out;
+  position: fixed;
+  top: 70px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(44, 62, 80, 0.7));
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  padding: 20px;
+  overflow-y: auto;
+  animation: fadeIn 0.3s ease-out;
 }
 
 /* Responsive Design */
@@ -879,20 +990,22 @@
   z-index: 1000;
   animation: fadeInDown 0.2s ease;
 }
+
 .page-header-my-properties {
-    text-align: center;
-    border-bottom: 3px solid #f3f4f6;
+  text-align: center;
+  border-bottom: 3px solid #f3f4f6;
 }
+
 .page-header-my-properties h2 {
-    margin: 0;
-    font-size: 28px;
-    color: #333;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    justify-content: center;
-    margin-bottom: 10px;
+  margin: 0;
+  font-size: 28px;
+  color: #333;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 10px;
 }
 
 .currency {

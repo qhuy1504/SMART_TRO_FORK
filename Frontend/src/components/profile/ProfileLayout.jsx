@@ -137,14 +137,6 @@ const ProfileLayout = () => {
 
       {/* Main Content */}
       <div className="profile-main">
-        <div className="main-header">
-          <div className="breadcrumb">
-            <span>{t('profile.layout.breadcrumb.home')}</span>
-            <i className="fa fa-angle-right"></i>
-            <span>{t('profile.layout.breadcrumb.account')}</span>
-          </div>
-        </div>
-        
         <div className="main-content">
           <Outlet />
         </div>

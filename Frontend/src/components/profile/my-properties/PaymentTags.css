@@ -1,5 +1,50 @@
 /* Payment Status Tags for MyProperties.jsx */
 
+/* Property ID tag container - Mã tin */
+.property-id-tag {
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: center;
+    min-height: 28px;
+    align-items: center;
+    position: relative;
+    top: -140px; /* Nằm trên payment-status-tag */
+    z-index: 1000;
+}
+
+/* ID tag - Mã tin */
+.id-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: linear-gradient(45deg, #141414, #000000) !important;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 6px rgba(108, 117, 125, 0.3);
+    border: 2px solid #fff3cd  ;
+    position: absolute;
+    transition: all 0.3s ease;
+    opacity: 0.9;
+    left: 10px;
+    top: -60px;
+    
+}
+
+.id-tag:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(108, 117, 125, 0.4);
+    opacity: 1;
+}
+
+.id-tag i {
+    font-size: 9px;
+}
+
 /* Payment status tag container */
 .payment-status-tag {
     margin-bottom: 10px;
@@ -17,7 +62,7 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    background: linear-gradient(45deg, #dc3545, #a10000) !important;
+    background: #0059b8 !important;
     color: white;
     padding: 6px 12px;
     border-radius: 20px;

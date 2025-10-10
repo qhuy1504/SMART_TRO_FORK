@@ -63,10 +63,21 @@ const MyProperties = () => {
     { value: 'hidden', label: 'Đã ẩn', icon: 'fa-eye-slash' }
   ];
 
-  // Load properties on component mount and filter changes
+  // Load properties on component mount and filter changes (bỏ filters.search để không tự động search)
   useEffect(() => {
     loadProperties();
-  }, [filters, pagination.page]);
+  }, [filters.approvalStatus, filters.sortBy, filters.sortOrder, pagination.page]);
+
+  // Load properties lần đầu khi component mount
+  useEffect(() => {
+    loadProperties();
+  }, []);
+
+  // State để lưu danh sách properties gốc
+  const [originalProperties, setOriginalProperties] = useState([]);
+  
+  // State để lưu toàn bộ kết quả search
+  const [searchResults, setSearchResults] = useState([]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -82,24 +93,31 @@ const MyProperties = () => {
     };
   }, []);
 
-  // Load properties from API
-  const loadProperties = async () => {
+  // Load properties from API with custom parameters
+  const loadPropertiesWithParams = async (customParams = null) => {
     try {
       setLoading(true);
-      const params = {
+      const params = customParams || {
         ...filters,
         page: pagination.page,
         limit: pagination.limit
       };
 
       const response = await myPropertiesAPI.getMyProperties(params);
-      console.log('Properties API Response:', response);
-
       if (response.success) {
-        console.log('Properties loaded:', response.data.properties);
-        setProperties(response.data.properties || []);
+        // console.log('Properties loaded:', response.data.properties);
+        const loadedProperties = response.data.properties || [];
+        setProperties(loadedProperties);
+        
+        // Lưu danh sách gốc khi không có search
+        if (!params.search || params.search.trim() === '') {
+          setOriginalProperties(loadedProperties);
+        }
+        
+        // Cập nhật pagination với dữ liệu từ params nếu có
         setPagination(prev => ({
           ...prev,
+          page: params.page || prev.page,
           total: response.data.pagination?.total || 0,
           totalPages: response.data.pagination?.totalPages || 0
         }));
@@ -116,6 +134,11 @@ const MyProperties = () => {
     }
   };
 
+  // Load properties from API (wrapper for backward compatibility)
+  const loadProperties = async () => {
+    await loadPropertiesWithParams();
+  };
+
   // Handle filter change
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({
@@ -128,17 +151,116 @@ const MyProperties = () => {
     }));
   };
 
-  // Handle search
-  const handleSearch = (e) => {
+  // Handle search input change (chỉ update state, không search ngay)
+  const handleSearchInputChange = (e) => {
     const value = e.target.value;
     setFilters(prev => ({
       ...prev,
       search: value
     }));
+  };
+
+  // Handle search execution (thực hiện tìm kiếm)
+  const executeSearch = () => {
+    const searchTerm = filters.search.trim();
+    
+    if (!searchTerm) {
+      // Nếu search rỗng, reset search results và load lại từ API
+      setSearchResults([]);
+      setProperties([]);
+      
+      const resetParams = {
+        approvalStatus: filters.approvalStatus,
+        sortBy: filters.sortBy,
+        sortOrder: filters.sortOrder,
+        search: '',
+        page: 1,
+        limit: pagination.limit
+      };
+      
+      loadPropertiesWithParams(resetParams);
+      return;
+    }
+
+    // Kiểm tra nếu là tìm kiếm theo mã tin (6 ký tự hex)
+    if (searchTerm.length === 6 && /^[a-fA-F0-9]{6}$/i.test(searchTerm)) {
+      // Tìm kiếm theo ID trong danh sách hiện tại trước
+      const localResult = originalProperties.filter(property => 
+        property._id.slice(-6).toLowerCase() === searchTerm.toLowerCase()
+      );
+      
+      if (localResult.length > 0) {
+        handleSearchResults(localResult);
+        return;
+      }
+    } else {
+      // Tìm kiếm theo title trong danh sách hiện tại trước
+      const localResult = originalProperties.filter(property =>
+        property.title.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      
+      if (localResult.length > 0) {
+        handleSearchResults(localResult);
+        return;
+      }
+    }
+
+    // Nếu không tìm thấy local thì mới gọi API
     setPagination(prev => ({
       ...prev,
       page: 1
     }));
+    loadProperties();
+  };
+
+  // Function để xử lý kết quả search và phân trang
+  const handleSearchResults = (results) => {
+    setSearchResults(results);
+    const totalPages = Math.ceil(results.length / pagination.limit);
+    
+    // Cập nhật pagination
+    setPagination(prev => ({
+      ...prev,
+      page: 1,
+      total: results.length,
+      totalPages: totalPages
+    }));
+    
+    // Hiển thị kết quả của trang đầu tiên
+    const startIndex = 0;
+    const endIndex = pagination.limit;
+    setProperties(results.slice(startIndex, endIndex));
+  };
+
+  // Handle clear search - reset về trang 1 và load lại toàn bộ danh sách
+  const clearSearch = () => {
+    // Reset search term
+    setFilters(prev => ({ ...prev, search: '' }));
+    
+    // Reset search results
+    setSearchResults([]);
+
+    // Reset properties
+    setProperties([]);
+    
+    // Load lại danh sách từ API với params reset
+    const resetParams = {
+      approvalStatus: filters.approvalStatus,
+      sortBy: filters.sortBy,
+      sortOrder: filters.sortOrder,
+      search: '', // Reset search term
+      page: 1,
+      limit: pagination.limit
+    };
+    
+    loadPropertiesWithParams(resetParams);
+  };
+
+  // Handle Enter key press
+  const handleSearchKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      executeSearch();
+    }
   };
 
   // Handle edit property
@@ -251,6 +373,14 @@ const MyProperties = () => {
       ...prev,
       page: newPage
     }));
+    
+    // Chỉ sử dụng search results khi có dữ liệu search và search term không rỗng
+    if (searchResults.length > 0 && filters.search.trim()) {
+      const startIndex = (newPage - 1) * pagination.limit;
+      const endIndex = startIndex + pagination.limit;
+      setProperties(searchResults.slice(startIndex, endIndex));
+    }
+    // Nếu không có search results hoặc search rỗng, useEffect sẽ tự động load từ API
   };
 
   // Handle view property detail
@@ -303,7 +433,7 @@ const MyProperties = () => {
 
     const config = statusConfig[status] || statusConfig.pending;
     return (
-      <span className={`status-badge ${config.class}`}>
+      <span className={`status-badge-my-properties ${config.class}`}>
         <i className={`fa ${config.icon}`}></i>
         {config.text}
       </span>
@@ -340,9 +470,13 @@ const MyProperties = () => {
   // Calculate days remaining until expiry
   const getDaysRemaining = (expiryDate) => {
     const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
+    
     const expiry = new Date(expiryDate);
+    expiry.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
+    
     const diffTime = expiry - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffDays < 0) {
       return 'Đã hết hạn';
@@ -358,9 +492,13 @@ const MyProperties = () => {
   // Get CSS class based on days remaining
   const getDaysRemainingClass = (expiryDate) => {
     const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
+    
     const expiry = new Date(expiryDate);
+    expiry.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
+    
     const diffTime = expiry - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffDays < 0) {
       return 'expired';
@@ -391,10 +529,36 @@ const MyProperties = () => {
               <i className="fa fa-search"></i>
               <input
                 type="text"
-                placeholder="Tìm kiếm theo tiêu đề..."
+                placeholder="Tìm kiếm theo tiêu đề hoặc mã tin (6 ký tự)..."
                 value={filters.search}
-                onChange={handleSearch}
+                onChange={handleSearchInputChange}
+                onKeyPress={handleSearchKeyPress}
+                title="Nhập tiêu đề để tìm theo tên hoặc nhập 6 ký tự cuối của mã tin để tìm chính xác. Ấn Enter hoặc click nút tìm kiếm để thực hiện."
               />
+              {filters.search && (
+                <button 
+                  type="button"
+                  className="clear-search-btn-my-properties"
+                  onClick={clearSearch}
+                  title="Xóa tìm kiếm"
+                >
+                  <i className="fa fa-times"></i>
+                </button>
+              )}
+              <button 
+                type="button"
+                className="search-btn-my-properties"
+                onClick={executeSearch}
+                title="Tìm kiếm"
+              >
+                <i className="fa fa-search"></i>
+              </button>
+              {filters.search && filters.search.length === 6 && /^[a-fA-F0-9]{6}$/i.test(filters.search) && (
+                <div className="search-hint">
+                  <i className="fa fa-info-circle"></i>
+                  <span>Đang tìm theo mã tin</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -469,6 +633,15 @@ const MyProperties = () => {
                           <i className="fa fa-home"></i>
                         </div>
                       )}
+
+                      {/* Property ID Tag - Mã tin */}
+                      <div className="property-id-tag">
+                        <span className="id-tag">
+                          <i className="fa fa-tag"></i>
+                          {property._id.slice(-6).toUpperCase()}
+                        </span>
+                      </div>
+                      
                       <div className="property-status">
                         {getStatusBadge(property.approvalStatus)}
                       </div>
