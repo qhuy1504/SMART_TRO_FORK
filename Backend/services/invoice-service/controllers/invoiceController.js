@@ -72,17 +72,17 @@ class InvoiceController {
                 }
             }
 
-            // Kiểm tra trùng lắp chu kỳ
-            const hasOverlap = await invoiceRepository.checkPeriodOverlap(
-                contractId, finalPeriodStart, finalPeriodEnd
-            );
+            // Kiểm tra trùng lắp chu kỳ (DISABLED - cho phép tạo lại hóa đơn cho cùng kỳ)
+            // const hasOverlap = await invoiceRepository.checkPeriodOverlap(
+            //     contractId, finalPeriodStart, finalPeriodEnd
+            // );
 
-            if (hasOverlap) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Chu kỳ hóa đơn bị trùng lắp với hóa đơn khác'
-                });
-            }
+            // if (hasOverlap) {
+            //     return res.status(400).json({
+            //         success: false,
+            //         message: 'Chu kỳ hóa đơn bị trùng lắp với hóa đơn khác'
+            //     });
+            // }
 
             // Validate charges
             if (!charges || !Array.isArray(charges) || charges.length === 0) {

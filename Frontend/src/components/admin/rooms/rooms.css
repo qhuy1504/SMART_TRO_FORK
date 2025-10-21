@@ -7758,3 +7758,396 @@ div.modal.vehicle-modal .empty-section .empty-content button.btn-primary {
   box-shadow: 0 10px 20px -6px rgba(59, 130, 246, 0.5);
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 }
+
+/* ==================== BILLING EXCEL MODAL ==================== */
+
+/* Billing Button */
+.billing-excel-btn {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(245, 158, 11, 0.3);
+}
+
+.billing-excel-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(245, 158, 11, 0.4);
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+}
+
+.billing-excel-btn i {
+  font-size: 18px;
+}
+
+/* Billing Modal */
+.billing-modal-content {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 1400px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.billing-modal-content .modal-header {
+  padding: 24px 28px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 16px 16px 0 0;
+}
+
+.billing-modal-content .modal-header h2 {
+  margin: 0;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.billing-modal-content .modal-header i {
+  font-size: 24px;
+}
+
+.billing-modal-content .modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px;
+  background: #f9fafb;
+}
+
+/* Top Section */
+.billing-top-section {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.billing-top-section .section-icon {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.billing-top-section .section-icon i {
+  font-size: 28px;
+  color: white;
+}
+
+.billing-top-section .section-content {
+  flex: 1;
+}
+
+.billing-top-section h3 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  color: #111827;
+  font-weight: 600;
+}
+
+.billing-hint {
+  margin: 0 0 16px 0;
+  padding: 12px 16px;
+  background: #fef3c7;
+  border-left: 4px solid #f59e0b;
+  border-radius: 6px;
+  color: #92400e;
+  font-size: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.6;
+}
+
+.billing-hint i {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+/* Billing Period Info */
+.billing-period-info {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  display: flex;
+  gap: 30px;
+  align-items: center;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+}
+
+.period-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: white;
+}
+
+.period-item i {
+  font-size: 20px;
+  color: #fbbf24;
+}
+
+.period-item strong {
+  font-size: 14px;
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.period-item span {
+  font-size: 15px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 6px 14px;
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+}
+
+/* File Section */
+.billing-file-section {
+  margin-bottom: 20px;
+}
+
+/* Billing Data Grid */
+.billing-data-grid {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.billing-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.billing-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #f97316;
+}
+
+.billing-table thead th {
+  padding: 14px 10px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  border-bottom: 2px solid #ea580c;
+  white-space: nowrap;
+}
+
+.billing-table thead th:nth-child(1) { width: 50px; }  /* STT */
+.billing-table thead th:nth-child(2) { width: 85px; } /* Phòng */
+.billing-table thead th:nth-child(3) { width: 115px; } /* Khách thuê */
+.billing-table thead th:nth-child(4) { width: 135px; } /* Kỳ thanh toán */
+.billing-table thead th:nth-child(5) { width: 95px; } /* Tiền phòng */
+.billing-table thead th:nth-child(6) { width: 90px; } /* Loại nước */
+.billing-table thead th:nth-child(7) { width: 75px; }  /* Điện cũ */
+.billing-table thead th:nth-child(8) { width: 75px; }  /* Điện mới */
+.billing-table thead th:nth-child(9) { width: 65px; }  /* Tiêu thụ điện */
+.billing-table thead th:nth-child(10) { width: 95px; } /* Tiền điện */
+.billing-table thead th:nth-child(11) { width: 75px; }  /* Nước cũ */
+.billing-table thead th:nth-child(12) { width: 75px; } /* Nước mới */
+.billing-table thead th:nth-child(13) { width: 75px; } /* Tiêu thụ/SL */
+.billing-table thead th:nth-child(14) { width: 95px; }/* Tiền nước */
+.billing-table thead th:nth-child(15) { width: 85px; } /* Phí DV */
+.billing-table thead th:nth-child(16) { width: 115px; }/* Tổng tiền */
+.billing-table thead th:nth-child(17) { width: 70px; } /* Hợp lệ */
+
+.billing-table tbody tr {
+  border-bottom: 1px solid #f3f4f6;
+  transition: background 0.2s ease;
+}
+
+.billing-table tbody tr:hover {
+  background: #fef3c7;
+}
+
+.billing-table tbody tr.invalid-row {
+  background: #fef2f2;
+}
+
+.billing-table tbody tr.invalid-row:hover {
+  background: #fee2e2;
+}
+
+.billing-table tbody td {
+  padding: 10px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.billing-table tbody td.total-cell {
+  font-weight: 600;
+  color: #f97316;
+  font-size: 14px;
+}
+
+.billing-table .badge-water-type {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #dbeafe;
+  color: #1e40af;
+  white-space: nowrap;
+}
+
+.billing-table .text-muted {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.billing-table .editable-cell {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 13px;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.billing-table .editable-cell:focus {
+  outline: none;
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+}
+
+.billing-table tr.invalid-row .editable-cell {
+  border-color: #ef4444;
+}
+
+/* Billing Summary */
+.billing-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.billing-summary .summary-item {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-left: 4px solid;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.billing-summary .summary-item i {
+  font-size: 28px;
+}
+
+.billing-summary .summary-label {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.billing-summary .summary-value {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.billing-summary .summary-amount {
+  border-color: #10b981;
+  background: #f0fdf4;
+  grid-column: span 2;
+}
+
+.billing-summary .summary-amount i {
+  color: #10b981;
+}
+
+.billing-summary .summary-amount .summary-value {
+  color: #10b981;
+  font-size: 22px;
+}
+
+/* Billing Warning */
+.billing-warning {
+  padding: 16px 20px;
+  background: #fef2f2;
+  border-left: 4px solid #ef4444;
+  border-radius: 8px;
+  color: #991b1b;
+  font-size: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.billing-warning i {
+  margin-top: 2px;
+  font-size: 18px;
+  color: #dc2626;
+  flex-shrink: 0;
+}
+
+/* Create Invoices Button */
+.btn-create-invoices {
+  padding: 10px 24px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+}
+
+.btn-create-invoices:hover:not(:disabled) {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  box-shadow: 0 4px 8px rgba(245, 158, 11, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-create-invoices:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-create-invoices i.fa-spinner {
+  animation: spin 1s linear infinite;
+}

@@ -1,3 +1,4 @@
+/* global XLSX */
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import SideBar from "../../common/adminSidebar";
@@ -11,7 +12,6 @@ import depositContractsAPI from '../../../services/depositContractsAPI';
 import contractsAPI from '../../../services/contractsAPI';
 import tenantsAPI from '../../../services/tenantsAPI';
 import invoicesAPI from '../../../services/invoicesAPI';
-import sebayAPI from '../../../services/sebayAPI';
 import api from '../../../services/api';
 
 const RoomsManagement = () => {
@@ -104,6 +104,12 @@ const RoomsManagement = () => {
   const [importFile, setImportFile] = useState(null);
   const [importData, setImportData] = useState([]);
   const [importLoading, setImportLoading] = useState(false);
+
+  // Billing Excel Modal States
+  const [showBillingModal, setShowBillingModal] = useState(false);
+  const [billingFile, setBillingFile] = useState(null);
+  const [billingData, setBillingData] = useState([]);
+  const [billingLoading, setBillingLoading] = useState(false);
   const [selectedRoomForTransfer, setSelectedRoomForTransfer] = useState(null);
   
   // Expiring Confirm Modal States
@@ -156,7 +162,6 @@ const RoomsManagement = () => {
   const [loadingInvoiceInfo, setLoadingInvoiceInfo] = useState(false);
   const [savingInvoice, setSavingInvoice] = useState(false);
   const [contractInfo, setContractInfo] = useState(null);
-  const [sendZaloInvoice, setSendZaloInvoice] = useState(true); // Default checked
   const [invoiceFormErrors, setInvoiceFormErrors] = useState({});
   
   const [rentalContractData, setRentalContractData] = useState({
@@ -848,6 +853,578 @@ const RoomsManagement = () => {
 
     setImportData(updatedData);
   };
+
+  // ==================== BILLING EXCEL FUNCTIONS ====================
+  
+  const handleGenerateBillingTemplate = async () => {
+    try {
+      setBillingLoading(true);
+
+      // Lấy tất cả các phòng đang được thuê
+      const roomsResponse = await roomsAPI.searchRooms({
+        status: 'rented',
+        page: 1,
+        limit: 1000
+      });
+
+      console.log('Rooms Response:', roomsResponse);
+
+      // Fix: API trả về data.rooms chứ không phải data trực tiếp
+      const rentedRooms = roomsResponse?.data?.rooms || roomsResponse?.rooms || [];
+      
+      if (rentedRooms.length === 0) {
+        showToast('warning', 'Không có phòng nào đang được thuê');
+        setBillingLoading(false);
+        return;
+      }
+
+      console.log('Rented rooms:', rentedRooms.length, rentedRooms);
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      
+      // Prepare data rows with billing period for each room
+      const today = new Date();
+
+      const data = [
+        [
+          'STT',
+          'Tên phòng',
+          'Khách thuê',
+          'Kỳ thanh toán (Từ - Đến)',
+          'Tiền phòng (đ/tháng)',
+          'Số người thuê',
+          'Giá điện (đ/kWh)',
+          'Điện cũ (số)',
+          'Điện mới (số)',
+          'Loại tính nước',
+          'Giá nước/Người (đ)',
+          'Nước cũ (số)',
+          'Nước mới (số)',
+          'Phí dịch vụ (đ)',
+          'Ghi chú',
+          'Mã HĐ (ẩn - đừng xóa)' // Hidden column for invoice creation
+        ]
+      ];
+
+      let recordCount = 0;
+
+      // Process each rented room - giống như lúc lập hóa đơn
+      for (let i = 0; i < rentedRooms.length; i++) {
+        const room = rentedRooms[i];
+        console.log(`\n=== Processing room ${i + 1}/${rentedRooms.length}: ${room.roomNumber} ===`);
+        console.log('Room ID:', room._id || room.id);
+        console.log('Room status:', room.status);
+        
+        try {
+          // Lấy thông tin hợp đồng hiện tại của phòng - GIỐNG LÚC LẬP HÓA ĐƠN
+          const contractResponse = await contractsAPI.getContractsByRoom(room._id || room.id);
+          console.log('Contract Response:', contractResponse);
+          
+          if (!contractResponse.success || !contractResponse.data || contractResponse.data.length === 0) {
+            console.log('❌ No contract for room:', room.roomNumber);
+            continue;
+          }
+
+          console.log('Contracts found:', contractResponse.data.length);
+          console.log('Contract statuses:', contractResponse.data.map(c => ({ id: c._id, status: c.status })));
+
+          // Lấy hợp đồng đang hoạt động - GIỐNG LÚC LẬP HÓA ĐƠN
+          const activeContract = contractResponse.data.find(contract => contract.status === 'active');
+          
+          if (!activeContract) {
+            console.log('❌ No active contract for room:', room.roomNumber);
+            console.log('Available contracts:', contractResponse.data.map(c => ({ status: c.status, id: c._id })));
+            continue;
+          }
+
+          console.log('✅ Active contract found:', activeContract._id);
+
+          const contractId = activeContract._id || activeContract.id;
+          const isWaterPerPerson = activeContract.waterChargeType === 'per_person';
+          const tenantCount = activeContract.tenants?.length || 0;
+          
+          // Lấy thông tin hóa đơn cuối cùng để lấy chỉ số và tính kỳ thanh toán
+          let electricOld = activeContract.currentElectricIndex || 0;
+          let waterOld = activeContract.currentWaterIndex || 0;
+          let periodStartDate, periodEndDate;
+
+          try {
+            const invoiceInfoResponse = await invoicesAPI.getNewInvoiceInfo(contractId);
+            
+            if (invoiceInfoResponse.success) {
+              const { lastInvoice } = invoiceInfoResponse.data;
+              
+              if (lastInvoice) {
+                electricOld = lastInvoice.electricNewReading || electricOld;
+                // Chỉ lấy waterOld nếu KHÔNG tính theo người
+                if (!isWaterPerPerson) {
+                  waterOld = lastInvoice.waterNewReading || waterOld;
+                }
+                
+                // Kỳ thanh toán mới = từ ngày kết thúc kỳ cũ + 1 ngày
+                if (lastInvoice.periodEnd) {
+                  const lastPeriodEnd = new Date(lastInvoice.periodEnd);
+                  periodStartDate = new Date(lastPeriodEnd);
+                  periodStartDate.setDate(periodStartDate.getDate() + 1);
+                }
+              }
+            }
+          } catch (err) {
+            console.log('No previous invoice for contract:', contractId);
+          }
+
+          // Nếu không có hóa đơn trước, lấy từ ngày bắt đầu hợp đồng
+          if (!periodStartDate) {
+            periodStartDate = activeContract.startDate ? new Date(activeContract.startDate) : new Date();
+          }
+          
+          // Kỳ kết thúc = cuối tháng của periodStart (ngày 30 hoặc 31)
+          periodEndDate = new Date(periodStartDate);
+          periodEndDate.setMonth(periodEndDate.getMonth() + 1);
+          periodEndDate.setDate(0); // Ngày cuối tháng trước = cuối tháng của periodStart
+          
+          const periodStr = `${periodStartDate.toLocaleDateString('vi-VN')} - ${periodEndDate.toLocaleDateString('vi-VN')}`;
+
+          // Lấy tên khách thuê từ hợp đồng
+          const tenantNames = activeContract.tenants?.map(t => t.fullName || '').filter(n => n).join(', ') || '';
+          console.log('Tenant names:', tenantNames);
+          console.log('Tenants array:', activeContract.tenants);
+          
+          // Lấy giá từ hợp đồng
+          const monthlyRent = activeContract.monthlyRent || room.price || 0;
+          const electricRate = activeContract.electricPrice || room.electricityPrice || 3000;
+          const servicePrice = activeContract.servicePrice || room.servicePrice || 0;
+          
+          // Xử lý giá nước dựa trên loại tính
+          let waterRateDisplay, waterOldDisplay, waterNewDisplay;
+          
+          if (isWaterPerPerson) {
+            // Tính theo người: Hiển thị giá/người, không có chỉ số
+            waterRateDisplay = activeContract.waterPricePerPerson || 50000;
+            waterOldDisplay = '-'; // Không cần chỉ số cũ
+            waterNewDisplay = '-'; // Không cần chỉ số mới
+          } else {
+            // Tính theo số đo: Hiển thị giá/m³, có chỉ số cũ/mới
+            waterRateDisplay = activeContract.waterPrice || room.waterPrice || 20000;
+            waterOldDisplay = waterOld;
+            waterNewDisplay = ''; // User will fill
+          }
+
+          console.log('Water billing type:', isWaterPerPerson ? 'perPerson' : 'perCubicMeter');
+          console.log('Rates - Rent:', monthlyRent, 'Electric:', electricRate, 'Water:', waterRateDisplay, 'Service:', servicePrice);
+          console.log('Billing period:', periodStr);
+
+          data.push([
+            recordCount + 1,
+            room.roomNumber || '',
+            tenantNames,
+            periodStr, // Kỳ thanh toán riêng cho từng phòng
+            monthlyRent, // Tiền phòng
+            tenantCount,
+            electricRate,
+            electricOld,
+            '', // Electric new - user will fill
+            isWaterPerPerson ? 'Theo người' : 'Theo số đo',
+            waterRateDisplay,
+            waterOldDisplay,
+            waterNewDisplay,
+            servicePrice,
+            '', // Ghi chú
+            contractId // Mã HĐ ở cột cuối (ẩn)
+          ]);
+
+          recordCount++;
+          console.log(`✅ Added record ${recordCount} for room ${room.roomNumber}`);
+        } catch (error) {
+          console.error('❌ Error processing room:', room.roomNumber, error);
+        }
+      }
+
+      console.log(`\n=== SUMMARY: ${recordCount} records added ===`);
+
+      if (recordCount === 0) {
+        showToast('warning', 'Không có hợp đồng nào đang hoạt động');
+        setBillingLoading(false);
+        return;
+      }
+
+      // Create worksheet
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      
+      // Set column widths
+      ws['!cols'] = [
+        { wch: 5 },   // STT
+        { wch: 25 },  // Mã hợp đồng
+        { wch: 15 },  // Tên phòng
+        { wch: 20 },  // Khách thuê
+        { wch: 15 },  // Giá điện
+        { wch: 12 },  // Điện cũ
+        { wch: 12 },  // Điện mới
+        { wch: 15 },  // Giá nước
+        { wch: 18 },  // Loại tính nước
+        { wch: 12 },  // Nước cũ
+        { wch: 12 },  // Nước mới
+        { wch: 15 },  // Phí dịch vụ
+        { wch: 30 }   // Ghi chú
+      ];
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Tính tiền');
+      
+      // Download file
+      const date = new Date();
+      const fileName = `Tinh_Tien_Thang_${date.getMonth() + 1}_${date.getFullYear()}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+      
+      showToast('success', `Đã tạo file mẫu với ${recordCount} hợp đồng`);
+    } catch (error) {
+      console.error('Error generating billing template:', error);
+      showToast('error', 'Lỗi khi tạo file mẫu: ' + error.message);
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
+  const handleBillingFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'];
+    if (!validTypes.includes(file.type) && !file.name.match(/\.(xlsx|xls)$/)) {
+      showToast('error', 'Vui lòng chọn file Excel (.xlsx hoặc .xls)');
+      return;
+    }
+
+    setBillingFile(file);
+    readBillingExcelFile(file);
+  };
+
+  const readBillingExcelFile = (file) => {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        setBillingLoading(true);
+        
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        // Skip header row
+        const rows = jsonData.slice(1);
+        
+        const billingRecords = rows
+          .filter(row => row && row.length > 0 && row[15]) // Must have contract ID (last column)
+          .map((row, index) => {
+            const isWaterPerPerson = row[9]?.toString().trim() === 'Theo người';
+            const tenantCount = parseInt(row[5]) || 0;
+            
+            const record = {
+              stt: row[0] || index + 1,
+              roomNumber: row[1]?.toString().trim() || '',
+              tenantName: row[2]?.toString().trim() || '',
+              billingPeriod: row[3]?.toString().trim() || '', // Kỳ thanh toán
+              monthlyRent: parseFloat(row[4]) || 0, // Tiền phòng
+              tenantCount: tenantCount,
+              electricRate: parseFloat(row[6]) || 3000,
+              electricOld: parseFloat(row[7]) || 0,
+              electricNew: parseFloat(row[8]) || 0,
+              waterBillingType: isWaterPerPerson ? 'perPerson' : 'perCubicMeter',
+              waterRate: parseFloat(row[10]) || (isWaterPerPerson ? 50000 : 20000),
+              waterOld: row[11] === '-' ? 0 : (parseFloat(row[11]) || 0),
+              waterNew: row[12] === '-' ? 0 : (parseFloat(row[12]) || 0),
+              servicePrice: parseFloat(row[13]) || 0,
+              note: row[14]?.toString().trim() || '',
+              contractId: row[15]?.toString().trim() || '', // Mã HĐ ở cột cuối (ẩn)
+              errors: [],
+              isValid: true
+            };
+
+            // Validate
+            const errors = [];
+            
+            if (!record.contractId) errors.push('Thiếu mã hợp đồng');
+            if (record.electricNew < record.electricOld) errors.push('Chỉ số điện mới phải >= chỉ số cũ');
+            
+            // Chỉ validate chỉ số nước nếu tính theo số đo
+            if (!isWaterPerPerson && record.waterNew < record.waterOld) {
+              errors.push('Chỉ số nước mới phải >= chỉ số cũ');
+            }
+            
+            if (record.electricRate <= 0) errors.push('Giá điện không hợp lệ');
+            if (record.waterRate <= 0) errors.push('Giá nước không hợp lệ');
+            
+            if (isWaterPerPerson && tenantCount <= 0) {
+              errors.push('Số người thuê phải > 0');
+            }
+
+            // Calculate amounts
+            const electricConsumption = record.electricNew - record.electricOld;
+            record.electricAmount = electricConsumption * record.electricRate;
+            
+            // Tính tiền nước dựa trên loại tính
+            if (isWaterPerPerson) {
+              // Tính theo người: số người × giá/người
+              record.waterAmount = tenantCount * record.waterRate;
+            } else {
+              // Tính theo số đo: (mới - cũ) × giá/m³
+              const waterConsumption = record.waterNew - record.waterOld;
+              record.waterAmount = waterConsumption * record.waterRate;
+            }
+            
+            record.totalAmount = (record.monthlyRent || 0) + record.electricAmount + record.waterAmount + record.servicePrice;
+
+            record.errors = errors;
+            record.isValid = errors.length === 0;
+            
+            return record;
+          });
+
+        setBillingData(billingRecords);
+        
+        if (billingRecords.length === 0) {
+          showToast('warning', 'File không có dữ liệu hợp lệ');
+        } else {
+          const validCount = billingRecords.filter(r => r.isValid).length;
+          showToast('success', `Đọc file thành công: ${validCount}/${billingRecords.length} bản ghi hợp lệ`);
+        }
+      } catch (error) {
+        console.error('Error reading billing file:', error);
+        showToast('error', 'Lỗi khi đọc file: ' + error.message);
+        setBillingData([]);
+      } finally {
+        setBillingLoading(false);
+      }
+    };
+
+    reader.onerror = () => {
+      showToast('error', 'Lỗi khi đọc file');
+      setBillingLoading(false);
+    };
+
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleEditBillingRow = (index, field, value) => {
+    const updatedData = [...billingData];
+    updatedData[index][field] = parseFloat(value) || 0;
+
+    // Re-validate and recalculate
+    const record = updatedData[index];
+    const isWaterPerPerson = record.waterBillingType === 'perPerson';
+    const errors = [];
+    
+    if (!record.contractId) errors.push('Thiếu mã hợp đồng');
+    if (record.electricNew < record.electricOld) errors.push('Chỉ số điện mới phải >= chỉ số cũ');
+    
+    // Chỉ validate chỉ số nước nếu tính theo số đo
+    if (!isWaterPerPerson && record.waterNew < record.waterOld) {
+      errors.push('Chỉ số nước mới phải >= chỉ số cũ');
+    }
+    
+    if (record.electricRate <= 0) errors.push('Giá điện không hợp lệ');
+    if (record.waterRate <= 0) errors.push('Giá nước không hợp lệ');
+    
+    if (isWaterPerPerson && record.tenantCount <= 0) {
+      errors.push('Số người thuê phải > 0');
+    }
+
+    // Recalculate amounts
+    const electricConsumption = record.electricNew - record.electricOld;
+    record.electricAmount = electricConsumption * record.electricRate;
+    
+    // Tính tiền nước dựa trên loại tính
+    if (isWaterPerPerson) {
+      // Tính theo người: số người × giá/người
+      record.waterAmount = record.tenantCount * record.waterRate;
+    } else {
+      // Tính theo số đo: (mới - cũ) × giá/m³
+      const waterConsumption = record.waterNew - record.waterOld;
+      record.waterAmount = waterConsumption * record.waterRate;
+    }
+    
+    record.totalAmount = (record.monthlyRent || 0) + record.electricAmount + record.waterAmount + record.servicePrice;
+
+    record.errors = errors;
+    record.isValid = errors.length === 0;
+
+    setBillingData(updatedData);
+  };
+
+  const handleCreateInvoices = async () => {
+    try {
+      setBillingLoading(true);
+
+      const validRecords = billingData.filter(r => r.isValid);
+      if (validRecords.length === 0) {
+        showToast('warning', 'Không có bản ghi hợp lệ để tạo hóa đơn');
+        return;
+      }
+
+      let successCount = 0;
+      let failCount = 0;
+      const errors = [];
+
+      for (const record of validRecords) {
+        try {
+          console.log('Creating invoice for contract:', record.contractId);
+          
+          // Calculate dates
+          const today = new Date();
+          const issueDate = today.toISOString().split('T')[0]; // YYYY-MM-DD
+          const dueDate = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // +7 days
+          
+          // Parse billing period from Excel (format: "DD/MM/YYYY - DD/MM/YYYY")
+          let periodStart, periodEnd;
+          if (record.billingPeriod) {
+            const [startStr, endStr] = record.billingPeriod.split(' - ');
+            if (startStr && endStr) {
+              // Convert DD/MM/YYYY to YYYY-MM-DD
+              const [startDay, startMonth, startYear] = startStr.trim().split('/');
+              const [endDay, endMonth, endYear] = endStr.trim().split('/');
+              periodStart = `${startYear}-${startMonth.padStart(2, '0')}-${startDay.padStart(2, '0')}`;
+              periodEnd = `${endYear}-${endMonth.padStart(2, '0')}-${endDay.padStart(2, '0')}`;
+            }
+          }
+          
+          // Fallback to current month if parsing fails
+          if (!periodStart || !periodEnd) {
+            periodStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+            periodEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+          }
+          
+          console.log('Billing period:', periodStart, '-', periodEnd);
+          
+          // Build charges array (các khoản thu)
+          const charges = [];
+          
+          // Tiền phòng (rent) - LUÔN có
+          if (record.monthlyRent > 0) {
+            charges.push({
+              type: 'rent',
+              description: 'Tiền thuê phòng',
+              quantity: 1,
+              unitPrice: record.monthlyRent,
+              amount: record.monthlyRent
+            });
+          }
+          
+          // Tiền điện
+          if (record.electricAmount > 0) {
+            charges.push({
+              type: 'electricity',
+              description: `Tiền điện (${record.electricNew - record.electricOld} kWh × ${record.electricRate.toLocaleString('vi-VN')}đ)`,
+              quantity: record.electricNew - record.electricOld,
+              unitPrice: record.electricRate,
+              amount: record.electricAmount
+            });
+          }
+          
+          // Tiền nước
+          if (record.waterAmount > 0) {
+            if (record.waterBillingType === 'perPerson') {
+              charges.push({
+                type: 'water',
+                description: `Tiền nước (${record.tenantCount} người × ${record.waterRate.toLocaleString('vi-VN')}đ)`,
+                quantity: record.tenantCount,
+                unitPrice: record.waterRate,
+                amount: record.waterAmount
+              });
+            } else {
+              charges.push({
+                type: 'water',
+                description: `Tiền nước (${record.waterNew - record.waterOld} m³ × ${record.waterRate.toLocaleString('vi-VN')}đ)`,
+                quantity: record.waterNew - record.waterOld,
+                unitPrice: record.waterRate,
+                amount: record.waterAmount
+              });
+            }
+          }
+          
+          // Phí dịch vụ (dùng 'other' thay vì 'service')
+          if (record.servicePrice > 0) {
+            charges.push({
+              type: 'other',
+              description: 'Phí dịch vụ',
+              quantity: 1,
+              unitPrice: record.servicePrice,
+              amount: record.servicePrice
+            });
+          }
+
+          const invoiceData = {
+            contractId: record.contractId,
+            issueDate: issueDate,
+            dueDate: dueDate,
+            periodStart: periodStart,
+            periodEnd: periodEnd,
+            electricOldReading: record.electricOld,
+            electricNewReading: record.electricNew,
+            electricRate: record.electricRate,
+            waterOldReading: record.waterOld,
+            waterNewReading: record.waterNew,
+            waterRate: record.waterRate,
+            waterBillingType: record.waterBillingType,
+            charges: charges,
+            notes: record.note || '',
+            sendZaloInvoice: true
+          };
+
+          console.log('Invoice data:', invoiceData);
+
+          const response = await fetch('http://localhost:5000/api/invoices', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(invoiceData)
+          });
+
+          const result = await response.json();
+          console.log('Invoice creation response:', result);
+
+          if (response.ok && result.success) {
+            successCount++;
+            console.log(`✅ Invoice created for contract ${record.contractId}`);
+          } else {
+            failCount++;
+            errors.push(`Phòng ${record.roomNumber}: ${result.message || 'Lỗi không xác định'}`);
+            console.error(`❌ Failed to create invoice for contract ${record.contractId}:`, result);
+          }
+        } catch (error) {
+          console.error('Error creating invoice for contract:', record.contractId, error);
+          failCount++;
+          errors.push(`Phòng ${record.roomNumber}: ${error.message}`);
+        }
+      }
+
+      if (successCount > 0) {
+        showToast('success', `Tạo thành công ${successCount} hóa đơn${failCount > 0 ? `, thất bại ${failCount} hóa đơn` : ''}. Email đã được gửi kèm mã QR thanh toán.`);
+      }
+      
+      if (errors.length > 0) {
+        console.error('Invoice creation errors:', errors);
+        showToast('error', `Có lỗi xảy ra:\n${errors.slice(0, 3).join('\n')}`);
+      }
+      
+      // Close modal and reset
+      if (successCount > 0) {
+        setShowBillingModal(false);
+        setBillingFile(null);
+        setBillingData([]);
+      }
+    } catch (error) {
+      console.error('Error creating invoices:', error);
+      showToast('error', 'Lỗi khi tạo hóa đơn: ' + error.message);
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
 
   const handleCancelDeposit = async (roomNumber) => {
     // Find deposit contract with populated room data
@@ -2682,41 +3259,14 @@ const RoomsManagement = () => {
         charges: invoiceFormData.charges,
         discount: invoiceFormData.discount || 0,
         notes: invoiceFormData.notes,
-        sendZaloInvoice: sendZaloInvoice
+        sendZaloInvoice: true // Luôn gửi email với QR code
       };
 
       const response = await invoicesAPI.createInvoice(invoiceData);
 
       if (response.success) {
-        // Nếu chọn gửi email/zalo, tạo QR code thanh toán
-        if (sendZaloInvoice && response.data) {
-          try {
-            // Tính tổng tiền hóa đơn
-            const totalAmount = response.data.totalAmount || calculateInvoiceTotal();
-            
-            // Tạo nội dung chuyển khoản
-            const description = `Thanh toan hoa don phong ${selectedRoomForInvoice?.roomNumber || ''} - ${invoiceFormData.periodStart} den ${invoiceFormData.periodEnd}`;
-            
-            // Gọi API Sebay tạo QR code
-            const qrResponse = await sebayAPI.createPaymentQR({
-              amount: totalAmount,
-              description: description,
-              invoiceId: response.data._id || response.data.id
-            });
-            
-            if (qrResponse.success) {
-              showToast('success', 'Tạo hóa đơn và mã QR thanh toán thành công');
-            } else {
-              showToast('warning', 'Tạo hóa đơn thành công nhưng không thể tạo mã QR');
-            }
-          } catch (qrError) {
-            console.error('Error creating QR code:', qrError);
-            showToast('warning', 'Tạo hóa đơn thành công nhưng lỗi khi tạo mã QR');
-          }
-        } else {
-          showToast('success', 'Tạo hóa đơn thành công');
-        }
-        
+        // Backend tự động gửi email khi sendZaloInvoice = true
+        showToast('success', 'Tạo hóa đơn thành công. Email đã được gửi kèm mã QR thanh toán.');
         setShowInvoiceModal(false);
         
         // Nếu đang trong flow kết thúc hợp đồng, thực hiện kết thúc sau khi tạo hóa đơn
@@ -2733,12 +3283,12 @@ const RoomsManagement = () => {
           periodEnd: '',
           electricOldReading: 0,
           electricNewReading: 0,
-          electricRate: 3500, // Sẽ được cập nhật từ hợp đồng khi load
+          electricRate: 3500,
           waterOldReading: 0,
           waterNewReading: 0,
-          waterRate: 20000, // Sẽ được cập nhật từ hợp đồng khi load
-          waterBillingType: 'perCubicMeter', // Sẽ được cập nhật từ hợp đồng khi load
-          waterPricePerPerson: 50000, // Sẽ được cập nhật từ hợp đồng khi load
+          waterRate: 20000,
+          waterBillingType: 'perCubicMeter',
+          waterPricePerPerson: 50000,
           charges: [{
             type: 'rent',
             description: 'Tiền phòng',
@@ -2751,8 +3301,8 @@ const RoomsManagement = () => {
         });
         setContractInfo(null);
         setSelectedRoomForInvoice(null);
-        setSendZaloInvoice(true); // Reset to default
-        setInvoiceFormErrors({}); // Reset errors
+        setInvoiceFormErrors({});
+        fetchRooms(); // Refresh danh sách phòng
       } else {
         showToast('error', response.message || 'Lỗi khi tạo hóa đơn');
       }
@@ -3486,6 +4036,10 @@ const RoomsManagement = () => {
         <div className="rooms-header">
           <h1 className="rooms-title">{t('rooms.title')}</h1>
           <div className="header-actions">
+            <button className="billing-excel-btn" onClick={() => setShowBillingModal(true)}>
+              <i className="fas fa-file-invoice-dollar"></i>
+              {t('rooms.billingExcel', 'Tính tiền Excel')}
+            </button>
             <button className="import-excel-btn" onClick={() => setShowImportModal(true)}>
               <i className="fas fa-file-import"></i>
               {t('rooms.importExcel', 'Import Excel')}
@@ -6774,29 +7328,12 @@ const RoomsManagement = () => {
           </div>
 
           <div className="room-modal-footer">
-            <div style={{display: 'flex', alignItems: 'center', flex: 1}}>
-              <label style={{display: 'flex', alignItems: 'center', gap: '8px', color: '#374151', fontSize: '14px', cursor: 'pointer'}}>
-                <input
-                  type="checkbox"
-                  checked={sendZaloInvoice}
-                  onChange={(e) => setSendZaloInvoice(e.target.checked)}
-                  style={{
-                    width: '18px',
-                    height: '18px',
-                    accentColor: '#3b82f6'
-                  }}
-                />
-                <i className="fab fa-telegram" style={{color: '#0088cc', fontSize: '16px'}}></i>
-                <span>{t('invoices.form.sendZaloToTenant', 'Gửi hóa đơn Zalo cho khách thuê')}</span>
-              </label>
-            </div>
-            <div style={{display: 'flex', gap: '12px'}}>
+            <div style={{display: 'flex', gap: '12px', width: '100%', justifyContent: 'flex-end'}}>
               <button 
                 className="btn-secondary" 
                 disabled={savingInvoice}
                 onClick={() => {
                   setShowInvoiceModal(false);
-                  setSendZaloInvoice(true); // Reset to default
                   setInvoiceFormErrors({}); // Reset errors
                 }}
               >
@@ -7159,6 +7696,275 @@ const RoomsManagement = () => {
             >
               <i className={importLoading ? "fas fa-spinner fa-spin" : "fas fa-file-import"}></i>
               {importLoading ? t('rooms.importing', 'Đang import...') : t('rooms.import', 'Import')}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Billing Excel Modal */}
+    {showBillingModal && (
+      <div className="modal-overlay" onClick={() => {
+        if (!billingLoading) {
+          setShowBillingModal(false);
+          setBillingFile(null);
+          setBillingData([]);
+        }
+      }}>
+        <div className="billing-modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <h2>
+              <i className="fas fa-file-invoice-dollar"></i>
+              {t('rooms.billingExcel', 'Tính tiền bằng Excel')}
+            </h2>
+            <button
+              className="close-btn"
+              onClick={() => {
+                setShowBillingModal(false);
+                setBillingFile(null);
+                setBillingData([]);
+              }}
+              disabled={billingLoading}
+            >
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+
+          <div className="modal-body">
+            {/* Template Generation Section */}
+            <div className="billing-top-section">
+              <div className="section-icon">
+                <i className="fas fa-download"></i>
+              </div>
+              <div className="section-content">
+                <h3>{t('rooms.generateBillingTemplate', 'Tạo file tính tiền')}</h3>
+                <p className="billing-hint">
+                  <i className="fas fa-info-circle"></i>
+                  {t('rooms.billingTemplateHint', 'File sẽ chứa danh sách phòng đang thuê và chỉ số điện nước cũ. Bạn chỉ cần điền chỉ số mới.')}
+                </p>
+                <button
+                  className="template-download-btn"
+                  onClick={handleGenerateBillingTemplate}
+                  disabled={billingLoading}
+                >
+                  <i className={billingLoading ? "fas fa-spinner fa-spin" : "fas fa-file-excel"}></i>
+                  {billingLoading ? t('rooms.generating', 'Đang tạo...') : t('rooms.generateTemplate', 'Tạo file Excel')}
+                </button>
+              </div>
+            </div>
+
+            {/* File Upload Section */}
+            <div className="billing-file-section">
+              <label htmlFor="billing-file-input" className="file-input-btn">
+                <i className="fas fa-cloud-upload-alt"></i>
+                <span>{billingFile ? billingFile.name : t('rooms.selectBillingFile', 'Chọn file đã điền chỉ số mới')}</span>
+                <input
+                  id="billing-file-input"
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleBillingFileSelect}
+                  style={{ display: 'none' }}
+                  disabled={billingLoading}
+                />
+              </label>
+            </div>
+
+            {/* Data Preview Section */}
+            {billingData.length > 0 && (
+              <>
+                <div className="section-title">
+                  <i className="fas fa-table"></i>
+                  {t('rooms.billingDataPreview', 'Xem trước hóa đơn')}
+                </div>
+
+                <div className="billing-data-grid">
+                  <table className="billing-table">
+                    <thead>
+                      <tr>
+                        <th>STT</th>
+                        <th>Phòng</th>
+                        <th>Khách</th>
+                        <th>Kỳ (Từ - Đến)</th>
+                        <th>Tiền phòng</th>
+                        <th>Loại nước</th>
+                        <th>Điện cũ</th>
+                        <th>Điện mới</th>
+                        <th>Tiêu thụ</th>
+                        <th>Tiền điện</th>
+                        <th>Nước cũ</th>
+                        <th>Nước mới</th>
+                        <th>Tiêu thụ/SL</th>
+                        <th>Tiền nước</th>
+                        <th>Phí DV</th>
+                        <th>Tổng tiền</th>
+                        <th>Hợp lệ</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {billingData.map((record, index) => {
+                        const isWaterPerPerson = record.waterBillingType === 'perPerson';
+                        return (
+                        <tr key={index} className={!record.isValid ? 'invalid-row' : ''}>
+                          <td>{record.stt}</td>
+                          <td>{record.roomNumber}</td>
+                          <td>{record.tenantName}</td>
+                          <td style={{fontSize: '11px', whiteSpace: 'nowrap'}}>{record.billingPeriod}</td>
+                          <td style={{fontWeight: '600', color: '#f59e0b'}}>{(record.monthlyRent || 0).toLocaleString('vi-VN')}đ</td>
+                          <td>
+                            <span className="badge-water-type">
+                              {isWaterPerPerson ? '👥 Theo người' : '📊 Theo số'}
+                            </span>
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="editable-cell"
+                              value={record.electricOld}
+                              onChange={(e) => handleEditBillingRow(index, 'electricOld', e.target.value)}
+                              disabled={billingLoading}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="editable-cell"
+                              value={record.electricNew}
+                              onChange={(e) => handleEditBillingRow(index, 'electricNew', e.target.value)}
+                              disabled={billingLoading}
+                            />
+                          </td>
+                          <td>{(record.electricNew - record.electricOld).toFixed(0)}</td>
+                          <td>{record.electricAmount.toLocaleString('vi-VN')} đ</td>
+                          <td>
+                            {isWaterPerPerson ? (
+                              <span className="text-muted">-</span>
+                            ) : (
+                              <input
+                                type="number"
+                                className="editable-cell"
+                                value={record.waterOld}
+                                onChange={(e) => handleEditBillingRow(index, 'waterOld', e.target.value)}
+                                disabled={billingLoading}
+                              />
+                            )}
+                          </td>
+                          <td>
+                            {isWaterPerPerson ? (
+                              <span className="text-muted">-</span>
+                            ) : (
+                              <input
+                                type="number"
+                                className="editable-cell"
+                                value={record.waterNew}
+                                onChange={(e) => handleEditBillingRow(index, 'waterNew', e.target.value)}
+                                disabled={billingLoading}
+                              />
+                            )}
+                          </td>
+                          <td>
+                            {isWaterPerPerson ? (
+                              <span>{record.tenantCount} người</span>
+                            ) : (
+                              <span>{(record.waterNew - record.waterOld).toFixed(0)}</span>
+                            )}
+                          </td>
+                          <td>{record.waterAmount.toLocaleString('vi-VN')} đ</td>
+                          <td>
+                            <input
+                              type="number"
+                              className="editable-cell"
+                              value={record.servicePrice}
+                              onChange={(e) => handleEditBillingRow(index, 'servicePrice', e.target.value)}
+                              disabled={billingLoading}
+                            />
+                          </td>
+                          <td className="total-cell">{record.totalAmount.toLocaleString('vi-VN')} đ</td>
+                          <td>
+                            {record.isValid ? (
+                              <span className="valid-icon" title="Hợp lệ">
+                                <i className="fas fa-check-circle"></i>
+                              </span>
+                            ) : (
+                              <span className="invalid-icon" title={record.errors.join(', ')}>
+                                <i className="fas fa-exclamation-triangle"></i>
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Summary Statistics */}
+                <div className="billing-summary">
+                  <div className="summary-item summary-total">
+                    <i className="fas fa-list"></i>
+                    <div>
+                      <div className="summary-label">{t('rooms.totalRecords', 'Tổng số')}</div>
+                      <div className="summary-value">{billingData.length}</div>
+                    </div>
+                  </div>
+                  <div className="summary-item summary-valid">
+                    <i className="fas fa-check-circle"></i>
+                    <div>
+                      <div className="summary-label">{t('rooms.validRecords', 'Hợp lệ')}</div>
+                      <div className="summary-value">{billingData.filter(r => r.isValid).length}</div>
+                    </div>
+                  </div>
+                  <div className="summary-item summary-invalid">
+                    <i className="fas fa-exclamation-triangle"></i>
+                    <div>
+                      <div className="summary-label">{t('rooms.invalidRecords', 'Không hợp lệ')}</div>
+                      <div className="summary-value">{billingData.filter(r => !r.isValid).length}</div>
+                    </div>
+                  </div>
+                  <div className="summary-item summary-amount">
+                    <i className="fas fa-money-bill-wave"></i>
+                    <div>
+                      <div className="summary-label">{t('rooms.totalAmount', 'Tổng tiền')}</div>
+                      <div className="summary-value">
+                        {billingData
+                          .filter(r => r.isValid)
+                          .reduce((sum, r) => sum + r.totalAmount, 0)
+                          .toLocaleString('vi-VN')} đ
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Warning Message */}
+                {billingData.some(r => !r.isValid) && (
+                  <div className="billing-warning">
+                    <i className="fas fa-exclamation-circle"></i>
+                    {t('rooms.invalidBillingWarning', 'Có một số bản ghi không hợp lệ. Hãy sửa dữ liệu trực tiếp trên bảng để có thể tạo hóa đơn.')}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="modal-footer">
+            <button
+              className="btn-cancel"
+              onClick={() => {
+                setShowBillingModal(false);
+                setBillingFile(null);
+                setBillingData([]);
+              }}
+              disabled={billingLoading}
+            >
+              <i className="fas fa-times"></i>
+              {t('common.cancel', 'Hủy')}
+            </button>
+            <button
+              className="btn-create-invoices"
+              onClick={handleCreateInvoices}
+              disabled={billingLoading || billingData.length === 0 || !billingData.some(r => r.isValid)}
+            >
+              <i className={billingLoading ? "fas fa-spinner fa-spin" : "fas fa-file-invoice"}></i>
+              {billingLoading ? t('rooms.creatingInvoices', 'Đang tạo...') : t('rooms.createInvoices', 'Tạo hóa đơn')}
             </button>
           </div>
         </div>

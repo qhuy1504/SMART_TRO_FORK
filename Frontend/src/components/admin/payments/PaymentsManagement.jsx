@@ -1451,37 +1451,148 @@ const PaymentsManagement = () => {
             ) : selectedInvoice ? (
               <div className="modal-body">
                 <div className="invoice-detail-grid">
+                  {/* Thông tin cơ bản */}
                   <div className="detail-section">
-                    <h3>{t('payments.generalInfo', 'Thông tin chung')}</h3>
+                    <h3><i className="fas fa-info-circle"></i> {t('payments.generalInfo', 'Thông tin chung')}</h3>
                     <div className="detail-row">
-                      <label>{t('payments.room', 'Phòng')}:</label>
+                      <label><i className="fas fa-hashtag"></i> Mã hóa đơn:</label>
+                      <span className="invoice-number">{selectedInvoice.invoiceNumber}</span>
+                    </div>
+                    <div className="detail-row">
+                      <label><i className="fas fa-door-open"></i> {t('payments.room', 'Phòng')}:</label>
                       <span>{t('payments.room', 'Phòng')} {selectedInvoice.room?.roomNumber}</span>
                     </div>
                     <div className="detail-row">
-                      <label>{t('payments.tenant', 'Khách thuê')}:</label>
+                      <label><i className="fas fa-user"></i> {t('payments.tenant', 'Khách thuê')}:</label>
                       <span>{selectedInvoice.tenant?.fullName}</span>
                     </div>
                     <div className="detail-row">
-                      <label>{t('payments.status.label', 'Trạng thái')}:</label>
+                      <label><i className="fas fa-phone"></i> Số điện thoại:</label>
+                      <span>{selectedInvoice.tenant?.phone || 'N/A'}</span>
+                    </div>
+                    <div className="detail-row">
+                      <label><i className="fas fa-envelope"></i> Email:</label>
+                      <span>{selectedInvoice.tenant?.email || 'N/A'}</span>
+                    </div>
+                    <div className="detail-row">
+                      <label><i className="fas fa-tag"></i> {t('payments.status.label', 'Trạng thái')}:</label>
                       <span className={getStatusBadgeClass(selectedInvoice.status)}>
                         {getStatusText(selectedInvoice.status)}
                       </span>
                     </div>
                   </div>
 
-                  <div className="detail-section">
-                    <h3>{t('payments.paymentDetail', 'Chi tiết thanh toán')}</h3>
-                    {selectedInvoice.charges?.map((charge, index) => (
-                      <div key={index} className="detail-row">
-                        <label>{charge.description}:</label>
-                        <span>{formatCurrency(charge.amount)}</span>
-                      </div>
-                    ))}
-                    <div className="detail-row total">
-                      <label>{t('payments.totalAmount', 'Tổng cộng')}:</label>
-                      <span>{formatCurrency(selectedInvoice.totalAmount)}</span>
+                  {/* Kỳ thanh toán */}
+                  <div className="detail-section period-section">
+                    <h3><i className="fas fa-calendar-alt"></i> Kỳ thanh toán</h3>
+                    <div className="detail-row">
+                      <label><i className="fas fa-calendar-week"></i> Chu kỳ:</label>
+                      <span className="period-range">
+                        {new Date(selectedInvoice.periodStart).toLocaleDateString('vi-VN')} - {new Date(selectedInvoice.periodEnd).toLocaleDateString('vi-VN')}
+                      </span>
+                    </div>
+                    <div className="detail-row">
+                      <label><i className="fas fa-calendar-day"></i> Ngày lập:</label>
+                      <span>{new Date(selectedInvoice.issueDate).toLocaleDateString('vi-VN')}</span>
+                    </div>
+                    <div className="detail-row">
+                      <label><i className="fas fa-calendar-check"></i> Hạn thanh toán:</label>
+                      <span className={new Date(selectedInvoice.dueDate) < new Date() && selectedInvoice.status !== 'paid' ? 'overdue-date' : ''}>
+                        {new Date(selectedInvoice.dueDate).toLocaleDateString('vi-VN')}
+                      </span>
                     </div>
                   </div>
+
+                  {/* Chỉ số điện nước */}
+                  <div className="detail-section utilities-section">
+                    <h3><i className="fas fa-bolt"></i> Chỉ số điện nước</h3>
+                    <div className="utility-grid">
+                      <div className="utility-item electric">
+                        <div className="utility-icon">
+                          <i className="fas fa-plug"></i>
+                        </div>
+                        <div className="utility-details">
+                          <label>Điện</label>
+                          <div className="utility-reading">
+                            <span className="old-reading">{selectedInvoice.electricOldReading || 0}</span>
+                            <i className="fas fa-arrow-right"></i>
+                            <span className="new-reading">{selectedInvoice.electricNewReading || 0}</span>
+                          </div>
+                          <div className="utility-consumption">
+                            Tiêu thụ: <strong>{(selectedInvoice.electricNewReading - selectedInvoice.electricOldReading) || 0} kWh</strong> × {(selectedInvoice.electricRate || 0).toLocaleString('vi-VN')}đ
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="utility-item water">
+                        <div className="utility-icon">
+                          <i className="fas fa-tint"></i>
+                        </div>
+                        <div className="utility-details">
+                          <label>Nước {selectedInvoice.waterBillingType === 'perPerson' ? '(Theo người)' : '(Theo số đo)'}</label>
+                          {selectedInvoice.waterBillingType === 'perPerson' ? (
+                            <div className="utility-consumption">
+                              <strong>N/A</strong> - Tính theo {selectedInvoice.tenant?.fullName ? '1 người' : 'số người'} × {(selectedInvoice.waterRate || 0).toLocaleString('vi-VN')}đ
+                            </div>
+                          ) : (
+                            <>
+                              <div className="utility-reading">
+                                <span className="old-reading">{selectedInvoice.waterOldReading || 0}</span>
+                                <i className="fas fa-arrow-right"></i>
+                                <span className="new-reading">{selectedInvoice.waterNewReading || 0}</span>
+                              </div>
+                              <div className="utility-consumption">
+                                Tiêu thụ: <strong>{(selectedInvoice.waterNewReading - selectedInvoice.waterOldReading) || 0} m³</strong> × {(selectedInvoice.waterRate || 0).toLocaleString('vi-VN')}đ
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Chi tiết thanh toán */}
+                  <div className="detail-section payment-section">
+                    <h3><i className="fas fa-money-bill-wave"></i> {t('payments.paymentDetail', 'Chi tiết thanh toán')}</h3>
+                    <div className="charges-list">
+                      {selectedInvoice.charges?.map((charge, index) => (
+                        <div key={index} className="charge-item">
+                          <div className="charge-info">
+                            <i className={`fas ${
+                              charge.type === 'rent' ? 'fa-home' :
+                              charge.type === 'electricity' ? 'fa-bolt' :
+                              charge.type === 'water' ? 'fa-tint' :
+                              charge.type === 'internet' ? 'fa-wifi' :
+                              charge.type === 'parking' ? 'fa-car' :
+                              'fa-clipboard-list'
+                            }`}></i>
+                            <span className="charge-desc">{charge.description}</span>
+                          </div>
+                          <span className="charge-amount">{formatCurrency(charge.amount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {selectedInvoice.discount > 0 && (
+                      <div className="discount-row">
+                        <label><i className="fas fa-tag"></i> Giảm giá:</label>
+                        <span className="discount-amount">-{formatCurrency(selectedInvoice.discount)}</span>
+                      </div>
+                    )}
+                    
+                    <div className="total-row">
+                      <label><i className="fas fa-calculator"></i> {t('payments.totalAmount', 'Tổng cộng')}:</label>
+                      <span className="total-amount">{formatCurrency(selectedInvoice.totalAmount)}</span>
+                    </div>
+                  </div>
+
+                  {/* Ghi chú */}
+                  {selectedInvoice.notes && (
+                    <div className="detail-section notes-section">
+                      <h3><i className="fas fa-sticky-note"></i> Ghi chú</h3>
+                      <p className="notes-content">{selectedInvoice.notes}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : null}
