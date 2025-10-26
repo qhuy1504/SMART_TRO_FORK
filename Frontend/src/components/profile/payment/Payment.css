@@ -51,6 +51,13 @@ background: linear-gradient(135deg, #3a75d3 0%, #375dc5 100%);
   transform: translateY(-2px);
 }
 
+.payment-timers {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
 .payment-timer {
   display: flex;
   align-items: center;
@@ -59,6 +66,23 @@ background: linear-gradient(135deg, #3a75d3 0%, #375dc5 100%);
   background: rgba(255, 255, 255, 0.15);
   padding: 8px 16px;
   border-radius: 20px;
+  color: #2d3748;
+}
+.payment-timer span{
+  color: white;
+}
+
+.auto-cancel-timer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  background: rgba(255, 159, 67, 0.2);
+  color: #d63031;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 14px;
+  border: 1px solid rgba(255, 159, 67, 0.3);
 }
 
 /* Body */
@@ -251,9 +275,10 @@ background: linear-gradient(135deg, #3a75d3 0%, #375dc5 100%);
   font-weight: 500;
 }
 
-/* Success/Failed States */
+/* Success/Failed/Cancelled States */
 .payment-success,
-.payment-failed {
+.payment-failed,
+.payment-cancelled {
   text-align: center;
   padding: 60px 40px;
   max-width: 500px;
@@ -276,17 +301,30 @@ background: linear-gradient(135deg, #3a75d3 0%, #375dc5 100%);
   color: #dc3545;
 }
 
+.status-icon.cancelled {
+  color: #ff9f43;
+}
+
 .payment-success h2,
-.payment-failed h2 {
+.payment-failed h2,
+.payment-cancelled h2 {
   margin-bottom: 16px;
   color: #2d3748;
 }
 
 .payment-success p,
-.payment-failed p {
+.payment-failed p,
+.payment-cancelled p {
   color: #666;
   margin-bottom: 24px;
   line-height: 1.6;
+}
+
+.cancelled-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 24px;
 }
 
 .btn-retry {
@@ -303,6 +341,23 @@ background: linear-gradient(135deg, #3a75d3 0%, #375dc5 100%);
 
 .btn-retry:hover {
   background: #0056b3;
+  transform: translateY(-2px);
+}
+
+.btn-history {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-history:hover {
+  background: #545b62;
   transform: translateY(-2px);
 }
 

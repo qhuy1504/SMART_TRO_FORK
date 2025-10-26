@@ -18,33 +18,6 @@ const propertiesPackageSchema = new mongoose.Schema({
     required: true
   },
 
-  // Giá cả
-  dailyPrice: {
-    type: Number,
-    required: true,
-    min: 0
-  },
-
-  weeklyDiscount: {
-    type: Number,
-    default: 10, // 10% discount for weekly
-    min: 0,
-    max: 100
-  },
-
-  monthlyDiscount: {
-    type: Number,
-    default: 20, // 20% discount for monthly
-    min: 0,
-    max: 100
-  },
-
-  // Số lượt đẩy tin miễn phí theo gói
-  freePushCount: {
-    type: Number,
-    required: true,
-    min: 0
-  },
 
   // Độ ưu tiên hiển thị (1 = cao nhất)
   priority: {

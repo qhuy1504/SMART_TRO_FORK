@@ -20,6 +20,8 @@ class PropertyRepository {
             return await Property.findById(id)
                 .populate('owner', 'fullName email phone avatar')
                 .populate('amenities', 'name key icon category')
+                .populate('packageInfo.plan', 'name displayName type priority color stars')
+                .populate('packageInfo.postType', 'name displayName color priority description stars textStyle')
                 .exec();
         } catch (error) {
             throw new Error(`Error finding property by ID: ${error.message}`);
@@ -42,6 +44,8 @@ class PropertyRepository {
                 .sort({ createdAt: -1 })
                 .populate('owner', 'fullName email phone avatar')
                 .populate('amenities', 'name key icon category')
+                .populate('packageInfo.plan', 'name displayName type priority color stars')
+                .populate('packageInfo.postType', 'name displayName color priority description stars textStyle')
                 .exec();
 
             const total = await Property.countDocuments(query);
@@ -122,6 +126,8 @@ class PropertyRepository {
                 .sort({ createdAt: -1 })
                 .populate('owner', 'fullName phone')
                 .populate('amenities', 'name key icon category')
+                .populate('packageInfo.plan', 'name displayName type priority color stars')
+                .populate('packageInfo.postType', 'name displayName color priority description stars textStyle')
                 .exec();
 
             const total = await Property.countDocuments(query);
@@ -148,7 +154,9 @@ class PropertyRepository {
                 updateData,
                 { new: true, runValidators: true }
             ).populate('owner', 'fullName email phone avatar')
-             .populate('amenities', 'name key icon category');
+             .populate('amenities', 'name key icon category')
+             .populate('packageInfo.plan', 'name displayName type priority color stars')
+             .populate('packageInfo.postType', 'name displayName color priority description stars textStyle');
         } catch (error) {
             throw new Error(`Error updating property: ${error.message}`);
         }
@@ -236,6 +244,8 @@ class PropertyRepository {
             const property = await Property.findById(id)
                 .populate('owner', 'fullName email phone avatar role')
                 .populate('amenities', 'name key icon category')
+                .populate('packageInfo.plan', 'name displayName type priority color stars')
+                .populate('packageInfo.postType', 'name displayName color priority description stars textStyle')
                 .exec();
 
             if (property && property.owner) {
@@ -246,7 +256,7 @@ class PropertyRepository {
                     isDeleted: { $ne: true }
                 });
 
-                // Chuyển property thành plain object và thêm propertyCount
+                // Chuyển property thành plain object và thêm propertyCount . 
                 const propertyObj = property.toObject();
                 propertyObj.owner.propertyCount = propertyCount;
                 return propertyObj;
@@ -296,7 +306,9 @@ class PropertyRepository {
                 .sort({ createdAt: -1, views: -1 })
                 .populate('owner', 'fullName phone')
                 .populate('amenities', 'name key')
-                .select('title price images location area views createdAt')
+                .populate('packageInfo.plan', 'name displayName type priority color stars')
+                .populate('packageInfo.postType', 'name displayName color priority description stars textStyle')
+                .select('title price images location area views createdAt packageInfo')
                 .exec();
         } catch (error) {
             throw new Error(`Error getting related properties: ${error.message}`);
@@ -316,7 +328,9 @@ class PropertyRepository {
                 .limit(limit)
                 .sort({ isPremium: -1, views: -1, createdAt: -1 })
                 .populate('owner', 'fullName phone')
-                .select('title price images location area views isPremium')
+                .populate('packageInfo.plan', 'name displayName type priority color stars')
+                .populate('packageInfo.postType', 'name displayName color priority description stars textStyle')
+                .select('title price images location area views isPremium packageInfo')
                 .exec();
         } catch (error) {
             throw new Error(`Error getting featured properties: ${error.message}`);

@@ -52,11 +52,11 @@ const ProfileLayout = () => {
       active: location.pathname === '/profile/payment-history'
     },
     {
-      id: 'pricing',
-      icon: 'fa-table',
-      label: t('profile.layout.sidebar.pricing'),
-      path: '/profile/pricing',
-      active: location.pathname === '/profile/pricing'
+      id: 'pricing-analytics',
+      icon: 'fa-chart-line',
+      label: t('profile.layout.sidebar.pricing-analytics'),
+      path: '/profile/pricing-analytics',
+      active: location.pathname === '/profile/pricing-analytics'
     },
     {
       id: 'account',

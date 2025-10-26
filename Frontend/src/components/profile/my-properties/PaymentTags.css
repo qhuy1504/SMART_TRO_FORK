@@ -135,6 +135,32 @@
     box-shadow: 0 4px 12px rgba(107, 114, 128, 0.5);
 }
 
+/* Expired tag - Đã hết hạn */
+.expired-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: linear-gradient(45deg, #ff6b35, #f74124) !important;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(255, 107, 53, 0.4);
+    border: none;
+    position: absolute;
+    z-index: 9999;
+    animation: glow-orange 2s ease-in-out infinite alternate;
+    transition: all 0.3s ease;
+}
+
+.expired-tag:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.5);
+}
+
 .free-post-notice {
     display: flex;
     justify-content: center;
@@ -195,6 +221,18 @@
 
     100% {
         box-shadow: 0 4px 16px rgba(107, 114, 128, 0.6);
+        transform: scale(1.01);
+    }
+}
+
+@keyframes glow-orange {
+    0% {
+        box-shadow: 0 2px 8px rgba(255, 107, 53, 0.4);
+        transform: scale(1);
+    }
+
+    100% {
+        box-shadow: 0 4px 16px rgba(255, 107, 53, 0.6);
         transform: scale(1.01);
     }
 }

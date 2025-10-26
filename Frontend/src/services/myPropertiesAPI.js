@@ -226,4 +226,32 @@ export const myPropertiesAPI = {
       };
     }
   },
+
+  // Lấy thông tin gói hiện tại của user
+  getCurrentUserPackage: async () => {
+    try {
+      const response = await api.get('/my-properties/current-package');
+      return response.data;
+    } catch (error) {
+      console.error('Error getting current user package:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Lỗi khi lấy thông tin gói hiện tại'
+      };
+    }
+  },
+
+  // Lấy danh sách gói có sẵn để nâng cấp
+  getAvailablePackages: async () => {
+    try {
+      const response = await api.get('/package-plans');
+      return response.data;
+    } catch (error) {
+      console.error('Error getting available packages:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Lỗi khi lấy danh sách gói tin'
+      };
+    }
+  },
 };

@@ -11,6 +11,8 @@ class AdminPropertyRepository {
 
     const properties = await Property.find(finalFilter)
       .populate('owner', 'fullName email avatar phone')
+      .populate('packageInfo.plan', 'name displayName type priority color stars')
+      .populate('packageInfo.postType', 'name displayName color priority description stars textStyle')
       .sort({ [sortBy]: sortOrder })
       .skip(skip)
       .limit(limit);

@@ -19,10 +19,9 @@ const PropertiesPackagesManagement = () => {
   const [modalType, setModalType] = useState('create'); // 'create', 'edit', 'delete'
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [formData, setFormData] = useState({
-    name: 'tin_vip_dac_biet', // Mặc định chọn gói đầu tiên
+    name: 'tin_vip_dac_biet', // Mặc định chọn loại đầu tiên
     displayName: '',
     description: '',
-    dailyPrice: '',
     freePushCount: '',
     priority: '',
     color: '#007bff',
@@ -72,11 +71,11 @@ const PropertiesPackagesManagement = () => {
         setIsSearched(false);
         setCurrentPage(1); // Reset to first page when loading data
       } else {
-        toast.error('Không thể tải danh sách gói tin đăng');
+        toast.error('Không thể tải danh sách loại tin đăng');
       }
     } catch (error) {
       console.error('Error loading packages:', error);
-      toast.error('Lỗi khi tải danh sách gói tin đăng');
+      toast.error('Lỗi khi tải danh sách loại tin đăng');
     } finally {
       setLoading(false);
     }
@@ -85,23 +84,23 @@ const PropertiesPackagesManagement = () => {
   // Initialize default packages
   const handleInitializePackages = async () => {
     try {
-      // Kiểm tra nếu đã có gói tin đăng
+      // Kiểm tra nếu đã có loại tin đăng
       if (packages.length > 0) {
-        toast.warning('Đã có gói tin đăng trong hệ thống. Vui lòng xóa hết tất cả gói tin để thực hiện chức năng này.');
+        toast.warning('Đã có loại tin đăng trong hệ thống. Vui lòng xóa hết tất cả loại tin để thực hiện chức năng này.');
         return;
       }
 
       const response = await PropertiesPackageAPI.initializePackages();
       
       if (response && response.success) {
-        toast.success('Khởi tạo gói tin đăng mặc định thành công');
+        toast.success('Khởi tạo loại tin đăng mặc định thành công');
         loadPackages(); // Reload list
       } else {
-        toast.error(response?.message || 'Không thể khởi tạo gói tin đăng');
+        toast.error(response?.message || 'Không thể khởi tạo loại tin đăng');
       }
     } catch (error) {
       console.error('Error initializing packages:', error);
-      toast.error('Lỗi khi khởi tạo gói tin đăng');
+      toast.error('Lỗi khi khởi tạo loại tin đăng');
     }
   };
 
@@ -109,10 +108,9 @@ const PropertiesPackagesManagement = () => {
   const handleCreate = () => {
     setModalType('create');
     setFormData({
-      name: 'tin_vip_dac_biet', // Mặc định chọn gói đầu tiên
+      name: 'tin_vip_dac_biet', // Mặc định chọn loại đầu tiên
       displayName: '',
       description: '',
-      dailyPrice: '',
       freePushCount: '',
       priority: '',
       color: '#007bff',
@@ -132,7 +130,6 @@ const PropertiesPackagesManagement = () => {
       name: pkg.name,
       displayName: pkg.displayName,
       description: pkg.description,
-      dailyPrice: formatInputPrice(pkg.dailyPrice),
       freePushCount: pkg.freePushCount?.toString() || '',
       priority: pkg.priority.toString(),
       color: pkg.color,
@@ -159,15 +156,6 @@ const PropertiesPackagesManagement = () => {
       setFormData(prev => ({
         ...prev,
         [name]: checked
-      }));
-    } else if (name === 'dailyPrice') {
-      // Only allow numeric input for price fields
-      const numericValue = value.replace(/\D/g, '');
-      // Format price input with thousand separators
-      const formattedValue = formatInputPrice(numericValue);
-      setFormData(prev => ({
-        ...prev,
-        [name]: formattedValue
       }));
     } else {
       setFormData(prev => ({
@@ -212,7 +200,7 @@ const PropertiesPackagesManagement = () => {
     
     try {
       // Validate form
-      if (!formData.name || !formData.displayName || !formData.dailyPrice || !formData.priority) {
+      if (!formData.name || !formData.displayName || !formData.priority) {
         toast.error('Vui lòng điền đầy đủ thông tin bắt buộc');
         return;
       }
@@ -220,7 +208,6 @@ const PropertiesPackagesManagement = () => {
       // Prepare data - không filter features để backend validate
       const submitData = {
         ...formData,
-        dailyPrice: parseInt(parseFormattedPrice(formData.dailyPrice)),
         freePushCount: formData.freePushCount ? parseInt(formData.freePushCount) : 0, // Default to 0 if empty
         priority: parseInt(formData.priority),
         features: formData.features // Gửi tất cả features, kể cả rỗng để backend validate
@@ -235,7 +222,7 @@ const PropertiesPackagesManagement = () => {
       }
 
       if (response && response.success) {
-        toast.success(modalType === 'create' ? 'Tạo gói tin đăng thành công' : 'Cập nhật gói tin đăng thành công');
+        toast.success(modalType === 'create' ? 'Tạo loại tin đăng thành công' : 'Cập nhật loại tin đăng thành công');
         setShowModal(false);
         loadPackages(); // Reload list
       } else {
@@ -245,7 +232,7 @@ const PropertiesPackagesManagement = () => {
           const errorMessages = response.errors.map(err => err.msg).join(', ');
           toast.error(`Lỗi validation: ${errorMessages}`);
         } else {
-          toast.error(response?.message || 'Có lỗi xảy ra khi lưu gói tin đăng');
+          toast.error(response?.message || 'Có lỗi xảy ra khi lưu loại tin đăng');
         }
       }
     } catch (error) {
@@ -260,7 +247,7 @@ const PropertiesPackagesManagement = () => {
           const errorMessages = errorData.errors.map(err => err.msg).join(', ');
           toast.error(`Lỗi validation: ${errorMessages}`);
         } else {
-          toast.error(errorData?.message || 'Lỗi khi lưu thông tin gói tin đăng');
+          toast.error(errorData?.message || 'Lỗi khi lưu thông tin loại tin đăng');
         }
       } else {
         toast.error('Lỗi kết nối server');
@@ -274,15 +261,15 @@ const PropertiesPackagesManagement = () => {
       const response = await PropertiesPackageAPI.deletePackage(selectedPackage._id);
       
       if (response.success) {
-        toast.success('Xóa gói tin đăng thành công');
+        toast.success('Xóa loại tin đăng thành công');
         setShowModal(false);
         loadPackages(); // Reload list
       } else {
-        toast.error('Không thể xóa gói tin đăng');
+        toast.error('Không thể xóa loại tin đăng');
       }
     } catch (error) {
       console.error('Error deleting package:', error);
-      toast.error('Lỗi khi xóa gói tin đăng');
+      toast.error('Lỗi khi xóa loại tin đăng');
     }
   };
 
@@ -346,23 +333,7 @@ const PropertiesPackagesManagement = () => {
     }
   };
 
-  // Format price
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('vi-VN').format(price);
-  };
 
-  // Format input price (add dots as thousand separators)
-  const formatInputPrice = (value) => {
-    // Remove all non-digit characters
-    const numericValue = value.toString().replace(/\D/g, '');
-    // Format with thousand separators
-    return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  };
-
-  // Parse formatted price back to number
-  const parseFormattedPrice = (formattedValue) => {
-    return formattedValue.toString().replace(/\./g, '');
-  };
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredPackages.length / itemsPerPage);
@@ -412,9 +383,9 @@ const PropertiesPackagesManagement = () => {
           <div className="page-header-admin">
             <h2>
               <i className="fa fa-package"></i>
-              Quản lý gói tin đăng
+              Quản lý loại tin
             </h2>
-            <p>Quản lý các gói tin đăng VIP và thiết lập giá cả</p>
+            <p>Quản lý các loại tin đăng, thiết lập quyền lợi hiển thị cho từng loại</p>
           </div>
 
           {/* Search and Action buttons */}
@@ -426,7 +397,7 @@ const PropertiesPackagesManagement = () => {
                 <input
                   type="text"
                   className="search-input"
-                  placeholder="Tìm kiếm gói tin đăng theo tên..."
+                  placeholder="Tìm kiếm loại tin đăng theo tên..."
                   value={searchTerm}
                   onChange={handleSearchChange}
                   onKeyPress={handleSearchKeyPress}
@@ -447,18 +418,20 @@ const PropertiesPackagesManagement = () => {
             <div className="action-buttons-group">
               <button className="btn-properties-packages btn-primary" onClick={handleCreate}>
                 <i className="fa fa-plus"></i>
-                Thêm gói mới
+                Thêm loại tin mới
               </button>
+               {packages.length === 0 && (
               <button 
                 className={`btn-properties-packages ${packages.length > 0 ? 'btn-disabled' : 'btn-secondary'}`}
                 onClick={handleInitializePackages}
                 disabled={packages.length > 0}
-                title={packages.length > 0 ? 'Đã có gói tin đăng. Vui lòng xóa hết để khởi tạo lại.' : 'Khởi tạo 5 gói tin đăng mặc định'}
+                title={packages.length > 0 ? 'Đã có loại tin đăng. Vui lòng xóa hết để khởi tạo lại.' : 'Khởi tạo 5 loại tin đăng mặc định'}
               >
                 <i className="fa fa-refresh"></i>
-                Khởi tạo gói mặc định
+                Khởi tạo loại mặc định
                 {packages.length > 0 && <span className="package-count">({packages.length})</span>}
               </button>
+              )}
             </div>
           </div>
 
@@ -485,9 +458,9 @@ const PropertiesPackagesManagement = () => {
               {!loading && packages.length > 0 && (
                 <span className="total-results">
                   <i className="fa fa-list"></i>
-                  Hiển thị {currentPackages.length} / {filteredPackages.length} gói tin đăng
+                  Hiển thị {currentPackages.length} / {filteredPackages.length} loại tin đăng
                   {filteredPackages.length !== packages.length && (
-                    <span className="filtered-note"> (đã lọc từ {packages.length} gói)</span>
+                    <span className="filtered-note"> (đã lọc từ {packages.length} loại)</span>
                   )}
                 </span>
               )}
@@ -498,9 +471,9 @@ const PropertiesPackagesManagement = () => {
           {isSearched && searchTerm && !loading && packages.length > 0 && (
             <div className="search-results-info">
               <i className="fa fa-info-circle"></i>
-              Tìm thấy <strong>{filteredPackages.length}</strong> gói tin đăng phù hợp với từ khóa "<strong>{searchTerm}</strong>"
+              Tìm thấy <strong>{filteredPackages.length}</strong> loại tin đăng phù hợp với từ khóa "<strong>{searchTerm}</strong>"
               {filteredPackages.length !== packages.length && (
-                <span> trong tổng số <strong>{packages.length}</strong> gói</span>
+                <span> trong tổng số <strong>{packages.length}</strong> loại</span>
               )}
             </div>
           )}
@@ -510,23 +483,20 @@ const PropertiesPackagesManagement = () => {
             {loading ? (
               <div className="loading-state">
                 <i className="fa fa-spinner fa-spin"></i>
-                <p>Đang tải danh sách gói tin đăng...</p>
+                <p>Đang tải danh sách loại tin đăng...</p>
               </div>
             ) : packages.length === 0 ? (
               <div className="empty-state">
-                <i className="fa fa-package"></i>
-                <h3>Chưa có gói tin đăng nào</h3>
-                <p>Hãy tạo gói tin đăng mới hoặc khởi tạo gói mặc định</p>
-                <button className="btn btn-primary" onClick={handleInitializePackages}>
-                  <i className="fa fa-plus"></i>
-                  Khởi tạo gói mặc định
-                </button>
+                <i className="fa-box"></i>
+                <h3>Chưa có loại tin đăng nào</h3>
+                <p>Hãy tạo loại tin đăng mới hoặc khởi tạo loại mặc định</p>
+              
               </div>
             ) : isSearched && filteredPackages.length === 0 ? (
               <div className="empty-state">
                 <i className="fa fa-search"></i>
-                <h3>Không tìm thấy gói tin đăng nào</h3>
-                <p>Không có gói tin đăng nào phù hợp với từ khóa: <strong>"{searchTerm}"</strong></p>
+                <h3>Không tìm thấy loại tin đăng nào</h3>
+                <p>Không có loại tin đăng nào phù hợp với từ khóa: <strong>"{searchTerm}"</strong></p>
                 <button className="btn btn-secondary" onClick={handleClearSearch}>
                   <i className="fa fa-times"></i>
                   Xóa bộ lọc
@@ -538,8 +508,6 @@ const PropertiesPackagesManagement = () => {
                   <thead>
                     <tr>
                       <th>Gói tin đăng</th>
-                      <th>Giá/ngày</th>
-                      <th>Đẩy tin</th>
                       <th>Độ ưu tiên</th>
                       <th>Màu sắc</th>
                       <th>Tính năng</th>
@@ -563,15 +531,6 @@ const PropertiesPackagesManagement = () => {
                             <p className="package-description-cell">{pkg.description}</p>
                           </div>
                         </td>
-                        
-                        <td className="package-price-cell">
-                          <span className="price-value">{formatPrice(pkg.dailyPrice)}₫</span>
-                        </td>
-                        
-                        <td className="package-price-cell">
-                          <span className="push-count-value">{pkg.freePushCount || 0} lượt</span>
-                        </td>
-                        
                         <td className="package-priority-cell">
                           <span className="priority-badge priority-{pkg.priority}">
                             {pkg.priority}
@@ -639,7 +598,7 @@ const PropertiesPackagesManagement = () => {
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="pagination-container">
+                  <div className="pagination-container-property-package-management">
                     <div className="pagination-info">
                       Trang {currentPage} / {totalPages}
                     </div>
@@ -703,11 +662,11 @@ const PropertiesPackagesManagement = () => {
             <div className="modal-container" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
                 <h3>
-                  {modalType === 'create' && 'Thêm gói tin đăng mới'}
-                  {modalType === 'edit' && 'Chỉnh sửa gói tin đăng'}
-                  {modalType === 'delete' && 'Xác nhận xóa gói tin đăng'}
+                  {modalType === 'create' && 'Thêm loại tin đăng mới'}
+                  {modalType === 'edit' && 'Chỉnh sửa loại tin đăng'}
+                  {modalType === 'delete' && 'Xác nhận xóa loại tin đăng'}
                 </h3>
-                <button className="modal-close" onClick={() => setShowModal(false)}>
+                <button className="modal-close-package-management" onClick={() => setShowModal(false)}>
                   <i className="fa fa-times"></i>
                 </button>
               </div>
@@ -715,7 +674,7 @@ const PropertiesPackagesManagement = () => {
               <div className="modal-content-properties-packages">
                 {modalType === 'delete' ? (
                   <div className="delete-confirmation">
-                    <p>Bạn có chắc chắn muốn xóa gói tin đăng:</p>
+                    <p>Bạn có chắc chắn muốn xóa loại tin đăng:</p>
                     <p className="package-name-delete">"{selectedPackage?.displayName}"</p>
                     <p className="warning-text">
                       <i className="fa fa-warning"></i>
@@ -726,7 +685,7 @@ const PropertiesPackagesManagement = () => {
                   <form onSubmit={handleSubmit} className="package-form">
                     <div className="form-grid">
                       <div className="form-group">
-                        <label style={{ color: 'red' }}>Tên gói *</label>
+                        <label style={{ color: 'red' }}>Tên loại *</label>
                         <select
                           name="name"
                           value={formData.name}
@@ -756,27 +715,13 @@ const PropertiesPackagesManagement = () => {
                       </div>
 
                       <div className="form-group">
-                        <label style={{ color: 'red' }}>Giá ngày (VNĐ) *</label>
-                        <div className="price-input-wrapper">
-                          <input
-                            type="text"
-                            name="dailyPrice"
-                            value={formData.dailyPrice}
-                            onChange={handleInputChange}
-                            placeholder="Nhập giá ngày (ví dụ: 30.000)"
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      <div className="form-group">
                         <label>Lượt đẩy tin miễn phí</label>
                         <input
                           type="number"
                           name="freePushCount"
                           value={formData.freePushCount}
                           onChange={handleInputChange}
-                          placeholder="Nhập số lượt đẩy tin miễn phí (mặc định: 0)"
+                          placeholder="Nhập số lượt đẩy tin (mặc định: 0)"
                           min="0"
                         />
                       </div>
@@ -835,7 +780,7 @@ const PropertiesPackagesManagement = () => {
 
                       <div className="form-group switch-group">
                         <label className="switch-label">
-                          Trạng thái gói tin đăng
+                          Trạng thái loại tin đăng
                         </label>
                         <div className="switch-container">
                           <input
@@ -862,7 +807,7 @@ const PropertiesPackagesManagement = () => {
                         name="description"
                         value={formData.description}
                         onChange={handleInputChange}
-                        placeholder="Nhập mô tả gói tin đăng"
+                        placeholder="Nhập mô tả loại tin đăng"
                         rows="3"
                       />
                     </div>
@@ -905,7 +850,7 @@ const PropertiesPackagesManagement = () => {
                 )}
               </div>
 
-              <div className="modal-actions">
+              <div className="modal-actions-properties-packages">
                 <button
                   className="btn btn-secondary"
                   onClick={() => setShowModal(false)}
@@ -915,12 +860,12 @@ const PropertiesPackagesManagement = () => {
                 {modalType === 'delete' ? (
                   <button className="btn btn-danger" onClick={handleDelete}>
                     <i className="fa fa-trash"></i>
-                    Xóa gói
+                    Xóa loại tin
                   </button>
                 ) : (
                   <button className="btn btn-primary" onClick={handleSubmit}>
                     <i className="fa fa-save"></i>
-                    {modalType === 'create' ? 'Tạo gói' : 'Cập nhật'}
+                    {modalType === 'create' ? 'Tạo loại tin' : 'Cập nhật'}
                   </button>
                 )}
               </div>

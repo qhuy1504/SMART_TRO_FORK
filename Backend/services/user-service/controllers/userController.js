@@ -4,6 +4,7 @@
 import userRepository from '../repositories/userRepository.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 import cloudinary from '../../../config/cloudinary.js';
 import crypto from 'crypto';
 import { EmailVerification } from '../../../schemas/index.js';
@@ -11,13 +12,17 @@ import { sendVerificationEmail } from '../../emailService.js';
 import LoginSession from '../../../schemas/LoginSession.js';
 import DeviceInfoService from '../../shared/utils/deviceInfoService.js';
 import { OAuth2Client } from 'google-auth-library';
+import User from '../../../schemas/User.js';
+import Property from '../../../schemas/Property.js';
+import PackagePlan from '../../../schemas/PackagePlan.js';
+
 
 // Helper function tạo device string có ý nghĩa
 function createDeviceString(deviceInfo) {
     const browser = deviceInfo.browser !== 'Unknown' ? deviceInfo.browser : 'Trình duyệt';
     const browserVersion = deviceInfo.browserVersion !== 'Unknown' ? deviceInfo.browserVersion : '';
     const os = deviceInfo.os !== 'Unknown' ? deviceInfo.os : 'Hệ điều hành';
-    
+
     if (browserVersion) {
         return `${browser} ${browserVersion} trên ${os}`;
     }
@@ -29,7 +34,7 @@ function createLocationString(locationInfo) {
     const city = locationInfo.city !== 'Unknown' ? locationInfo.city : '';
     const region = locationInfo.region !== 'Unknown' ? locationInfo.region : '';
     const country = locationInfo.country !== 'Unknown' ? locationInfo.country : 'Việt Nam';
-    
+
     if (city && region) {
         return `${city}, ${region}, ${country}`;
     } else if (region) {
@@ -40,13 +45,180 @@ function createLocationString(locationInfo) {
     return country;
 }
 
+// Helper function cấp gói trial cho user mới
+async function grantTrialPackage(userId) {
+    try {
+        // Tìm gói trial trong database
+        const trialPackage = await PackagePlan.findOne({
+            type: 'trial',
+            isActive: true
+        });
+
+        if (!trialPackage) {
+            console.log('Trial package not found in database');
+            return { success: false, message: 'Không tìm thấy gói trial' };
+        }
+
+        // Tính toán ngày hết hạn dựa trên duration và durationUnit
+        let expiryDate = new Date();
+        if (trialPackage.duration && trialPackage.durationUnit) {
+            const currentDate = new Date();
+            switch (trialPackage.durationUnit) {
+                case 'day':
+                    expiryDate = new Date(currentDate.getTime() + trialPackage.duration * 24 * 60 * 60 * 1000);
+                    break;
+                case 'month':
+                    expiryDate = new Date(currentDate);
+                    expiryDate.setMonth(currentDate.getMonth() + trialPackage.duration);
+                    break;
+                case 'year':
+                    expiryDate = new Date(currentDate);
+                    expiryDate.setFullYear(currentDate.getFullYear() + trialPackage.duration);
+                    break;
+                default:
+                    // Mặc định là tháng nếu không nhận diện được
+                    expiryDate = new Date(currentDate);
+                    expiryDate.setMonth(currentDate.getMonth() + trialPackage.duration);
+                    break;
+            }
+        }
+
+        // Cập nhật user với gói trial update với $set
+        await User.findByIdAndUpdate(userId, {
+            $set: {
+                packageType: 'trial',
+                'currentPackagePlan.packagePlanId': trialPackage._id,
+                'currentPackagePlan.packageInstanceId': new mongoose.Types.ObjectId(), // Tạo instance ID mới cho trial
+                'currentPackagePlan.displayName': trialPackage.displayName,
+                'currentPackagePlan.purchaseDate': new Date(),
+                'currentPackagePlan.expiryDate': expiryDate,
+                'currentPackagePlan.freePushCount': trialPackage.freePushCount || 0,
+                'currentPackagePlan.usedPushCount': 0,
+                'currentPackagePlan.isActive': true,
+                'currentPackagePlan.propertiesLimits': trialPackage.propertiesLimits || 0,
+            }
+        });
+
+        console.log(`Granted trial package to user ${userId}`);
+        return {
+            success: true,
+            message: 'Đã cấp gói trial thành công',
+            packageInfo: {
+                packageName: trialPackage.name,
+                displayName: trialPackage.displayName,
+                type: 'trial'
+            }
+        };
+
+    } catch (error) {
+        console.error('Error granting trial package:', error);
+        return { success: false, message: 'Lỗi khi cấp gói trial', error: error.message };
+    }
+}
+
+// Helper function để tái kích hoạt properties khi gói được gia hạn/kích hoạt lại
+async function reactivateUserProperties(userId, newPackageInfo, isRenewal = false, migrationData = null) {
+    try {
+        console.log('Reactivating properties for user:', userId, 'isRenewal:', isRenewal);
+        console.log('Migration data:', migrationData);
+        
+        // Nếu là upgrade và KHÔNG có migration data (không chọn chuyển tin)
+        if (!isRenewal && (!migrationData || !migrationData.selectedProperties || migrationData.selectedProperties.length === 0)) {
+            console.log('Upgrade mode without migration - Not reactivating any old properties');
+            return { 
+                success: true, 
+                reactivatedCount: 0, 
+                message: 'Upgrade completed - No properties migrated as requested' 
+            };
+        }
+
+        let query = {
+            owner: userId,
+            'packageInfo.plan': { $exists: true },
+            $or: [
+                { 'packageInfo.isActive': false },
+                { 'packageInfo.status': 'expired' }
+            ]
+        };
+
+        // Nếu là renewal (gia hạn cùng gói), chỉ tái kích hoạt tin đăng thuộc instance cụ thể của gói đó
+        if (isRenewal) {
+            // Lọc theo packageInstanceId thay vì plan để tránh tái kích hoạt tin cũ từ các phiên bản trước
+            if (newPackageInfo.previousInstanceId) {
+                query['packageInfo.packageInstanceId'] = newPackageInfo.previousInstanceId;
+                console.log('Renewal mode: Reactivating properties for specific package instance:', newPackageInfo.previousInstanceId);
+            } else {
+                // Fallback: nếu không có previousInstanceId, vẫn dùng plan nhưng thêm điều kiện thời gian
+                query['packageInfo.plan'] = newPackageInfo.packagePlanId;
+                // Chỉ tái kích hoạt tin đăng hết hạn trong vòng 30 ngày gần đây để tránh tin cũ lâu
+                const thirtyDaysAgo = new Date();
+                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                query['packageInfo.expiryDate'] = { $gte: thirtyDaysAgo };
+                console.log('Renewal mode (fallback): Only reactivating recent properties of the same package:', newPackageInfo.packagePlanId);
+            }
+        } else if (migrationData && migrationData.selectedProperties && migrationData.selectedProperties.length > 0) {
+            // Nếu là upgrade và có migration data, chỉ tái kích hoạt những tin được chọn
+            const selectedPropertyIds = migrationData.selectedProperties.map(p => p.propertyId);
+            query._id = { $in: selectedPropertyIds };
+            console.log('Upgrade mode with migration: Only reactivating selected properties:', selectedPropertyIds);
+        } else {
+            // Upgrade không có migration - không tái kích hoạt gì
+            console.log('Upgrade mode without migration - Skipping reactivation');
+            return { success: true, reactivatedCount: 0, message: 'No properties selected for migration' };
+        }
+        
+        // Tìm properties cần tái kích hoạt
+        const expiredProperties = await Property.find(query);
+
+        if (expiredProperties.length === 0) {
+            console.log('No expired properties found for reactivation with current criteria');
+            return { success: true, reactivatedCount: 0 };
+        }
+
+        console.log(`Found ${expiredProperties.length} properties eligible for reactivation`);
+
+        // Cập nhật properties expired thành active với thông tin gói mới
+        const updateResult = await Property.updateMany(
+            query,
+            {
+                $set: {
+                    'packageInfo.isActive': true,
+                    'packageInfo.status': 'active',
+                    'packageInfo.plan': newPackageInfo.packagePlanId,
+                    'packageInfo.packageInstanceId': newPackageInfo.packageInstanceId, // Gắn instance mới
+                    'packageInfo.purchaseDate': newPackageInfo.purchaseDate,
+                    'packageInfo.expiryDate': newPackageInfo.expiryDate,
+                    updatedAt: new Date()
+                }
+            }
+        );
+
+        console.log(`Reactivated ${updateResult.modifiedCount} properties for user ${userId}`);
+        
+        return {
+            success: true,
+            reactivatedCount: updateResult.modifiedCount,
+            message: `Đã tái kích hoạt ${updateResult.modifiedCount} tin đăng`
+        };
+
+    } catch (error) {
+        console.error('Error reactivating user properties:', error);
+        return { 
+            success: false, 
+            reactivatedCount: 0,
+            message: 'Lỗi khi tái kích hoạt tin đăng',
+            error: error.message 
+        };
+    }
+}
+
 class UserController {
     // Đăng ký user mới
     async register(req, res) {
         try {
-            
+
             const { fullName, email, phone, password, role } = req.body;
-            
+
             // Basic validation
             if (!fullName || !email || !phone || !password) {
                 return res.status(400).json({
@@ -54,9 +226,9 @@ class UserController {
                     message: 'Vui lòng điền đầy đủ thông tin'
                 });
             }
-            
+
             let avatarUrl = undefined;
-            
+
             if (req.file) {
                 console.log('File received, uploading to Cloudinary...');
                 try {
@@ -64,8 +236,8 @@ class UserController {
                     const uploadResult = await Promise.race([
                         new Promise((resolve, reject) => {
                             cloudinary.uploader.upload_stream(
-                                { 
-                                    folder: 'user_avatars', 
+                                {
+                                    folder: 'user_avatars',
                                     resource_type: 'image',
                                     timeout: 30000 // 30 giây timeout
                                 },
@@ -81,16 +253,16 @@ class UserController {
                             ).end(req.file.buffer);
                         }),
                         // Timeout sau 35 giây
-                        new Promise((_, reject) => 
+                        new Promise((_, reject) =>
                             setTimeout(() => reject(new Error('Upload timeout after 35 seconds')), 35000)
                         )
                     ]);
-                    
+
                     avatarUrl = uploadResult.secure_url;
                     console.log('Avatar uploaded to Cloudinary:', avatarUrl);
                 } catch (uploadError) {
                     console.error('Error uploading to Cloudinary:', uploadError);
-                    
+
                     // Trả về lỗi cụ thể hơn
                     let errorMessage = 'Lỗi khi upload ảnh';
                     if (uploadError.message?.includes('timeout')) {
@@ -98,7 +270,7 @@ class UserController {
                     } else if (uploadError.message?.includes('network') || uploadError.message?.includes('connection')) {
                         errorMessage = 'Lỗi kết nối mạng khi upload ảnh, vui lòng thử lại';
                     }
-                    
+
                     return res.status(500).json({
                         success: false,
                         message: errorMessage,
@@ -140,9 +312,13 @@ class UserController {
             const user = await userRepository.create(userData);
             console.log('User created successfully:', user._id);
 
+            // Cấp gói trial cho user mới
+            const trialResult = await grantTrialPackage(user._id);
+            console.log('Trial package grant result:', trialResult);
+
             // Tạo verification token
             const verificationToken = crypto.randomBytes(32).toString('hex');
-            
+
             // Lưu verification token vào database
             const emailVerification = new EmailVerification({
                 userId: user._id,
@@ -153,7 +329,7 @@ class UserController {
 
             // Gửi email xác thực
             const emailResult = await sendVerificationEmail(user.email, user.fullName, verificationToken);
-            
+
             if (emailResult.success) {
                 console.log('Verification email sent successfully');
             } else {
@@ -169,7 +345,8 @@ class UserController {
                 data: {
                     ...userResponse,
                     emailSent: emailResult.success,
-                    requiresVerification: true
+                    requiresVerification: true,
+                    trialPackage: trialResult.success ? trialResult.packageInfo : null
                 }
             });
 
@@ -232,7 +409,7 @@ class UserController {
             // Lưu session information
             const deviceString = createDeviceString(deviceInfo);
             const locationString = createLocationString(locationInfo);
-            
+
             const loginSession = new LoginSession({
                 userId: user._id,
                 deviceInfo: {
@@ -262,9 +439,9 @@ class UserController {
 
             // Tạo JWT token với sessionId
             const token = jwt.sign(
-                { 
-                    userId: user._id, 
-                    email: user.email, 
+                {
+                    userId: user._id,
+                    email: user.email,
                     role: user.role,
                     fullName: user.fullName,
                     phone: user.phone,
@@ -296,7 +473,7 @@ class UserController {
         }
     }
 
-    // Đăng nhập bằng Google
+    // Đăng nhập bằng Google, cấp gói trial nếu user mới
     async googleLogin(req, res) {
         try {
             const { credential } = req.body;
@@ -322,6 +499,8 @@ class UserController {
 
             // Tìm hoặc tạo user
             let user = await userRepository.findByEmail(email);
+            let isNewUser = false;
+            let trialResult = { success: false };
 
             if (!user) {
                 // Tạo user mới với thông tin từ Google
@@ -336,7 +515,25 @@ class UserController {
                 };
 
                 user = await userRepository.create(userData);
+                isNewUser = true;
+                console.log('Created new Google user:', user._id);
+
+                // Cấp gói trial cho user mới Google
+                trialResult = await grantTrialPackage(user._id);
+                console.log('Trial package grant result for Google user:', trialResult);
             } else {
+                // Kiểm tra xem user đã đăng nhập bằng Google trước đó chưa
+                const hasGoogleLogin = await LoginSession.findOne({
+                    userId: user._id,
+                    loginMethod: 'google'
+                });
+
+                if (!hasGoogleLogin && !user.googleId) {
+                    // Lần đầu đăng nhập bằng Google
+                    isNewUser = true;
+                    console.log('First time Google login for existing user:', user._id);
+                }
+
                 // Cập nhật googleId nếu chưa có
                 if (!user.googleId) {
                     user.googleId = googleId;
@@ -359,7 +556,7 @@ class UserController {
             // Lưu session information
             const deviceString = createDeviceString(deviceInfo);
             const locationString = createLocationString(locationInfo);
-            
+
             const loginSession = new LoginSession({
                 userId: user._id,
                 deviceInfo: {
@@ -390,9 +587,9 @@ class UserController {
 
             // Tạo JWT token với sessionId
             const token = jwt.sign(
-                { 
-                    userId: user._id, 
-                    email: user.email, 
+                {
+                    userId: user._id,
+                    email: user.email,
                     role: user.role,
                     sessionToken: sessionId
                 },
@@ -409,7 +606,9 @@ class UserController {
                 data: {
                     user: userResponse,
                     token,
-                    sessionToken: sessionId
+                    sessionToken: sessionId,
+                    isNewUser: isNewUser,
+                    trialPackage: trialResult.success ? trialResult.packageInfo : null
                 }
             });
 
@@ -506,7 +705,7 @@ class UserController {
             }
 
             let avatarUrl = undefined;
-            
+
             // Xử lý upload avatar nếu có
             if (req.file) {
                 console.log('File received for profile update, uploading to Cloudinary...');
@@ -633,7 +832,7 @@ class UserController {
 
             // Regex pattern cho mật khẩu mạnh
             const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-            
+
             if (!PASSWORD_REGEX.test(newPassword)) {
                 return res.status(400).json({
                     success: false,
@@ -747,29 +946,29 @@ class UserController {
 
             // Tạo LoginSession cho auto-login sau khi verify email
             const sessionToken = crypto.randomUUID();
-            
+
             // Tạo JWT token để auto login (sau khi đã có sessionToken)
             const authToken = jwt.sign(
-                { 
-                    userId: user._id, 
-                    email: user.email, 
+                {
+                    userId: user._id,
+                    email: user.email,
                     role: user.role,
                     sessionToken: sessionToken // Thêm sessionToken vào JWT
                 },
                 process.env.JWT_SECRET,
                 { expiresIn: process.env.JWT_EXPIRES_IN || '4h' }
             );
-            
+
             // Lấy thông tin thiết bị và IP
             const userAgent = req.headers['user-agent'] || '';
             const clientIP = DeviceInfoService.getClientIP(req);
             const deviceInfo = DeviceInfoService.parseUserAgent(userAgent);
             const locationInfo = await DeviceInfoService.getLocationFromIP(clientIP);
-            
+
             // Tạo device string có ý nghĩa
             const deviceString = createDeviceString(deviceInfo);
             const locationString = createLocationString(locationInfo);
-            
+
             const loginSession = await LoginSession.create({
                 sessionToken,
                 userId: user._id,
@@ -832,9 +1031,9 @@ class UserController {
         try {
             const userId = req.user.userId;
             const currentSessionToken = req.user.sessionToken;
-            
+
             console.log('Current session token:', currentSessionToken);
-            
+
             const sessions = await LoginSession.getActiveSessions(userId);
             console.log('Found sessions:', sessions.length);
             sessions.forEach(session => {
@@ -989,4 +1188,8 @@ class UserController {
     }
 }
 
-export default new UserController();
+// Export both controller and utility functions
+const userController = new UserController();
+
+export { reactivateUserProperties };
+export default userController;

@@ -53,6 +53,11 @@ export const postAPI = {
     if (postData.video && postData.video.file) {
       formData.append('video', postData.video.file);
     }
+
+    //PostType
+    if (postData.postType) {
+      formData.append('postType', postData.postType);
+    }
     
     const response = await api.post('/properties', formData, {
       headers: {

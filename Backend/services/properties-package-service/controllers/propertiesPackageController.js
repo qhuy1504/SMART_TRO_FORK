@@ -216,8 +216,7 @@ const propertiesPackageController = {
           packageInfo: {
             name: packageData.displayName,
             color: packageData.color,
-            stars: packageData.stars,
-            dailyPrice: packageData.dailyPrice
+            stars: packageData.stars
           },
           pricing: {
             basePrice: totalPrice - (addFastRent ? 2000 * duration : 0),

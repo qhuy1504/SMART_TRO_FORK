@@ -8,6 +8,8 @@ import Database from './config/database.js';
 import schemas from './schemas/index.js';
 import serviceRoutes from './services/index.js';
 import EmbeddingMigration from './services/chatbot-service/scripts/migrateChatbotEmbeddings.js';
+import { initPaymentServices, stopPaymentServices } from './services/payment-service/init.js';
+
 
 // Load environment variables
 dotenv.config();
@@ -197,6 +199,10 @@ async function startServer() {
             console.log('Continuing without migration...');
         }
         
+        // Initialize Payment Services
+        console.log('\nInitializing payment services...');
+        initPaymentServices();
+
         // Start server
         app.listen(PORT, () => {
             console.log(`\n🚀 Server running on port ${PORT}`);
@@ -217,22 +223,17 @@ async function startServer() {
     }
 }
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-    console.log('\nShutting down gracefully...');
-    
-    try {
-        await Database.disconnect();
-        console.log('✅ Database disconnected');
-        process.exit(0);
-    } catch (error) {
-        console.error('❌ Error during shutdown:', error);
-        process.exit(1);
-    }
+// Graceful shutdown handlers
+process.on('SIGTERM', async () => {
+    console.log('\nReceived SIGTERM, shutting down gracefully...');
+    stopPaymentServices();
+    await Database.disconnect();
+    process.exit(0);
 });
 
-process.on('SIGTERM', async () => {
-    console.log('\n⏹️  Received SIGTERM, shutting down...');
+process.on('SIGINT', async () => {
+    console.log('\nReceived SIGINT, shutting down gracefully...');
+    stopPaymentServices();
     await Database.disconnect();
     process.exit(0);
 });

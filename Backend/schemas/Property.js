@@ -175,6 +175,8 @@ const propertySchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+
+
     isDeleted: {
         type: Boolean,
         default: false
@@ -200,7 +202,7 @@ const propertySchema = new mongoose.Schema({
             default: 0
         }
     },
-    postOrder: {
+    propertyOrder: {
         type: Number,
         default: null // Thứ tự bài đăng của user này
     },
@@ -208,35 +210,22 @@ const propertySchema = new mongoose.Schema({
         type: Boolean,
         default: false // Đã thanh toán hay chưa
     },
-    packageStatus: {
-        type: String,
-        enum: ['active', 'cancelled', 'expired'],
-        default: 'active' // Trạng thái gói: active, cancelled, expired
-    },
 
-    // Thông tin gói đã mua
+    // Thông tin gói đã mua (sử dụng PackagePlan)
     packageInfo: {
-        packageId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'PropertiesPackage'
-        },
-        packageName: String,
-        displayName: String,
-        priority: Number,
-        color: String,
-        stars: Number,
-        startDate: Date,
-        expiryDate: Date,
-        isActive: {
-            type: Boolean,
-            default: false
-        },
-        cancelledAt: Date,
-        isCancelled: {
-            type: Boolean,
-            default: false
+        plan: { type: mongoose.Schema.Types.ObjectId, ref: 'PackagePlan' }, // Gói người dùng đã dùng để đăng tin
+        packageInstanceId: { type: mongoose.Schema.Types.ObjectId }, // ID instance của gói để tránh reactivate tin cũ
+        postType: { type: mongoose.Schema.Types.ObjectId, ref: 'PropertiesPackage' }, // Loại tin (VIP, Thường, v.v.)
+        purchaseDate: { type: Date, default: Date.now },
+        expiryDate: { type: Date },
+        isActive: { type: Boolean, default: true },
+        status: {
+            type: String,
+            enum: ['active', 'cancelled', 'expired'],
+            default: 'active'
         }
     },
+
 
     // Thời gian promote tin đăng lên đầu trang
     promotedAt: {
@@ -264,7 +253,8 @@ propertySchema.index({ promotedAt: -1 }); // Index for promoted properties
 propertySchema.index({ owner: 1, approvalStatus: 1 });
 propertySchema.index({ owner: 1, isDeleted: 1 });
 propertySchema.index({ owner: 1, createdAt: -1 });
-propertySchema.index({ owner: 1, packageStatus: 1 }); // Index for package status queries
+propertySchema.index({ owner: 1, 'packageInfo.postType': 1 }); // Index for postType queries
+propertySchema.index({ owner: 1, 'packageInfo.status': 1 }); // Index for package status queries
 propertySchema.index({ promotedAt: -1, createdAt: -1 }); // Compound index for sorting
 
 propertySchema.pre(/^find/, function (next) {

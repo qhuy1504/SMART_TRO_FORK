@@ -281,29 +281,32 @@
     align-items: center;
     padding: 1.5rem 2rem;
     border-bottom: 1px solid #e9ecef;
-    background: linear-gradient(135deg, #f8f9fa, #ffffff);
+    background: #0056b3;
+    
 }
 
 .modal-header h3 {
     margin: 0;
     font-size: 1.3rem;
     font-weight: 600;
-    color: #333;
+    color: white;
 }
 
-.modal-close {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    color: #f10000;
+.modal-close-package-management {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    font-size: 18px;
     cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 50%;
-    transition: all 0.3s ease;
+    padding: 12px 20px;
+    border-radius: 8px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
 }
 
-.modal-close:hover {
-    color: darkred;
+.modal-close-package-management:hover {
+    background: rgba(255, 255, 255, 0.3);
 }
 
 .modal-content-properties-packages {
@@ -311,21 +314,22 @@
 
 }
 
-.modal-actions {
-    display: flex;
-    justify-content: flex-end;
+.modal-actions-properties-packages {
     gap: 1rem;
     padding: 1.5rem 2rem;
     border-top: 1px solid #e9ecef;
     background: #f8f9fa;
+    display: flex;
+    justify-content: flex-end;
+    gap: 16px;
 }
 
 /* Form Styles */
 .package-form .form-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
+    gap: 12px;
+    margin-bottom: 10px;
 }
 
 .form-group {
@@ -338,7 +342,6 @@
 }
 
 .form-group label {
-    margin-bottom: 0.5rem;
     font-weight: 600;
     color: #333;
 }
@@ -401,9 +404,7 @@
     min-height: 100px;
 }
 
-.package-name-select {
-    margin-top: 0 !important;
-}
+
 
 /* Checkbox Styles */
 .checkbox-group {
@@ -465,17 +466,25 @@
 }
 
 .btn-remove-feature {
-    background: #dc3545;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
+    width: 24px !important;
+  height: 24px !important;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  padding: 0 !important;
+  color: white;
+  border: none;
+  border-radius: 50%; /* đảm bảo hình tròn */
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
+  transition: all 0.25s ease;
+  z-index: 9999;
+}
+.feature-input i{
+    margin-right: 0px;
 }
 
 .btn-remove-feature:hover {
@@ -575,7 +584,7 @@
 
     .modal-header,
     .modal-content-properties-packages,
-    .modal-actions {
+    .modal-actions-properties-packages {
         padding: 1rem;
     }
 
@@ -632,18 +641,20 @@
 }
 
 .packages-table thead {
-    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-    color: white;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-bottom: 2px solid var(--border-color, #e2e8f0);
 }
 
 .packages-table th {
     padding: 15px 12px;
     text-align: left;
-    font-weight: 600;
-    font-size: 13px;
+     font-weight: 600;
+    font-size: 14px;
+    color: var(--text-primary, #1a202c);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    border-bottom: 2px solid #0056b3;
+    white-space: nowrap;
+    position: relative;
 }
 
 .packages-table tbody tr {
@@ -1024,9 +1035,23 @@
 }
 
 .action-buttons-group {
-    display: flex;
-    gap: 12px;
-    flex-shrink: 0;
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .btn-disabled {
@@ -1151,7 +1176,7 @@
 }
 
 /* Pagination Styles */
-.pagination-container {
+.pagination-container-property-package-management {
     display: flex;
     justify-content: center;
     align-items: center;
@@ -1475,7 +1500,7 @@
         justify-content: center;
     }
 
-    .pagination-container {
+    .pagination-container-property-package-management {
         flex-direction: column;
         gap: 15px;
     }

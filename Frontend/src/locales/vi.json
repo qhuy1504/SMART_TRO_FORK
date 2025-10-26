@@ -3,7 +3,8 @@
     "dashboard": "Bảng điều khiển",
     "properties": "Quản lý tin đăng",
     "report-properties": "Báo cáo tin đăng",
-    "properties-packages": "Quản lý gói tin đăng",
+    "properties-packages": "Quản lý loại tin",
+    "package-plans": "Quản lý gói tin",
     "rooms": "Quản lý phòng trọ",
     "amenities": "Quản lý tiện ích",
     "users": "Quản lý người dùng",
@@ -630,7 +631,7 @@
       "about": "Giới thiệu",
       "services": "Dịch vụ",
       "blog": "Tin tức",
-      "pricing": "Giá cả",
+      "pricing": "Giá dịch vụ",
       "contact": "Liên hệ"
     }
   },
@@ -673,7 +674,7 @@
         "newPost": "Đăng tin mới",
         "myPosts": "Danh sách tin đăng",
         "paymentHistory": "Lịch sử thanh toán",
-        "pricing": "Bảng giá dịch vụ",
+        "pricing-analytics": "Phân tích giá thuê trọ",
         "account": "Quản lý tài khoản",
         "logout": "Đăng xuất"
       },

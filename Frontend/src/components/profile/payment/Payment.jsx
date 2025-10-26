@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import PaymentAPI from '../../../services/PaymentAPI.js';
+import PaymentAPI from '../../../services/PaymentPackageAPI.js';
 import PropertiesPackageAPI from '../../../services/PropertiesPackageAPI.js';
 import './Payment.css';
 
@@ -9,6 +9,10 @@ const Payment = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const paymentData = location.state;
+  
+  console.log('Location object:', location);
+  console.log('Payment component loaded with paymentData:', paymentData);
+  console.log('PaymentData keys:', paymentData ? Object.keys(paymentData) : 'null');
 
   const [loading, setLoading] = useState(false);
   const [orderData, setOrderData] = useState(null);
@@ -17,6 +21,10 @@ const Payment = () => {
   const [isPolling, setIsPolling] = useState(false);
   const [orderCreated, setOrderCreated] = useState(false); // Flag để tránh tạo order duplicate
   const orderCreationRef = useRef(false); // Ref để tránh duplicate trong StrictMode
+  const pollingStartedRef = useRef(false); // Ref để tránh duplicate polling
+  const toastShownRef = useRef(false); // Ref để tránh duplicate toast
+  const createOrderToastRef = useRef(false); // Ref để tránh duplicate toast tạo đơn
+  const successToastShownRef = useRef(false); // Ref để tránh duplicate toast thành công
 
   useEffect(() => {
     if (!paymentData) {
@@ -25,8 +33,20 @@ const Payment = () => {
       return;
     }
 
-    // Chỉ tạo order 1 lần duy nhất (double protection với ref)
-    if (!orderCreated && !orderCreationRef.current) {
+    console.log('PaymentData validation passed:', {
+      isRenewal: paymentData.isRenewal,
+      isUpgrade: paymentData.isUpgrade,
+      renewalInfo: paymentData.renewalInfo,
+      existingOrderId: paymentData.existingOrderId,
+      fromPaymentHistory: paymentData.fromPaymentHistory
+    });
+
+    // Kiểm tra nếu có existingOrderId (từ payment history)
+    if (paymentData.existingOrderId && paymentData.fromPaymentHistory) {
+      console.log('Lấy thông tin từ đơn hàng đã tồn tại:', paymentData.existingOrderId);
+      getExistingOrderInfo(paymentData.existingOrderId);
+    } else if (!orderCreated && !orderCreationRef.current) {
+      // Chỉ tạo order mới nếu không có existing order
       orderCreationRef.current = true;
       createPaymentOrder();
     }
@@ -46,6 +66,47 @@ const Payment = () => {
     }
   }, [paymentStatus, countdown]);
 
+
+
+  // Lấy thông tin đơn hàng đã tồn tại
+  const getExistingOrderInfo = async (existingOrderId) => {
+    try {
+      setLoading(true);
+      console.log('Đang lấy thông tin đơn hàng đã tồn tại:', existingOrderId);
+      
+      const response = await PaymentAPI.getOrderInfo(existingOrderId);
+      
+      if (response.success && response.data) {
+        console.log('Thông tin đơn hàng đã tồn tại:', response.data);
+        setOrderData(response.data);
+        setPaymentStatus('processing');
+        setOrderCreated(true); // Đánh dấu đã có order
+        
+        // Bắt đầu polling kiểm tra trạng thái thanh toán
+        startPaymentPolling(response.data.orderId);
+        
+        // Chỉ hiển thị toast nếu chưa hiển thị
+        if (!toastShownRef.current) {
+          toastShownRef.current = true;
+          toast.success(`Tiếp tục thanh toán đơn hàng ${response.data.orderCode || existingOrderId}`);
+        }
+      } else {
+        throw new Error(response.message || 'Không thể lấy thông tin đơn hàng');
+      }
+    } catch (error) {
+      console.error('Lỗi khi lấy thông tin đơn hàng:', error);
+      toast.error('Không thể lấy thông tin đơn hàng. Tạo đơn hàng mới...');
+      
+      // Fallback: tạo đơn hàng mới nếu không lấy được thông tin đơn cũ
+      if (!orderCreated && !orderCreationRef.current) {
+        orderCreationRef.current = true;
+        createPaymentOrder();
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Tạo đơn hàng thanh toán
   const createPaymentOrder = async () => {
     // Tránh tạo duplicate order
@@ -58,17 +119,32 @@ const Payment = () => {
       setOrderCreated(true); // Đánh dấu đã bắt đầu tạo order
       
       const orderRequest = {
-        propertyId: paymentData.propertyId,
-        packageId: paymentData.packageInfo.packageId || paymentData.packageInfo._id,
-        duration: paymentData.timeline.duration,
-        durationType: paymentData.timeline.durationType,
-        totalAmount: paymentData.pricing.totalPrice,
-        packageInfo: paymentData.packageInfo
+        packagePlanId: paymentData.packageInfo?.packageId || paymentData.packageInfo?._id,
+        duration: paymentData.timeline?.duration,
+        durationUnit: paymentData.timeline?.durationUnit,
+        totalAmount: paymentData.pricing?.totalPrice,
+        packageInfo: paymentData.packageInfo,
+        // Add migration data if available , cho chuyển gói
+        migration: paymentData.migration || null,
+        // Add renewal and upgrade flags
+        isRenewal: Boolean(paymentData.isRenewal),
+        isUpgrade: Boolean(paymentData.isUpgrade)
       };
 
+      // Thêm thông tin bổ sung cho renewal
+      if (paymentData.isRenewal && paymentData.renewalInfo) {
+        orderRequest.expiredPackageId = paymentData.renewalInfo.expiredPackageId;
+        orderRequest.packageName = paymentData.renewalInfo.packageName;
+      }
+
+      console.log('Payment data received:', paymentData);
       console.log('Creating payment order:', orderRequest);
       
-      const response = await PaymentAPI.createPaymentOrder(orderRequest);
+      // Sử dụng endpoint khác nhau cho renewal vs upgrade/regular
+      const response = paymentData.isRenewal 
+        ? await PaymentAPI.createRenewalPaymentOrder(orderRequest)
+        : await PaymentAPI.createPaymentOrder(orderRequest);
+
       
       if (response.success) {
         setOrderData(response.data);
@@ -77,7 +153,11 @@ const Payment = () => {
         // Bắt đầu polling kiểm tra trạng thái thanh toán
         startPaymentPolling(response.data.orderId);
         
-        toast.success('Đơn hàng đã được tạo. Vui lòng thực hiện chuyển khoản!');
+        // Chỉ hiển thị toast nếu chưa hiển thị
+        if (!createOrderToastRef.current) {
+          createOrderToastRef.current = true;
+          toast.success(paymentData.isRenewal ? 'Đơn hàng gia hạn đã được tạo. Vui lòng thực hiện chuyển khoản!' : 'Đơn hàng đã được tạo. Vui lòng thực hiện chuyển khoản!');
+        }
       } else {
         throw new Error(response.message);
       }
@@ -91,30 +171,47 @@ const Payment = () => {
     }
   };
 
+
+
   // Bắt đầu polling kiểm tra thanh toán
   const startPaymentPolling = async (orderId) => {
-    if (isPolling) return;
+    // Ngăn chặn multiple polling sessions
+    if (isPolling || pollingStartedRef.current) return;
     
     try {
       setIsPolling(true);
-      const result = await PaymentAPI.pollPaymentStatus(orderId, 60, 5000); // 60 attempts, 5s interval
+      pollingStartedRef.current = true; // Đánh dấu đã bắt đầu polling
       
-      setPaymentStatus('success');
-      toast.success('Thanh toán thành công!');
+      const result = await PaymentAPI.pollPaymentStatus(orderId, 60, 15000); // 60 attempts, 5s interval
       
-      // Delay một chút rồi chuyển về trang quản lý tin
-      setTimeout(() => {
-        navigate('/profile/my-posts');
-      }, 3000);
+      // Chỉ hiển thị toast và chuyển trang nếu chưa ở trạng thái success
+      if (paymentStatus !== 'success' && !successToastShownRef.current) {
+        console.log('Showing success toast for the first time');
+        successToastShownRef.current = true; // Đánh dấu đã hiển thị toast
+        setPaymentStatus('success');
+        // Delay một chút rồi chuyển về trang quản lý tin
+        setTimeout(() => {
+          navigate('/profile/my-posts', { replace: true });
+        }, 3000);
+      } else if (paymentStatus !== 'success') {
+        console.log('Success toast already shown, skipping...');
+      }
       
     } catch (error) {
       console.error('Payment polling error:', error);
-      if (error.message === 'Payment timeout') {
-        setPaymentStatus('failed');
-        toast.error('Hết thời gian chờ thanh toán');
+      // Chỉ hiển thị toast error nếu chưa có trạng thái error
+      if (!['failed', 'cancelled'].includes(paymentStatus)) {
+        if (error.message === 'Payment timeout') {
+          setPaymentStatus('failed');
+          toast.error('Hết thời gian chờ thanh toán');
+        } else if (error.message === 'Payment cancelled') {
+          setPaymentStatus('cancelled');
+          toast.warning('Đơn hàng đã bị hủy');
+        }
       }
     } finally {
       setIsPolling(false);
+      // Không reset pollingStartedRef ở đây để tránh re-polling
     }
   };
 
@@ -142,13 +239,17 @@ const Payment = () => {
   };
 
   if (loading) {
+    const loadingMessage = paymentData?.existingOrderId && paymentData?.fromPaymentHistory 
+      ? 'Đang tải thông tin đơn hàng...' 
+      : 'Đang tạo đơn hàng...';
+      
     return (
-      <div className="payment-container">
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Đang tạo đơn hàng...</p>
-        </div>
-      </div>
+     <div className="payment-status">
+            <div className="spinner-container">
+               <div className="spinner"></div>
+              <span className="loading-text">{loadingMessage}</span>
+            </div>
+          </div>
     );
   }
 
@@ -169,6 +270,29 @@ const Payment = () => {
     );
   }
 
+  if (paymentStatus === 'cancelled') {
+    return (
+      <div className="payment-container">
+        <div className="payment-cancelled">
+          <div className="status-icon cancelled">
+            <i className="fa fa-ban"></i>
+          </div>
+          <h2>Đơn hàng đã bị hủy</h2>
+          <p>Đơn hàng đã được hủy tự động do quá thời gian thanh toán (15 phút).</p>
+          <p>Bạn có thể xem lại trong lịch sử thanh toán hoặc tạo đơn hàng mới.</p>
+          <div className="cancelled-actions">
+            <button className="btn-retry" onClick={handleBack}>
+              Tạo đơn mới
+            </button>
+            <button className="btn-history" onClick={() => navigate('/profile/payment-history')}>
+              Xem lịch sử
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (paymentStatus === 'success') {
     return (
       <div className="payment-container">
@@ -177,7 +301,7 @@ const Payment = () => {
             <i className="fa fa-check-circle"></i>
           </div>
           <h2>Thanh toán thành công!</h2>
-          <p>Tin đăng của bạn đã được nâng cấp thành công.</p>
+          <p>Gói tin của bạn đã được giao dịch thành công.</p>
           <p>Đang chuyển hướng về trang quản lý tin...</p>
         </div>
       </div>
@@ -194,11 +318,19 @@ const Payment = () => {
             Quay lại
           </button>
           
-          <h2>Thanh toán đăng tin</h2>
+          <h2>
+            {paymentData?.existingOrderId && paymentData?.fromPaymentHistory 
+              ? `Thanh toán đơn hàng ${orderData?.orderCode || paymentData.existingOrderId}`
+              : 'Thanh toán đăng tin'
+            }
+          </h2>
           
-          <div className="payment-timer">
-            <i className="fa fa-clock-o"></i>
-            <span>Thời gian còn lại: {formatCountdown(countdown)}</span>
+          <div className="payment-timers">
+            <div className="payment-timer">
+              <i className="fa fa-clock-o"></i>
+              <span>Thời gian thanh toán: {formatCountdown(countdown)}</span>
+            </div>
+           
           </div>
         </div>
 
@@ -249,10 +381,10 @@ const Payment = () => {
                 <div className="bank-row">
                   <span className="label">Số tiền:</span>
                   <div className="value-with-copy amount">
-                    <span>{PaymentAPI.formatNumber(orderData.amount)}₫</span>
+                    <span>{PaymentAPI.formatNumber(paymentData?.pricing?.totalPrice || orderData.amount)}₫</span>
                     <button 
                       className="btn-copy"
-                      onClick={() => copyToClipboard(orderData.amount.toString())}
+                      onClick={() => copyToClipboard((paymentData?.pricing?.totalPrice || orderData.amount).toString())}
                     >
                       <i className="fa fa-copy"></i>
                     </button>
@@ -309,9 +441,9 @@ const Payment = () => {
         {/* Status */}
         {isPolling && (
           <div className="payment-status">
-            <div className="status-loading">
-              <div className="loading-spinner small"></div>
-              <span>Đang kiểm tra thanh toán...</span>
+            <div className="spinner-container">
+               <div className="spinner"></div>
+              <span className="loading-text">Đang kiểm tra thanh toán...</span>
             </div>
           </div>
         )}

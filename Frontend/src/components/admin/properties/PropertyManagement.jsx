@@ -34,6 +34,7 @@ const PropertyManagement = () => {
             setLoading(true);
 
             const data = await adminPropertiesAPI.getPropertiesForAdmin(page, status, 10, search);
+            console.log('Loaded properties for admin:', data);
 
             if (data.success) {
                 setProperties(data.data.properties);
@@ -250,6 +251,7 @@ const PropertyManagement = () => {
             </span>
         );
     };
+    // Format category to Vietnamese
     const formatCategory = (category) => {
         const categoryMap = {
             'phong_tro': 'Phòng trọ',
@@ -261,21 +263,59 @@ const PropertyManagement = () => {
         return categoryMap[category] || category;
     };
 
+    // Get post type info with priority and styling
+    const getPostTypeInfo = (postType) => {
+        if (!postType) return null;
+        
+        // Map priority to CSS class and star count
+        const getPriorityInfo = (priority) => {
+            console.log('Getting priority info for priority:', priority);
+            if (priority <= 1) return { class: 'post-type-vip-dac-biet' };
+            if (priority <= 2) return { class: 'post-type-vip-noi-bat' };
+            if (priority <= 3) return { class: 'post-type-vip-1' };
+            if (priority <= 4) return { class: 'post-type-vip-2'};
+            if (priority <= 5) return { class: 'post-type-vip-3'};
+            return { class: 'post-type-thuong' };
+        };
 
-    // Handle image navigation
+        const priorityInfo = getPriorityInfo(postType.priority || 6);
+
+        return {
+            displayName: postType.displayName || postType.name,
+            name: postType.name,
+            priority: postType.priority || 6,
+            color: postType.color || '#6c757d',
+            cssClass: priorityInfo.class,
+            stars: postType.stars,
+            _id: postType._id
+        };
+    };
+
+
+    // Handle media navigation (images + video)
     const handlePrevImage = () => {
-        if (selectedProperty?.images?.length > 1) {
-            setCurrentImageIndex(prev =>
-                prev === 0 ? selectedProperty.images.length - 1 : prev - 1
-            );
+        if (selectedProperty) {
+            // Tính tổng media items (video + images)
+            const totalMediaItems = (selectedProperty.video ? 1 : 0) + (selectedProperty.images?.length || 0);
+            
+            if (totalMediaItems > 1) {
+                setCurrentImageIndex(prev =>
+                    prev === 0 ? totalMediaItems - 1 : prev - 1
+                );
+            }
         }
     };
 
     const handleNextImage = () => {
-        if (selectedProperty?.images?.length > 1) {
-            setCurrentImageIndex(prev =>
-                prev === selectedProperty.images.length - 1 ? 0 : prev + 1
-            );
+        if (selectedProperty) {
+            // Tính tổng media items (video + images)
+            const totalMediaItems = (selectedProperty.video ? 1 : 0) + (selectedProperty.images?.length || 0);
+            
+            if (totalMediaItems > 1) {
+                setCurrentImageIndex(prev =>
+                    prev === totalMediaItems - 1 ? 0 : prev + 1
+                );
+            }
         }
     };
 
@@ -416,9 +456,9 @@ const PropertyManagement = () => {
 
                     {/* Properties list */}
                     {loading ? (
-                        <div className="loading-container">
-                            <div className="loading-spinner"></div>
-                            <p>Đang tải danh sách bài đăng...</p>
+                        <div className="spinner-container">
+                             <div className="spinner"></div>
+                            <span className="loading-text">Đang tải danh sách bài đăng...</span>
                         </div>
                     ) : properties.length === 0 ? (
                         <div className="empty-state">
@@ -442,7 +482,7 @@ const PropertyManagement = () => {
                                         </thead>
                                         <tbody>
                                             {properties.map((property) => (
-                                                <tr key={property._id} className="property-row">
+                                                <tr key={property._id} className="property-row-property-management">
                                                     <td className="image-cell">
                                                         <div className="property-image-thumb">
                                                             {property.images && property.images.length > 0 ? (
@@ -466,6 +506,13 @@ const PropertyManagement = () => {
                                                             <div className="property-meta">
                                                                 <span className="area-tag">{property.area}m²</span>
                                                                 <span className="category-tag">{formatCategory(property.category)}</span>
+                                                               
+                                                            </div>
+                                                             <div className="property-plan-details">
+                                                                <span className="plan-tag">{property.packageInfo.plan?.displayName}</span>
+                                                                <span className={`plan-post-type-tag ${property.packageInfo.postType ? getPostTypeInfo(property.packageInfo.postType)?.cssClass || '' : ''}`}>
+                                                                    {property.packageInfo.postType?.displayName}
+                                                                </span>
                                                             </div>
                                                         </div>
                                                         <div className="contact-section">
@@ -646,61 +693,133 @@ const PropertyManagement = () => {
                                                 <h4>{selectedProperty.title}</h4>
                                                 {getStatusBadge(selectedProperty.approvalStatus)}
                                             </div>
+
+                                          
+
                                             <div className="property-images">
-                                                {selectedProperty.images && selectedProperty.images.length > 0 ? (
-                                                    <div className="image-slider-container">
-                                                        <div className="main-image-container">
-                                                            <img
-                                                                src={selectedProperty.images[currentImageIndex]}
-                                                                alt={`${selectedProperty.title} ${currentImageIndex + 1}`}
-                                                                className="main-image"
-                                                                onError={(e) => {
-                                                                    e.target.src = '/images/placeholder.jpg';
-                                                                }}
-                                                            />
+                                                {(() => {
+                                                    // Tạo mảng media tổng hợp (video + images)
+                                                    const mediaItems = [];
+                                                    
+                                                    // Thêm video vào đầu nếu có
+                                                    if (selectedProperty.video) {
+                                                        mediaItems.push({
+                                                            type: 'video',
+                                                            src: selectedProperty.video,
+                                                            alt: 'Video giới thiệu'
+                                                        });
+                                                    }
+                                                    
+                                                    // Thêm images
+                                                    if (selectedProperty.images && selectedProperty.images.length > 0) {
+                                                        selectedProperty.images.forEach((image, index) => {
+                                                            mediaItems.push({
+                                                                type: 'image',
+                                                                src: image,
+                                                                alt: `${selectedProperty.title} ${index + 1}`
+                                                            });
+                                                        });
+                                                    }
 
-                                                            {selectedProperty.images.length > 1 && (
-                                                                <>
-                                                                    <button
-                                                                        className="slider-btn prev-btn"
-                                                                        onClick={handlePrevImage}
-                                                                    >
-                                                                        <i className="fa fa-chevron-left"></i>
-                                                                    </button>
-                                                                    <button
-                                                                        className="slider-btn next-btn"
-                                                                        onClick={handleNextImage}
-                                                                    >
-                                                                        <i className="fa fa-chevron-right"></i>
-                                                                    </button>
-                                                                </>
-                                                            )}
+                                                    if (mediaItems.length > 0) {
+                                                        const currentMedia = mediaItems[currentImageIndex];
+                                                        const totalItems = mediaItems.length;
 
-                                                            <div className="image-counter">
-                                                                {currentImageIndex + 1} / {selectedProperty.images.length}
+                                                        return (
+                                                            <div className="image-slider-container">
+                                                                <div className="main-image-container">
+                                                                    {currentMedia.type === 'video' ? (
+                                                                        <video
+                                                                            controls
+                                                                            className="main-media"
+                                                                            style={{
+                                                                                width: '100%',
+                                                                                maxHeight: '400px',
+                                                                                borderRadius: '8px'
+                                                                            }}
+                                                                        >
+                                                                            <source src={currentMedia.src} type="video/mp4" />
+                                                                            <source src={currentMedia.src} type="video/webm" />
+                                                                            <source src={currentMedia.src} type="video/ogg" />
+                                                                            Trình duyệt của bạn không hỗ trợ video HTML5.
+                                                                        </video>
+                                                                    ) : (
+                                                                        <img
+                                                                            src={currentMedia.src}
+                                                                            alt={currentMedia.alt}
+                                                                            className="main-image"
+                                                                            onError={(e) => {
+                                                                                e.target.src = '/images/placeholder.jpg';
+                                                                            }}
+                                                                        />
+                                                                    )}
+
+                                                                    {totalItems > 1 && (
+                                                                        <>
+                                                                            <button
+                                                                                className="slider-btn prev-btn"
+                                                                                onClick={handlePrevImage}
+                                                                            >
+                                                                                <i className="fa fa-chevron-left"></i>
+                                                                            </button>
+                                                                            <button
+                                                                                className="slider-btn next-btn"
+                                                                                onClick={handleNextImage}
+                                                                            >
+                                                                                <i className="fa fa-chevron-right"></i>
+                                                                            </button>
+                                                                        </>
+                                                                    )}
+
+                                                                    <div className="image-counter">
+                                                                        {currentImageIndex + 1} / {totalItems}
+                                                                        {currentMedia.type === 'video' && (
+                                                                            <span className="media-type-badge">
+                                                                                <i className="fa fa-video-camera"></i> Video
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+
+                                                                {totalItems > 1 && (
+                                                                    <div className="image-thumbnails">
+                                                                        {mediaItems.map((media, index) => (
+                                                                            <div
+                                                                                key={index}
+                                                                                className={`thumbnail-wrapper ${index === currentImageIndex ? 'active' : ''}`}
+                                                                                onClick={() => setCurrentImageIndex(index)}
+                                                                            >
+                                                                                {media.type === 'video' ? (
+                                                                                    <div className="video-thumbnail">
+                                                                                        <div className="video-thumbnail-overlay">
+                                                                                            <i className="fa fa-play"></i>
+                                                                                        </div>
+                                                                                        <video
+                                                                                            src={media.src}
+                                                                                            className="thumbnail video-thumb"
+                                                                                            muted
+                                                                                        />
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <img
+                                                                                        src={media.src}
+                                                                                        alt={media.alt}
+                                                                                        className="thumbnail"
+                                                                                        onError={(e) => {
+                                                                                            e.target.style.display = 'none';
+                                                                                        }}
+                                                                                    />
+                                                                                )}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        </div>
-
-                                                        {selectedProperty.images.length > 1 && (
-                                                            <div className="image-thumbnails">
-                                                                {selectedProperty.images.map((image, index) => (
-                                                                    <img
-                                                                        key={index}
-                                                                        src={image}
-                                                                        alt={`Thumbnail ${index + 1}`}
-                                                                        className={`thumbnail ${index === currentImageIndex ? 'active' : ''}`}
-                                                                        onClick={() => setCurrentImageIndex(index)}
-                                                                        onError={(e) => {
-                                                                            e.target.style.display = 'none';
-                                                                        }}
-                                                                    />
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <div className="no-images">Không có hình ảnh</div>
-                                                )}
+                                                        );
+                                                    } else {
+                                                        return <div className="no-images">Không có hình ảnh hoặc video</div>;
+                                                    }
+                                                })()}
                                             </div>
 
                                             <div className="detail-grid-management">

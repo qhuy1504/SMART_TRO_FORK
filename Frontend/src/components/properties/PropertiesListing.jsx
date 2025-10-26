@@ -232,6 +232,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
   // Xử lý kết quả tìm kiếm từ bên ngoài (từ Hero search hoặc các component khác)
   useEffect(() => {
     if (searchResults) {
+     
       // Cập nhật danh sách tin đăng từ kết quả tìm kiếm bên ngoài
       setProperties(searchResults.properties || []);
       setPagination(prev => ({
@@ -311,6 +312,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
       } else {
         // Sử dụng API tổng quát khi không có bộ lọc nào
         response = await myPropertiesAPI.getMyApprovedProperties(params);
+        console.log('Response from getMyApprovedProperties:', response);
       }
 
       if (response.success) {
@@ -549,6 +551,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
     try {
       setSearching(true);
       const response = await searchPropertiesAPI.searchProperties(searchParams);
+     
       if (response.success) {
         setProperties(response.data?.properties || []);
         setPagination({
@@ -1522,13 +1525,11 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                   {/* Pagination Controls */}
                   {pagination.totalPages > 1 && (
                     <div className="pagination-container">
-                      <div className="pagination-info">
-                        <span>Trang {pagination.page} của {pagination.totalPages} ({pagination.total} tin đăng)</span>
-                      </div>
+                 
                       <div className="pagination-controls">
                         {/* Previous Button */}
                         <button
-                          className="pagination-btn prev-btn"
+                          className="pagination-btn-my-properties prev-btn-my-properties"
                           onClick={() => handlePageChange(pagination.page - 1)}
                           disabled={!pagination.hasPrev || loading}
                           title="Trang trước"
@@ -1597,7 +1598,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
 
                         {/* Next Button */}
                         <button
-                          className="pagination-btn next-btn"
+                          className="pagination-btn-my-properties next-btn-my-properties"
                           onClick={() => handlePageChange(pagination.page + 1)}
                           disabled={!pagination.hasNext || loading}
                           title="Trang sau"

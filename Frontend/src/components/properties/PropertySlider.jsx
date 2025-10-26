@@ -83,7 +83,14 @@ const PropertySlider = ({ properties }) => {
                         <div className="property-details-slider">
                             <div className="property-price">
                                 <i className="fas fa-dollar-sign"></i>
-                                <span>{property.rentPrice ? property.rentPrice.toLocaleString('vi-VN') : 'Liên hệ'} VNĐ/tháng</span>
+                                {property.promotionPrice && property.promotionPrice > 0 ? (
+                                    <div className="price-with-promotion-slider">
+                                        <span className="original-price-slider">{property.rentPrice ? property.rentPrice.toLocaleString('vi-VN') : 'Liên hệ'} VNĐ/tháng</span>
+                                        <span className="promotion-price-slider">{property.promotionPrice.toLocaleString('vi-VN')} VNĐ/tháng</span>
+                                    </div>
+                                ) : (
+                                    <span>{property.rentPrice ? property.rentPrice.toLocaleString('vi-VN') : 'Liên hệ'} VNĐ/tháng</span>
+                                )}
                             </div>
 
                             <div className="property-details-slider-item">
@@ -181,7 +188,14 @@ const PropertySlider = ({ properties }) => {
                             <div className="property-details-slider">
                                 <div className="property-price">
                                     <i className="fas fa-dollar-sign"></i>
-                                    <span>{property.rentPrice ? property.rentPrice.toLocaleString('vi-VN') : 'Liên hệ'} VNĐ/tháng</span>
+                                    {property.promotionPrice && property.promotionPrice > 0 ? (
+                                        <div className="price-with-promotion-slider">
+                                            <span className="original-price-slider">{property.rentPrice ? property.rentPrice.toLocaleString('vi-VN') : 'Liên hệ'} VNĐ/tháng</span>
+                                            <span className="promotion-price-slider">{property.promotionPrice.toLocaleString('vi-VN')} VNĐ/tháng</span>
+                                        </div>
+                                    ) : (
+                                        <span>{property.rentPrice ? property.rentPrice.toLocaleString('vi-VN') : 'Liên hệ'} VNĐ/tháng</span>
+                                    )}
                                 </div>
 
                                 <div className="property-details-slider-item">

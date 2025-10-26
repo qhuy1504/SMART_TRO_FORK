@@ -4,6 +4,7 @@ import "react-toastify/dist/ReactToastify.css";
 import { myPropertiesAPI } from '../../../services/myPropertiesAPI';
 import { locationAPI } from '../../../services/locationAPI';
 import amenitiesAPI from '../../../services/amenitiesAPI';
+import adminPackagePlanAPI from '../../../services/adminPackagePlanAPI';
 import dayjs from 'dayjs';
 import './EditPropertyModal.css';
 import '../new-property/RejectedFiles.css';
@@ -21,6 +22,7 @@ const markerIcon = new L.Icon({
 });
 
 const EditPropertyModal = ({ property, onClose, onSuccess }) => {
+  console.log("EditPropertyModal property prop:", property);
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -49,6 +51,19 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
     loading: false,
     error: null
   });
+
+  // Package data
+  const [packageData, setPackageData] = useState({
+    userPackageInfo: null,
+    availablePostTypes: [],
+    loadingPackage: false,
+    loadingPostTypes: false
+  });
+
+  // Selected package and post type
+  const [selectedPackage, setSelectedPackage] = useState(null);
+  const [selectedPostType, setSelectedPostType] = useState(null);
+  const [originalPostType, setOriginalPostType] = useState(null); // Lưu post type gốc
 
   // Options data
   const categories = [
@@ -118,6 +133,124 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
     loadAmenities();
   }, []);
 
+  // Load package data
+  useEffect(() => {
+    const loadPackageData = async () => {
+      try {
+        setPackageData(prev => ({ ...prev, loadingPackage: true }));
+        
+        // Kiểm tra gói tin từ property trước
+        let packageToUse = null;
+        let availablePostTypesToUse = [];
+        
+        if (property?.packageInfo && property.packageInfo.plan) {
+          // Kiểm tra gói của property có hết hạn chưa
+          const propertyExpiryDate = property.packageInfo.expiryDate;
+          const now = new Date();
+          const isPropertyPackageExpired = propertyExpiryDate && new Date(propertyExpiryDate) < now;
+          
+          if (!isPropertyPackageExpired && property.packageInfo.isActive) {
+            console.log('Using property package info (still active):', property.packageInfo);
+            
+            // Sử dụng gói tin từ property - cần load thông tin plan đầy đủ
+            console.log('Property package plan:', property.packageInfo.plan);
+            
+            // Load thông tin đầy đủ về gói tin từ user package để lấy limits
+            const userPackageResponse = await myPropertiesAPI.getCurrentUserPackage();
+            let actualPackageInfo = null;
+            
+            if (userPackageResponse.success && userPackageResponse.data) {
+              // Kiểm tra xem user có đang sử dụng cùng gói không
+              if (userPackageResponse.data.packageId === property.packageInfo.plan._id) {
+                actualPackageInfo = userPackageResponse.data;
+              }
+            }
+            
+            if (actualPackageInfo) {
+              // Sử dụng thông tin từ user package (có đầy đủ limits)
+              packageToUse = {
+                ...actualPackageInfo,
+                // Ghi đè thông tin từ property nếu property còn hạn
+                packageId: property.packageInfo.plan._id,
+                packageName: property.packageInfo.plan.name,
+                displayName: property.packageInfo.plan.displayName,
+                packageType: property.packageInfo.plan.type,
+                expiryDate: property.packageInfo.expiryDate,
+                startDate: property.packageInfo.startDate,
+                isActive: property.packageInfo.isActive
+              };
+            } else {
+              // Fallback: tạo package info cơ bản từ property
+              packageToUse = {
+                packageId: property.packageInfo.plan._id,
+                packageName: property.packageInfo.plan.name,
+                displayName: property.packageInfo.plan.displayName,
+                packageType: property.packageInfo.plan.type,
+                expiryDate: property.packageInfo.expiryDate,
+                startDate: property.packageInfo.startDate,
+                isActive: property.packageInfo.isActive,
+                // Tạo limit item cho post type hiện tại với logic đặc biệt
+                propertiesLimits: [{
+                  packageType: property.packageInfo.postType,
+                  limit: 1, // Chỉ cho phép tin hiện tại
+                  used: 0   // Vì tin này đã tồn tại, coi như chưa sử dụng slot mới
+                }]
+              };
+            }
+            
+            availablePostTypesToUse = packageToUse.propertiesLimits || [];
+            
+            console.log('Final package to use:', packageToUse);
+            console.log('Available post types to use:', availablePostTypesToUse);
+            
+            setPackageData(prev => ({ 
+              ...prev, 
+              userPackageInfo: packageToUse,
+              availablePostTypes: availablePostTypesToUse,
+              loadingPackage: false 
+            }));
+            setSelectedPackage(packageToUse);
+            
+            return; // Không cần load user package nữa
+          }
+        }
+        
+        // Nếu không có gói tin từ property hoặc đã hết hạn, load user package
+        const userPackageResponse = await myPropertiesAPI.getCurrentUserPackage();
+        console.log('User package info:', userPackageResponse);
+        
+        if (userPackageResponse.success) {
+          const userPackage = userPackageResponse.data;
+          setPackageData(prev => ({ 
+            ...prev, 
+            userPackageInfo: userPackage,
+            loadingPackage: false 
+          }));
+          console.log('Selected package set to user package:', userPackage);
+          setSelectedPackage(userPackage);
+          
+          // Load available post types for this package
+          if (userPackage && userPackage.propertiesLimits) {
+            setPackageData(prev => ({ 
+              ...prev, 
+              availablePostTypes: userPackage.propertiesLimits,
+              loadingPostTypes: false 
+            }));
+          }
+        }
+      } catch (error) {
+        console.error('Error loading package data:', error);
+        setPackageData(prev => ({ 
+          ...prev, 
+          loadingPackage: false, 
+          loadingPostTypes: false 
+        }));
+      }
+    };
+
+    loadPackageData();
+  }, [property]);
+
   const houseRulesList = [
     { value: 'no_smoking', label: 'Không hút thuốc' },
     { value: 'no_pets', label: 'Không nuôi thú cưng' },
@@ -128,15 +261,69 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
     { value: 'remove_shoes', label: 'Cởi giày trước khi vào nhà' }
   ];
 
+
+  // Handle post type selection
+  const handlePostTypeSelect = (postType) => {
+    setSelectedPostType(postType);
+  };
+
+  // Check if can select post type (not expired and has limit)
+  const canSelectPostType = (postType) => {
+    if (!selectedPackage) return false;
+    
+    // Check if package is expired
+    const now = new Date();
+    const isPackageExpired = selectedPackage.expiryDate && new Date(selectedPackage.expiryDate) < now;
+    if (isPackageExpired) return false;
+    
+    // Check if this is the current post type (allow keeping same)
+    if (originalPostType && postType.packageType?._id === originalPostType._id) {
+      return true; // Luôn cho phép giữ post type hiện tại
+    }
+    
+    // Check if has remaining limit
+    const remaining = getRemainingPosts(postType);
+    return remaining > 0;
+  };
+
+  // Get remaining posts for a post type
+  const getRemainingPosts = (postType) => {
+    if (!postType) return 0;
+    
+    const limit = postType.limit || 0;
+    const used = postType.used || 0;
+    const remaining = Math.max(0, limit - used);
+    
+    // Nếu đây là post type hiện tại và không có slot trống, vẫn cho phép (không tốn slot mới)
+    if (originalPostType && postType.packageType?._id === originalPostType._id && remaining === 0) {
+      return 1; // Giả lập có 1 slot để hiển thị
+    }
+    
+    return remaining;
+  };
+
   useEffect(() => {
     if (property) {
-      // Process amenities - handle both populated objects and ID strings
+      // Process amenities - handle both populated objects and ID strings .
       const processedAmenities = property.amenities ?
         property.amenities.map(amenity => {
           const id = typeof amenity === 'object' ? amenity._id : amenity;
 
           return id;
         }) : [];
+
+      // Kiểm tra xem có coordinates gốc từ DB không
+      const hasValidCoordinates = property.coordinates && 
+        property.coordinates.lat && 
+        property.coordinates.lng &&
+        property.coordinates.lat !== 16.0583 && // Không phải default coordinates
+        property.coordinates.lng !== 108.2772;
+
+      setHasOriginalCoordinates(hasValidCoordinates);
+      setIsManuallyModified(false); // Reset flag khi load property mới
+
+      console.log("Property coordinates from DB:", property.coordinates);
+      console.log("Has original coordinates:", hasValidCoordinates);
 
       setFormData({
         title: property.title || '',
@@ -174,12 +361,72 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
         video: property.video || null,
         existingImages: property.images || [], // Track existing images
         newImages: [], // Track new uploaded images
-        removedImages: [] // Track removed images
+        removedImages: [], // Track removed images
+        
+        // Package info
+        packageInfo: property.packageInfo || null,
+        postType: property.packageInfo?.postType || null
       });
+
+      // Set original post type for comparison
+      if (property.packageInfo?.postType) {
+        setOriginalPostType(property.packageInfo.postType);
+        setSelectedPostType(property.packageInfo.postType);
+      }
+
+      // Lưu coordinates gốc vào ref để so sánh
+      if (hasValidCoordinates) {
+        lastCoordsRef.current = property.coordinates;
+      }
 
       loadLocationData(property);
     }
   }, [property]);
+
+  // Update selected post type when package data loads and we have original post type used
+  useEffect(() => {
+    if (packageData.userPackageInfo && originalPostType && packageData.availablePostTypes.length > 0) {
+      // Find the matching post type in current package
+      const matchingPostType = packageData.availablePostTypes.find(
+        pt => pt.packageType?._id === originalPostType._id
+      );
+      if (matchingPostType) {
+        setSelectedPostType(matchingPostType);
+        console.log('Auto-selected current post type:', matchingPostType);
+      }
+    }
+  }, [packageData.userPackageInfo, packageData.availablePostTypes, originalPostType]);
+
+  // Auto-select post type from property packageInfo when component loads
+  useEffect(() => {
+    if (property?.packageInfo?.postType && packageData.availablePostTypes.length > 0 && !selectedPostType) {
+      const currentPostTypeId = typeof property.packageInfo.postType === 'string' 
+        ? property.packageInfo.postType 
+        : property.packageInfo.postType._id;
+      
+      console.log('Current post type ID from property:', currentPostTypeId);
+      
+      const matchingPostType = packageData.availablePostTypes.find(
+        pt => pt.packageType._id === currentPostTypeId
+      );
+      
+      if (matchingPostType) {
+        setSelectedPostType(matchingPostType);
+        console.log('Auto-selected post type from property:', matchingPostType);
+      } else {
+        // Nếu đang sử dụng gói từ property và không tìm thấy match, tạo một post type item
+        if (property.packageInfo.plan && property.packageInfo.postType) {
+          const propertyPostType = {
+            packageType: property.packageInfo.postType,
+            limit: 999,
+            used: 0
+          };
+          setSelectedPostType(propertyPostType);
+          console.log('Auto-created post type from property info:', propertyPostType);
+        }
+      }
+    }
+  }, [property, packageData.availablePostTypes, selectedPostType]);
 
   const loadLocationData = async (property) => {
     try {
@@ -346,6 +593,12 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
         }));
       }
     } else {
+      // Reset manual modification flag khi user thay đổi địa chỉ
+      if (['detailAddress', 'province', 'district', 'ward'].includes(name)) {
+        console.log("Address field changed:", name, "->", value);
+        setIsManuallyModified(false);
+      }
+
       setFormData(prev => ({
         ...prev,
         [name]: value
@@ -679,6 +932,7 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
 
       console.log("fullAddress payload:", addressPayload);
       const res = await locationAPI.geocodeAddress(addressPayload);
+      console.log("res payload:", res);
 
       // Kiểm tra response từ backend
       const coords = res?.data?.coordinates;
@@ -695,30 +949,39 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
   };
 
 
+  // Flag để theo dõi xem có coordinates từ DB hay không
+  const [hasOriginalCoordinates, setHasOriginalCoordinates] = useState(false);
+  const [isManuallyModified, setIsManuallyModified] = useState(false);
+
   useEffect(() => {
     if (formData.detailAddress && formData.province && formData.district && formData.ward) {
       const timer = setTimeout(async () => {
-        const addressPayload = await getFullAddressPayload(formData, locationData);
-        const payloadString = JSON.stringify(addressPayload);
+        // Chỉ geocoding nếu:
+        // 1. Không có coordinates gốc từ DB, HOẶC
+        // 2. Địa chỉ đã thay đổi và không phải chỉnh thủ công marker
+        if (!hasOriginalCoordinates || (!isManuallyModified && formData.detailAddress !== property?.detailAddress)) {
+          const addressPayload = await getFullAddressPayload(formData, locationData);
+          const payloadString = JSON.stringify(addressPayload);
 
-        if (addressPayload && payloadString !== lastAddressRef.current) {
-          lastAddressRef.current = payloadString;
+          if (addressPayload && payloadString !== lastAddressRef.current) {
+            lastAddressRef.current = payloadString;
 
-          console.log("Geocoding payload (Edit):", addressPayload);
-          const res = await geocodeAddressConst(addressPayload);
+            console.log("Geocoding payload (Edit):", addressPayload);
+            const res = await geocodeAddressConst(addressPayload);
 
-          if (res?.lat && res?.lng) {
-            lastCoordsRef.current = res;
-            setFormData(prev => ({ ...prev, coordinates: res }));
-          } else if (lastCoordsRef.current) {
-            setFormData(prev => ({ ...prev, coordinates: lastCoordsRef.current }));
+            if (res?.lat && res?.lng) {
+              lastCoordsRef.current = res;
+              setFormData(prev => ({ ...prev, coordinates: res }));
+            } else if (lastCoordsRef.current) {
+              setFormData(prev => ({ ...prev, coordinates: lastCoordsRef.current }));
+            }
           }
         }
       }, 2000);
 
       return () => clearTimeout(timer);
     }
-  }, [formData.detailAddress, formData.ward, formData.district, formData.province, locationData]);
+  }, [formData.detailAddress, formData.ward, formData.district, formData.province, locationData, hasOriginalCoordinates, isManuallyModified]);
 
 
 
@@ -773,6 +1036,16 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
     setErrors({});
 
     try {
+      // Validate package and post type selection
+      const now = new Date();
+      const isPackageExpired = selectedPackage?.expiryDate && new Date(selectedPackage.expiryDate) < now;
+      
+      if (!isPackageExpired && !selectedPostType) {
+        toast.error("Vui lòng chọn loại tin đăng");
+        setLoading(false);
+        return;
+      }
+
       const provinceData = locationData.provinces.find(
         (p) => String(p.code) === String(formData.province)
       );
@@ -815,6 +1088,32 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
       // Append coordinates
       if (formData.coordinates) {
         formDataToSend.append("coordinates", JSON.stringify(formData.coordinates));
+      }
+
+      // Package and post type handling
+      if (selectedPackage && selectedPostType) {
+        // Check if this is different from original
+        const isNewPostType = !originalPostType || 
+          selectedPostType.packageType?._id !== originalPostType?._id;
+        
+        if (isNewPostType) {
+          // Validate if can select this post type
+          console.log('Validating new post type:', selectedPostType);
+          console.log('Can select:', canSelectPostType(selectedPostType));
+          console.log('Remaining posts:', getRemainingPosts(selectedPostType));
+          
+          if (!canSelectPostType(selectedPostType)) {
+            const remaining = getRemainingPosts(selectedPostType);
+            const postTypeName = selectedPostType.packageType?.displayName || 'loại tin này';
+            toast.error(`Bạn đã hết lượt đăng ${postTypeName}. Còn lại: ${remaining} lượt`);
+            setLoading(false);
+            return;
+          }
+        }
+        
+        formDataToSend.append("packageId", selectedPackage.packageId);
+        formDataToSend.append("postTypeId", selectedPostType.packageType._id);
+        formDataToSend.append("isNewPostType", isNewPostType);
       }
 
       // Append ảnh mới (tối đa 5)
@@ -930,9 +1229,15 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
     const [draggable] = useState(true);
     const markerRef = useRef(null);
 
+    const handlePositionChange = (latlng) => {
+      console.log("Manual marker position change:", latlng);
+      setIsManuallyModified(true); // Set flag khi user chỉnh thủ công
+      onChange(latlng);
+    };
+
     useMapEvents({
       click(e) {
-        onChange(e.latlng);
+        handlePositionChange(e.latlng);
       }
     });
     return (
@@ -943,7 +1248,7 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
           dragend: () => {
             const marker = markerRef.current;
             if (marker != null) {
-              onChange(marker.getLatLng());
+              handlePositionChange(marker.getLatLng());
             }
           }
         }}
@@ -958,14 +1263,142 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
     <div className="modal-overlay-edit-property" onClick={onClose}>
       <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>Chỉnh sửa tin đăng</h3>
-          <button className="close-btn" onClick={onClose}>
+          <h3>
+            Chỉnh sửa tin đăng</h3>
+          <button className="close-btn-current-package" onClick={onClose}>
             <i className="fa fa-times"></i>
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="edit-form">
           <div className="form-content">
+
+             {/* Package and Post Type Selection */}
+            <div className="form-group">
+              <h4>Gói tin *</h4>
+              
+              {/* Thông tin gói hiện tại */}
+              {selectedPackage && (
+                <div className="current-package-info">
+                  <div className="package-header-new-property">
+                    <h5>
+                      <i className="fa fa-info-circle"></i>
+                      Gói hiện tại: <strong>{selectedPackage.displayName || selectedPackage.packageName}</strong>
+                    </h5>
+                    <span className="package-expiry">
+                      Hết hạn: {new Date(selectedPackage.expiryDate).toLocaleDateString('vi-VN')}
+                    </span>
+                   
+                  </div>
+                </div>
+              )}
+
+              {/* Post Type Selection section */}
+              {packageData.availablePostTypes && packageData.availablePostTypes.length > 0 && (
+                <div className="post-type-selection">
+                  <div className="form-group">
+                    <h4>Loại tin đăng *</h4>
+                    {(() => {
+                      const now = new Date();
+                      const isExpired = selectedPackage?.expiryDate && new Date(selectedPackage.expiryDate) < now;
+                      return isExpired;
+                    })() ? (
+                      <div className="package-expired-notice">
+                        <i className="fa fa-clock-o"></i>
+                        <span>Vui lòng gia hạn gói để thay đổi loại tin đăng.</span>
+                        <div style={{  fontSize: '14px', color: '#000000ff', fontWeight: 'bold' }}>
+                          Loại tin hiện tại: <strong>
+                            {originalPostType?.displayName || 'Không xác định'}
+                          </strong>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="select-wrapper">
+                        <select
+                          name="postType"
+                          value={selectedPostType?.packageType?._id || ''}
+                          onChange={(e) => {
+                            const selectedId = e.target.value;
+                            if (selectedId) {
+                              const selectedPostType = packageData.availablePostTypes.find(
+                                pt => pt.packageType._id === selectedId
+                              );
+                              if (selectedPostType && canSelectPostType(selectedPostType)) {
+                                handlePostTypeSelect(selectedPostType);
+                              }
+                            } else {
+                              setSelectedPostType(null);
+                            }
+                            
+                            // Clear error khi chọn
+                            if (errors.postType) {
+                              setErrors(prev => ({ ...prev, postType: '' }));
+                            }
+                          }}
+                          className={`post-type-select ${errors.postType ? 'error' : ''}`}
+                          style={{
+                            color: selectedPostType?.packageType?.color || '#333',
+                            fontWeight: selectedPostType?.packageType?.priority <= 3 ? '600' : '600',
+                            fontSize: '16px'
+                          }}
+                        >
+                          <option value="" style={{ color: '#999', fontSize: '16px !important' }}>Chọn loại tin đăng</option>
+                          {packageData.availablePostTypes.map((postType, index) => {
+                            const canSelect = canSelectPostType(postType);
+                            const actualRemaining = Math.max(0, (postType.limit || 0) - (postType.used || 0));
+                            const isCurrent = originalPostType && postType.packageType?._id === originalPostType?._id;
+                            
+                            // Tính số sao dựa trên priority
+                            const stars = postType.packageType.priority && postType.packageType.priority <= 6 
+                              ? Math.min(5 - postType.packageType.priority + 1, 5) 
+                              : 0;
+                            const starsText = stars > 0 ? ' ' + '★'.repeat(stars) : '';
+
+                            // Hiển thị thông tin chi tiết
+                            let displayText = `${postType.packageType.displayName}${starsText}`;
+                            let statusText = '';
+                            
+                            if (isCurrent) {
+                              statusText = ' - Hiện tại';
+                            } else if (actualRemaining > 0) {
+                              statusText = ` (${actualRemaining} còn lại)`;
+                            } else {
+                              statusText = ' - Hết lượt';
+                            }
+
+                            return (
+                              <option
+                                key={index}
+                                value={postType.packageType._id}
+                                disabled={!canSelect}
+                                style={{
+                                  color: !canSelect ? '#ccc' : (postType.packageType.color || '#333'),
+                                  fontWeight: stars > 0 ? '600' : '600',
+                                  backgroundColor: !canSelect ? '#f5f5f5' : 'white'
+                                }}
+                              >
+                                {displayText}{statusText}
+                              </option>
+                            );
+                          })}
+                        </select>
+                       
+                      </div>
+                    )}
+                    
+                    {errors.postType && <span className="error-text">{errors.postType}</span>}
+                  </div>
+                </div>
+              )}
+
+              {/* Loading states */}
+              {packageData.loadingPackage && (
+                <div style={{ textAlign: 'center', padding: '20px' }}>
+                  <i className="fa fa-spinner fa-spin"></i> Đang tải thông tin gói...
+                </div>
+              )}
+            </div>
+
             {/* Thông tin chủ nhà */}
             <div className="form-section">
               <h4>Thông tin chủ nhà</h4>
@@ -1038,6 +1471,8 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                 {errors.description && <span className="error-text">{errors.description}</span>}
               </div>
             </div>
+
+           
 
             {/* Thông tin cơ bản & giá */}
             <div className="form-section">
@@ -1164,7 +1599,7 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                     checked={formData.fullAmenities || false}
                     onChange={handleInputChange}
                   />
-                  Full tiện ích
+                  <span className='full-amenities-span'>Full tiện ích</span>
                 </label>
 
               </div>
@@ -1357,6 +1792,18 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                 <div className="coordinates-display">
                   <span>Vĩ độ: {formData.coordinates?.lat?.toFixed(7) || 'N/A'}</span>
                   <span>Kinh độ: {formData.coordinates?.lng?.toFixed(7) || 'N/A'}</span>
+                  {isManuallyModified && (
+                    <span className="manual-coords-indicator">
+                      <i className="fa fa-map-pin" style={{ color: '#28a745' }}></i>
+                      Đã chỉnh thủ công
+                    </span>
+                  )}
+                  {locationData.geocoding && (
+                    <span className="geocoding-indicator">
+                      <i className="fa fa-spinner fa-spin"></i>
+                      Đang định vị...
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -1628,5 +2075,6 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
     </div>
   );
 };
+
 
 export default EditPropertyModal;

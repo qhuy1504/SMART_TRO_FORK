@@ -158,13 +158,57 @@
     gap: 5px;
 }
 
-.package-name {
+.package-name-payment-history {
     font-weight: 600;
-    color: #495057;
     margin-bottom: 4px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.property-title {
+.package-stars {
+    display: inline-flex;
+    gap: 2px;
+}
+
+.package-stars .star {
+    color: #ffd700;
+    font-size: 12px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    animation: sparkle 2s ease-in-out infinite alternate;
+}
+
+.package-stars .star:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.package-stars .star:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+.package-stars .star:nth-child(4) {
+    animation-delay: 0.6s;
+}
+
+.package-stars .star:nth-child(5) {
+    animation-delay: 0.8s;
+}
+
+@keyframes sparkle {
+    0% { 
+        transform: scale(1);
+        opacity: 1;
+    }
+    100% { 
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
+}
+
+.property-title-payment-history {
     color: #6c757d;
     font-size: 13px;
     line-height: 1.4;
@@ -175,13 +219,14 @@
     overflow: hidden;
 }
 
+
+
 .property-id-cell {
     text-align: center;
 }
 
 .property-id {
     display: inline-block;
-    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
     color: white;
     padding: 8px 12px;
     border-radius: 8px;
@@ -190,13 +235,12 @@
     font-weight: 700;
     letter-spacing: 1.2px;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
     transition: all 0.3s ease;
 }
 
 .property-id:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+    filter: brightness(1.1);
 }
 
 .time-cell {
@@ -208,12 +252,13 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 8px 12px;
+    padding: 6px 10px;
     border-radius: 20px;
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    white-space: nowrap;
 }
 
 .status-paid {
@@ -236,9 +281,84 @@
 }
 
 .status-cancelled {
-    background: linear-gradient(135deg, #6c757d, #495057);
+    background: linear-gradient(135deg, #dc3545, #c82333);
     color: white;
     box-shadow: 0 2px 10px rgba(108, 117, 125, 0.3);
+}
+
+/* Duration Badge Styles */
+.duration-cell {
+    text-align: center;
+    padding: 12px 8px;
+}
+
+.duration-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    color: white;
+    box-shadow: 0 3px 12px rgba(23, 162, 184, 0.3);
+    border: 1px solid rgba(23, 162, 184, 0.2);
+    text-transform: capitalize;
+    letter-spacing: 0.3px;
+    transition: all 0.3s ease;
+}
+
+.duration-badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 15px rgba(23, 162, 184, 0.4);
+}
+
+.duration-badge i {
+    font-size: 11px;
+    opacity: 0.9;
+}
+
+/* Action Cell Styles */
+.action-cell {
+    text-align: center;
+    padding: 12px 8px;
+    min-width: 120px;
+}
+
+.btn-payment-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px !important;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 3px 12px rgba(40, 167, 69, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+.btn-payment-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(40, 167, 69, 0.4);
+    background: linear-gradient(135deg, #218838 0%, #1e7e34 100%);
+}
+
+.btn-payment-action i {
+    font-size: 12px;
+}
+
+.no-action {
+    color: #adb5bd;
+    font-size: 18px;
+    font-weight: 300;
 }
 
 .payment-history-pagination {
@@ -258,7 +378,7 @@
     margin: 0 20px;
 }
 
-.pagination-btn {
+.pagination-btn-payment-history {
     padding: 10px 15px;
     border: 2px solid #e9ecef;
     background: white;
@@ -269,14 +389,17 @@
     font-size: 14px;
     font-weight: 500;
 }
+.pagination-btn-payment-history i:last-child {
+    margin-left: 5px;
+}
 
-.pagination-btn:hover:not(:disabled) {
-    border-color: #667eea;
-    color: #667eea;
+.pagination-btn-payment-history:hover:not(:disabled) {
+    border-color: #0dac12;
+    color: #0dac12;
     background: #f8f9ff;
 }
 
-.pagination-btn:disabled {
+.pagination-btn-payment-history:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
@@ -286,7 +409,7 @@
     gap: 5px;
 }
 
-.page-number {
+.page-number-payment-history {
     padding: 10px 15px;
     border: 2px solid transparent;
     background: white;
@@ -300,15 +423,15 @@
     text-align: center;
 }
 
-.page-number:hover {
+.page-number-payment-history:hover {
     background: #f8f9ff;
-    color: #667eea;
+    color: #0dac12;
 }
 
-.page-number.active {
-   background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+.page-number-payment-history.active {
+   background: linear-gradient(135deg, #0dac12 0%, #4d9100 100%);
     color: white;
-    border-color: #667eea;
+    
 }
 
 .no-payments {
@@ -337,23 +460,48 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 60px 20px;
+    padding: 40px 20px;
+    min-height: 120px;
+}
+
+.spinner-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
 }
 
 .spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #667eea;
+    width: 24px;
+    height: 24px;
+    border: 2.5px solid #e3f2fd;
+    border-top: 2.5px solid #2196f3;
     border-radius: 50%;
-    animation: spin 1s linear infinite;
+    animation: spin 0.8s linear infinite;
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+}
+
+.loading-text {
+    color: #666;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    animation: pulse 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+    from {
+        opacity: 0.6;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes spin {
     0% {
         transform: rotate(0deg);
     }
-
     100% {
         transform: rotate(360deg);
     }
@@ -398,8 +546,8 @@
         min-width: 200px;
     }
 
-    .pagination-btn,
-    .page-number {
+    .pagination-btn-payment-history,
+    .page-number-payment-history {
         padding: 8px 12px;
         font-size: 12px;
     }

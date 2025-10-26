@@ -1,0 +1,247 @@
+.price-section {
+    background: #fff;
+    padding: 60px 0;
+    color: #1e293b;
+    font-family: "Segoe UI", sans-serif;
+}
+
+.container {
+    max-width: 1200px;
+    margin: auto;
+    padding: 0 20px;
+}
+
+/* Lưới tổng thể */
+.price-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  margin-top: 2rem;
+}
+
+/* Card từng gói */
+.price-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  padding: 24px 20px;
+  text-align: center;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.price-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Tên gói */
+.plan-name {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+/* Mô tả */
+.plan-desc {
+  color: #6b7280;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin-bottom: 16px;
+  white-space: pre-line; /* Giữ xuống dòng thật trong text */
+  text-align: justify;   /* Căn đều hai bên cho chuyên nghiệp */
+  word-break: break-word; /* Ngắt từ khi cần */
+  min-height: 50px; /* Giữ chiều cao đều cho mọi thẻ */
+}
+
+
+/* Giá tiền */
+.plan-price {
+  margin-bottom: 12px;
+}
+
+.price-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.price-duration {
+  font-size: 0.9rem;
+  color: #6b7280;
+  margin-left: 4px;
+}
+
+.price-free {
+  display: inline-block;
+  padding: 4px 10px;
+  background-color: #22c55e;
+  color: white;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+/* Danh sách giới hạn tin */
+.plan-limits {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 20px;
+  text-align: left;
+}
+
+.plan-limits li {
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Nút đăng ký */
+.btn-register {
+  border: none;
+  color: #fff;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-register:hover {
+  filter: brightness(1.1);
+  transform: translateY(-2px);
+}
+
+
+/* Minh họa tin đăng */
+.vip-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 25px;
+    margin-top: 40px;
+}
+
+.vip-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+.vip-card:hover {
+    transform: translateY(-4px);
+}
+
+.vip-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.vip-desc {
+    font-size: 0.95rem;
+    color: #475569;
+    margin-bottom: 5px;
+    min-height: 60px;
+}
+
+.vip-note {
+    font-size: 0.9rem;
+    color: #aa0000;
+    font-style: italic;
+    margin-bottom: 15px;
+}
+
+.vip-image {
+    width: 100%;
+    height: 220px;
+    /* chiều cao khung hình cố định, có thể chỉnh lại tuỳ ý */
+    overflow: hidden;
+    border-radius: 12px;
+    margin-top: 15px;
+    position: relative;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    background: #f9fafb;
+    /* nền nhẹ trong khi chờ hình load */
+}
+
+.vip-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* giúp hình không méo */
+    border-radius: 12px;
+    transition: transform 0.4s ease, box-shadow 0.3s ease;
+}
+
+.vip-image:hover img {
+    transform: scale(1.05);
+    /* phóng to nhẹ khi hover */
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+}
+
+.container-desc {
+    min-height: 150px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .plan-price {
+        font-size: 1.4rem;
+    }
+
+    .vip-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Scroll to Top Button */
+.scroll-to-top-btn {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 50px;
+    height: 50px;
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    z-index: 1000;
+}
+
+.scroll-to-top-btn:hover {
+    background-color: #2563eb;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+}
+
+.scroll-to-top-btn:active {
+    transform: translateY(0);
+}
+
+/* Responsive cho nút scroll */
+@media (max-width: 768px) {
+    .scroll-to-top-btn {
+        bottom: 20px;
+        right: 20px;
+        width: 45px;
+        height: 45px;
+        font-size: 16px;
+    }
+}

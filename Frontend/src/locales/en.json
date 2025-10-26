@@ -655,7 +655,7 @@
         "newPost": "New Post",
         "myPosts": "My Posts",
         "paymentHistory": "Payment History",
-        "pricing": "Pricing",
+        "pricing-analytics": "Pricing Analytics",
         "account": "Account Management",
         "logout": "Logout"
       },
@@ -760,7 +760,7 @@
         "message": "Payment history will be updated soon. Please come back later!"
       }
     },
-    "pricing": {
+    "pricing-analytics": {
       "title": "Service Pricing",
       "subtitle": "View pricing for posting packages",
       "plans": {

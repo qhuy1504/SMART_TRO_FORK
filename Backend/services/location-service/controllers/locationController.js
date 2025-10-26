@@ -59,6 +59,7 @@ const LOCATIONIQ_API_KEY = process.env.LOCATIONIQ_API_KEY;
 export const geocodeAddress = async (req, res) => {
   try {
     const { address } = req.body; // Object address
+    console.log("Received geocoding request for address:", address);
     if (!address) {
       return res.status(400).json({
         success: false,

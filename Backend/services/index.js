@@ -22,6 +22,8 @@ import adminReportPropertyRoutes from './report-service/routes/adminReportProper
 import invoiceRoutes from './invoice-service/routes/invoiceRoutes.js';
 import propertiesPackageRoutes from './properties-package-service/routes/propertiesPackageRoutes.js';
 import paymentHistoryRoutes from './payment-service/routes/paymentHistoryRoutes.js';
+import packagePlanRoutes from './package-plan-service/routes/packagePlanRoutes.js';
+import analyticsRoutes from './analytics-service/routes/analyticsRoutes.js';
 
 
 const router = express.Router();
@@ -47,6 +49,8 @@ router.use('/api/admin/report-properties', adminReportPropertyRoutes);
 router.use('/api/invoices', invoiceRoutes);
 router.use('/api/properties-packages', propertiesPackageRoutes);
 router.use('/api/payment-history', paymentHistoryRoutes);
+router.use('/api/package-plans', packagePlanRoutes);
+router.use('/api/analytics', analyticsRoutes);
 
 
 
@@ -69,7 +73,8 @@ router.get('/api', (req, res) => {
             reports: '/api/reports',
             comments: '/api/comments',
             propertiesPackages: '/api/properties-packages',
-            moderation: '/api/moderation'
+            moderation: '/api/moderation',
+            analytics: '/api/analytics'
         },
         documentation: {
             users: {

@@ -14,22 +14,26 @@
   overflow-y: auto;
 
 }
+
 .form-group-new-property {
   margin-bottom: 24px;
   display: flex;
   flex-direction: column;
   margin-top: 25px;
 }
-.full-amenities-label{
+
+.full-amenities-label {
   margin-left: 10px;
   color: #3b82f6;
   font-size: 20px;
   font-weight: bold;
 }
+
 .form-group-new-property input[type="checkbox"] {
   width: 20px;
   height: 20px;
-  accent-color: #007bff; /* Màu xanh đẹp kiểu Bootstrap */
+  accent-color: #007bff;
+  /* Màu xanh đẹp kiểu Bootstrap */
   cursor: pointer;
 }
 
@@ -81,7 +85,8 @@
   color: #374151;
   background: #f3f4f6;
 }
-.post-new-property{
+
+.post-new-property {
   margin-top: 0px !important;
 }
 
@@ -92,7 +97,7 @@
   min-height: 0;
 }
 
-.form-content {
+.form-content-new-property {
   flex: 1;
   overflow-y: auto;
   padding: 24px;
@@ -103,25 +108,24 @@
   scrollbar-color: #cbd5e1 #f8fafc;
 }
 
-.form-content::-webkit-scrollbar {
+.form-content-new-property::-webkit-scrollbar {
   width: 8px;
 }
 
-.form-content::-webkit-scrollbar-track {
+.form-content-new-property::-webkit-scrollbar-track {
   background: #f8fafc;
 }
 
-.form-content::-webkit-scrollbar-thumb {
+.form-content-new-property::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 4px;
 }
 
-.form-content::-webkit-scrollbar-thumb:hover {
+.form-content-new-property::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
 
 .form-section-new-property {
-  margin-bottom: 24px;
   padding: 24px;
   background-color: #ffffff;
   border-radius: 12px;
@@ -147,13 +151,12 @@
 }
 
 .form-group {
-  margin-bottom: 24px;
   display: flex;
   flex-direction: column;
-  margin-top: 25px;
+
 }
 
-.form-row {
+.form-row-new-property {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
@@ -165,11 +168,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
-   min-height: 20px;
-   font-size: 16px;
-  
+  font-size: 16px;
+
 }
+
 .form-group input[type="checkbox"] {
   margin: 0;
 }
@@ -187,8 +189,6 @@
   box-sizing: border-box;
   min-height: 52px;
   background: white;
-}
-.form-group select {
   margin-top: 7px;
 }
 
@@ -232,19 +232,23 @@
   width: auto;
   margin-right: 8px;
   margin-bottom: 0;
-    font-size: 36px !important;
+  font-size: 36px !important;
 
 }
 
 .amenities-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr); /* 2 cột đều nhau */
-  gap: 8px 16px; /* khoảng cách */
+  grid-template-columns: repeat(2, 1fr);
+  /* 2 cột đều nhau */
+  gap: 8px 16px;
+  /* khoảng cách */
+  margin-bottom: 10px;
 }
 
 .amenity-item {
   display: flex;
-  align-items: center; /* canh checkbox + chữ thẳng hàng */
+  align-items: center;
+  /* canh checkbox + chữ thẳng hàng */
   gap: 8px;
   font-size: 14px;
   cursor: pointer;
@@ -261,14 +265,16 @@
   pointer-events: none;
 }
 
-.amenity-text-post{
+.amenity-text-post {
   font-size: 14px;
   color: #374151;
   margin-top: 5px;
 }
+
 .house-rules-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); /* auto fill cho đều cột */
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  /* auto fill cho đều cột */
   gap: 12px;
   margin-top: 16px;
   padding: 16px;
@@ -298,14 +304,21 @@
 
 .house-rules-grid label {
   display: flex;
-  align-items: center;  /* căn giữa checkbox và chữ */
-  gap: 8px;             /* khoảng cách giữa checkbox và chữ */
-  font-size: 16px;      /* chữ rõ ràng hơn */
-  cursor: pointer;      /* UX tốt hơn */
+  align-items: center;
+  /* căn giữa checkbox và chữ */
+  gap: 8px;
+  /* khoảng cách giữa checkbox và chữ */
+  font-size: 16px;
+  /* chữ rõ ràng hơn */
+  cursor: pointer;
+  /* UX tốt hơn */
 }
+
 .house-rules-grid input[type="checkbox"] {
-  margin: 0;   /* bỏ margin mặc định */
-  width: 18px; /* chỉnh ô vuông đều nhau */
+  margin: 0;
+  /* bỏ margin mặc định */
+  width: 18px;
+  /* chỉnh ô vuông đều nhau */
   height: 18px;
 }
 
@@ -389,9 +402,12 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
@@ -422,30 +438,45 @@
 .remove-image-new-property,
 .remove-video {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 35px;
-  height: 35px;
-  background: #ef4444; /* đỏ đẹp */
+  top: 6px;
+  right: 6px;
+  width: 24px !important;
+  height: 24px !important;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  padding: 0 !important;
   color: white;
   border: none;
-  border-radius: 50%; /* tròn đều */
+  border-radius: 50%; /* đảm bảo hình tròn */
   cursor: pointer;
-  font-size: 16px;
-  font-weight: bold;
+  font-size: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  line-height: 1; /* tránh text bị lệch */
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-  transition: background 0.3s, transform 0.2s;
+  line-height: 1;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
+  transition: all 0.25s ease;
   z-index: 9999;
 }
 
 .remove-image-new-property:hover,
 .remove-video:hover {
-  background: #dc2626;
-  transform: scale(1.1);
+  background: linear-gradient(135deg, #f87171, #dc2626);
+  transform: scale(1.15) rotate(5deg);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.remove-image-new-property:active,
+.remove-video:active {
+  transform: scale(0.95);
+}
+
+.remove-image-new-property i{
+  font-size: 16px;
+  margin-left: 5px;
+}
+.remove-video i{
+  font-size: 16px;
+  margin-left: 5px;
 }
 
 .video-preview {
@@ -555,10 +586,36 @@
   position: relative;
 }
 
-.coordinate-item{
+.coordinate-display {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.coordinate-item {
+  display: flex;
+  align-items: center;
   gap: 10px;
 }
+
+.coordinate-item i {
+  color: #007bff; /* Xanh dương cho icon */
+  font-size: 18px;
+  width: 20px; /* đảm bảo icon có chiều rộng cố định giúp các span thẳng hàng */
+  text-align: center;
+}
+
+.coordinate-item span {
+  font-size: 14px;
+  color: #333;
+}
+
+.coordinate-item strong {
+  font-weight: 600;
+  color: #000;
+}
+
 
 /* Responsive */
 @media (max-width: 768px) {
@@ -567,14 +624,14 @@
     align-items: flex-start;
     padding-top: 20px;
   }
-  
+
   .post-modal {
     max-height: calc(100vh - 40px);
     margin: 0;
     min-height: 60vh;
   }
-  
-  .form-content {
+
+  .form-content-new-property {
     padding: 16px;
   }
 
@@ -592,12 +649,12 @@
     min-width: 120px;
     justify-content: center;
   }
-  
-  .form-row {
+
+  .form-row-new-property {
     grid-template-columns: 1fr;
     gap: 16px;
   }
-  
+
   .form-group input,
   .form-group select,
   .form-group textarea {
@@ -605,16 +662,16 @@
     min-height: 44px;
     font-size: 0.95rem;
   }
-  
+
   .form-group textarea {
     min-height: 90px;
   }
-  
+
   .amenities-grid,
   .house-rules-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .image-preview-grid {
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   }
@@ -671,26 +728,37 @@
   font-size: 0.85rem;
   margin-right: 6px;
 }
+.btn-sm-location {
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: rgb(1, 134, 61);
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s;
+}
 
-.content-card-new-property{
+.content-card-new-property {
   border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    padding: 40px;
-    text-align: center;
-    background-color: white;
-    margin-left: 40px;
-    width: 110% !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 40px;
+  text-align: center;
+  background-color: white;
+  margin-left: 40px;
+  width: 110% !important;
 }
 
 /* Responsive for amenities grid */
 @media (max-width: 768px) {
+
   .amenities-grid,
   .house-rules-grid {
     grid-template-columns: repeat(auto-fill, minmax(180px, 180px));
     gap: 10px;
     padding: 12px;
   }
-  
+
   .amenities-grid label,
   .house-rules-grid label {
     font-size: 0.85rem;
@@ -700,12 +768,13 @@
 }
 
 @media (max-width: 480px) {
+
   .amenities-grid,
   .house-rules-grid {
     grid-template-columns: repeat(auto-fill, minmax(160px, 160px));
     gap: 8px;
   }
-  
+
   .amenities-grid label,
   .house-rules-grid label {
     font-size: 0.8rem;
@@ -714,8 +783,13 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Map controls styling */
@@ -785,4 +859,62 @@ input[name="availableDate"] {
 input[name="availableDate"]:focus {
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Package expired styling */
+.package-expired {
+  background: linear-gradient(135deg, #fff5f5 0%, #fef2f2 100%);
+  border: 2px solid #fca5a5;
+  border-radius: 12px;
+  padding: 30px;
+  text-align: center;
+  box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.1);
+}
+
+.package-expired .expired-icon {
+  margin-bottom: 15px;
+}
+
+.package-expired .expired-icon i {
+  font-size: 48px;
+  color: #dc3545;
+  opacity: 0.8;
+}
+
+.package-expired h5 {
+  color: #dc2626;
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.package-expired p {
+  color: #7f1d1d;
+  font-size: 16px;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.package-expired .btn-upgrade {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  border: none;
+  color: white;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.package-expired .btn-upgrade:hover {
+  background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+.package-expired .btn-upgrade i {
+  margin-right: 8px;
 }

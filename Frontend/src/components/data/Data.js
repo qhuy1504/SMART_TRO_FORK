@@ -11,10 +11,7 @@ export const nav = [
     text: "services",
     path: "/services",
   },
-  {
-    text: "blog",
-    path: "/blog",
-  },
+
   {
     text: "pricing",
     path: "/pricing",

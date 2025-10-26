@@ -337,14 +337,15 @@ const ReportManagement = () => {
 
                     {/* Reports list */}
                     {loading ? (
-                        <div className="loading-container">
-                            <div className="loading-spinner"></div>
-                            <p>Đang tải danh sách báo cáo...</p>
+                        <div className="spinner-container">
+                            <div className="spinner"></div>
+                            <span className="loading-text">Đang tải danh sách báo cáo...</span>
                         </div>
                     ) : reports.length === 0 ? (
                         <div className="empty-state">
                             <i className="fa fa-flag"></i>
-                            <p>Không có báo cáo nào</p>
+                             <span className="loading-text">Không có báo cáo nào</span>
+                           
                         </div>
                     ) : (
                         <>
@@ -386,9 +387,7 @@ const ReportManagement = () => {
                                                                     </span>
                                                                 </div>
                                                             )}
-                                                            <div className="property-meta">
-                                                                <span className="property-id">ID: {report.property?._id?.slice(-6) || report.propertyId?.slice(-6) || 'N/A'}</span>
-                                                            </div>
+                                                   
                                                         </div>
                                                     </td>
                                                     <td className="owner-property-cell">
@@ -492,7 +491,7 @@ const ReportManagement = () => {
                                                                         }}
                                                                         title="Xóa bài đăng"
                                                                     >
-                                                                        <i className="fa fa-eye-slash"></i>
+                                                                        <i className="fa fa-trash"></i>
                                                                     </button>
                                                                 </>
                                                             )}
@@ -672,7 +671,7 @@ const ReportManagement = () => {
                                                     setShowActionModal(true);
                                                 }}
                                             >
-                                                <i className="fa fa-eye-slash"></i>
+                                                <i className="fa fa-trash"></i>
                                                 Xóa bài đăng
                                             </button>
                                         </div>

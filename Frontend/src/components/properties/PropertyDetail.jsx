@@ -102,15 +102,15 @@ const PropertyDetail = () => {
   // Load property detail
   useEffect(() => {
     if (id) {
-      console.log('PropertyDetail: ID changed to', id, 'Setting loading to true');
+
       // Scroll to top when loading new property
       window.scrollTo(0, 0);
-      
+
       // Force loading state
       setLoading(true);
       setError(null);
       setProperty(null);
-      
+
       loadPropertyDetail();
     }
   }, [id]);
@@ -231,6 +231,18 @@ const PropertyDetail = () => {
       [field]: value
     }));
   };
+  // Helper function để xử lý URL avatar Google
+  const getAvatarUrl = (avatar) => {
+    if (avatar && avatar.includes('googleusercontent.com')) {
+      // Cải thiện chất lượng ảnh Google
+      const baseUrl = avatar.split('=')[0];
+      const newUrl = `${baseUrl}=s200-c`;
+
+      return newUrl;
+    }
+    return avatar || 'https://res.cloudinary.com/dapvuniyx/image/upload/v1755712519/avatar_gj5yhw.jpg';
+  };
+
 
   const handleSubmitReport = async () => {
     // Validation
@@ -434,32 +446,32 @@ const PropertyDetail = () => {
         // Loại bỏ tin đăng hiện tại khỏi danh sách
         const filtered = response.data?.properties?.filter(p => p._id !== property._id) || [];
         setNearbyProperties(filtered);
-        console.log('Nearby properties response:', filtered);
+
       }
     } catch (error) {
       console.error('Error loading nearby properties:', error);
     }
   };
 
-    // Spinner component để thống nhất loading indicator
-const LoadingSpinner = ({ size = 'medium', className = '' }) => {
-  const sizeClasses = {
-    small: '16px',
-    medium: '24px', 
-    large: '32px'
+  // Spinner component để thống nhất loading indicator
+  const LoadingSpinner = ({ size = 'medium', className = '' }) => {
+    const sizeClasses = {
+      small: '16px',
+      medium: '24px',
+      large: '32px'
+    };
+
+    return (
+      <i
+        className={`fa fa-spinner ${className}`}
+        style={{
+          fontSize: sizeClasses[size],
+          animation: 'spin 1s linear infinite',
+          color: '#00b095ff'
+        }}
+      ></i>
+    );
   };
-  
-  return (
-    <i 
-      className={`fa fa-spinner ${className}`}
-      style={{
-        fontSize: sizeClasses[size],
-        animation: 'spin 1s linear infinite',
-        color: '#00b095ff'
-      }}
-    ></i>
-  );
-};
 
   // Tạo gợi ý tìm kiếm
   const generateSuggestedSearches = () => {
@@ -576,8 +588,6 @@ Xem chi tiết tại: ${window.location.href}`;
   const handleShareFacebook = () => {
     const currentUrl = encodeURIComponent(window.location.href);
     const shareText = encodeURIComponent(createShareText());
-    console.log('Share text:', shareText);
-
     // Use Facebook share dialog with quote parameter for rich content
     const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${currentUrl}&quote=${shareText}`;
 
@@ -680,9 +690,9 @@ Xem chi tiết tại: ${window.location.href}`;
   };
 
   // Format price
-    const formatPrice = (price) => {
-        return new Intl.NumberFormat('vi-VN').format(price);
-    };
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('vi-VN').format(price);
+  };
 
   // Format date
   const formatDate = (dateString) => {
@@ -702,8 +712,36 @@ Xem chi tiết tại: ${window.location.href}`;
     return categoryMap[category] || category;
   };
 
+  // Get post type info with priority and styling
+  const getPostTypeInfo = (postType) => {
+    if (!postType) return null;
+
+    // Map priority to CSS class and star count
+    const getPriorityInfo = (priority) => {
+      console.log('Getting priority info for priority:', priority);
+      if (priority <= 1) return { class: 'post-type-vip-dac-biet-property-detail' };
+      if (priority <= 2) return { class: 'post-type-vip-noi-bat-property-detail' };
+      if (priority <= 3) return { class: 'post-type-vip-1-property-detail' };
+      if (priority <= 4) return { class: 'post-type-vip-2-property-detail' };
+      if (priority <= 5) return { class: 'post-type-vip-3-property-detail' };
+      return { class: 'post-type-thuong-property-detail' };
+    };
+
+    const priorityInfo = getPriorityInfo(postType.priority || 5);
+
+    return {
+      displayName: postType.displayName || postType.name,
+      name: postType.name,
+      priority: postType.priority || 5,
+      color: postType.color || '#6c757d',
+      cssClass: priorityInfo.class,
+      stars: postType.stars,
+      _id: postType._id
+    };
+  };
+
   if (loading) {
-    console.log('PropertyDetail: Rendering loading state');
+
     return (
       <div className="property-detail-loading">
         <LoadingSpinner size="large" />
@@ -864,9 +902,40 @@ Xem chi tiết tại: ${window.location.href}`;
             {/* Property Info */}
             <div className="property-info">
               <div className="property-header-detail">
-                <h1 className="property-title-detail">{property.title}</h1>
+                <div className="post-type-badge-property-detail">
+                  {property.packageInfo && property.packageInfo.postType && (
+                    (() => {
+                      const postTypeInfo = getPostTypeInfo(property.packageInfo.postType);
+                      console.log('Post type info for property detail:', postTypeInfo);
+                      if (!postTypeInfo) return null;
 
-
+                      return (
+                        <div 
+                          className={`post-type-container-detail ${postTypeInfo.cssClass}`}
+                          style={{
+                            backgroundColor: postTypeInfo.color,
+                            color: '#fff',
+                            textTransform: property.packageInfo.postType.textStyle || 'none'
+                          }}
+                        >
+                          {postTypeInfo.stars > 1 && (
+                            <div className="post-type-stars-property-detail">
+                              {[...Array(postTypeInfo.stars)].map((_, index) => (
+                                <i key={index} className="fa fa-star post-type-star"></i>
+                              ))}
+                            </div>
+                          )}
+                          <span className="post-type-label-property-detail">
+                            {postTypeInfo.displayName}
+                          </span>
+                        </div>
+                      );
+                    })()
+                  )}
+                </div>
+                <h1 className={`property-title-detail ${property.packageInfo?.postType ? getPostTypeInfo(property.packageInfo.postType)?.cssClass || '' : ''}`}>
+                  {property.title}
+                </h1>
               </div>
               <div className="property-actions-detail">
                 <div className="meta-stats">
@@ -958,10 +1027,28 @@ Xem chi tiết tại: ${window.location.href}`;
                   <FaMoneyBillWave />
                   <div className="gia-thue">
                     <span className="label">Giá thuê</span>
-                   <div className="label-price-detail">
-                     <span className="value">{formatPrice(property.rentPrice)}</span>
-                    <span className="per-month">VNĐ/tháng</span>
-                   </div>
+                    <div className="label-price-detail">
+                      {property.promotionPrice && property.promotionPrice > 0 ? (
+                        <>
+                          {/* Giá gốc bị gạch ngang */}
+                          <span className="price-value original-price-detail">
+                            {formatPrice(property.rentPrice)}
+                          </span>
+                          {/* Giá khuyến mãi */}
+                          <span className="price-value promotion-price-detail">
+                            {formatPrice(property.promotionPrice)}
+                          </span>
+                          <span className="per-month">VNĐ/tháng</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="price-value">
+                            {formatPrice(property.rentPrice)}
+                          </span>
+                          <span className="per-month">VNĐ/tháng</span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="highlight-item">
@@ -1068,7 +1155,17 @@ Xem chi tiết tại: ${window.location.href}`;
               <div className="owner-info-detail">
                 <div className="owner-avatar-detail">
                   {property.owner?.avatar ? (
-                    <img src={property.owner.avatar} alt={property.owner?.fullName || 'Avatar'} />
+                    <img
+                      src={getAvatarUrl(property.owner.avatar)}
+                      alt={property.owner.fullName}
+                      crossOrigin="anonymous"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+
+                        e.target.src = 'https://res.cloudinary.com/dapvuniyx/image/upload/v1755712519/avatar_gj5yhw.jpg';
+                      }}
+
+                    />
                   ) : (
                     <FaUser />
                   )}
@@ -1750,10 +1847,10 @@ Xem chi tiết tại: ${window.location.href}`;
       )}
 
       {/* ChatBot Component */}
-      <ChatBot 
+      <ChatBot
         onPropertySearch={(properties) => {
           // Handle property search results from chatbot in PropertyDetail
-          console.log('Properties from chatbot in PropertyDetail:', properties);
+
         }}
         formatPrice={formatPrice}
       />

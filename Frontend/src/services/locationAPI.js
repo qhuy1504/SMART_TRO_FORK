@@ -46,10 +46,10 @@ export const locationAPI = {
     }
   },
 
-    // New geocoding methods
-  geocodeAddress: async (address) => {
+    // New geocoding methods với address object
+  geocodeAddress: async (addressObject) => {
     try {
-      const response = await api.post('/locations/geocode', { address });
+      const response = await api.post('/locations/geocode', { address: addressObject });
       console.log('Geocode locationAPI:', response.data);
       return response.data;
     } catch (error) {

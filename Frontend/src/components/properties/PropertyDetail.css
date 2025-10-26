@@ -63,6 +63,47 @@ body{
   animation-play-state: paused;
 }
 
+.price-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #dc2626;
+}
+
+/* Giá gốc bị gạch ngang */
+.price-value.original-price-detail {
+  font-size: 13px;
+  font-weight: 500;
+  color: #9ca3af;
+  text-decoration: line-through;
+  margin-right: 5px;
+
+
+}
+
+/* Giá khuyến mãi nổi bật */
+.price-value.promotion-price-detail {
+  font-size: 20px;
+  font-weight: 800;
+  color: #dc2626;
+  position: relative;
+}
+
+/* Badge khuyến mãi */
+.price-value.promotion-price-detail::after {
+  content: "KM";
+  position: absolute;
+  top: -8px;
+  right: -20px;
+  background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(238, 90, 82, 0.3);
+}
+
 /* Hide decorations on smaller screens */
 @media (max-width: 1400px) {
   .left-decoration,
@@ -385,17 +426,43 @@ body{
 .property-header-detail {
   display: flex;
   justify-content: space-between;
+  flex-direction: column;
   align-items: flex-start;
 }
 
 .property-title-detail {
-  font-size: 24px;
+  font-size: 18px;
   font-weight: 700;
   color: #27ae60;
   line-height: 1.3;
   margin: 0;
   flex: 1;
   margin-right: 20px;
+}
+
+/* Post Type Title Colors - Màu chữ cho tiêu đề theo loại gói tin */
+.property-title-detail.post-type-vip-dac-biet {
+  color: #c60000 !important; /* Màu đỏ đậm cho VIP Đặc Biệt */
+  text-shadow: 0 1px 2px rgba(198, 0, 0, 0.3);
+  font-weight: 800;
+}
+
+.property-title-detail.post-type-vip-noi-bat {
+  color: #1a73e8 !important; /* Màu xanh dương cho VIP Nổi Bật */
+  text-shadow: 0 1px 2px rgba(26, 115, 232, 0.3);
+  font-weight: 800;
+}
+
+.property-title-detail.post-type-vip-thuong {
+  color: #ff6b35 !important; /* Màu cam cho VIP Thường */
+  text-shadow: 0 1px 2px rgba(255, 107, 53, 0.3);
+  font-weight: 750;
+}
+
+.property-title-detail.post-type-thuong {
+  color: #28a745 !important; /* Màu xanh lá cho Thường */
+  text-shadow: 0 1px 2px rgba(40, 167, 69, 0.3);
+  font-weight: 700;
 }
 
 .property-actions-detail {
@@ -2553,7 +2620,7 @@ body{
   animation: gradientFlow 3s ease-in-out infinite;
 }
 .per-month{
-  font-size: 14px;
+  font-size: 12px;
   margin-left: 5px;
   font-weight: bold;
 }
@@ -3489,4 +3556,78 @@ body{
   .comments-section-wrapper .comments-section {
     border-radius: 4px;
   }
+}
+
+/* Post Type Badge Styling for Property Detail */
+.post-type-badge-property-detail {
+  display: inline-flex;
+  align-items: center;
+
+}
+
+.post-type-container-detail {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 12px;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.post-type-label-property-detail {
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit !important;
+  background: none !important;
+  border: none !important;
+  padding: 0;
+  margin: 0;
+}
+
+.post-type-star {
+  color: inherit;
+  font-size: 10px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.post-type-stars-property-detail {
+  display: flex;
+  gap: 1px;
+  color: #ffc107;
+}
+/* Specific Post Type Styles */
+.post-type-thuong-property-detail {
+  color: #6c757d;
+  font-weight: 900;
+}
+
+.post-type-vip-1-property-detail {
+  color: #e83e8c;
+  font-weight: 900;
+  
+}
+
+.post-type-vip-2-property-detail {
+  color: #fd7e14;
+  font-weight: 900;
+  
+}
+.post-type-vip-3-property-detail {
+  color: #27ae60;
+  font-weight: 900;
+  
+}
+
+
+.post-type-vip-noi-bat-property-detail {
+  color: #dc3545;
+  font-weight: 900;
+}
+
+.post-type-vip-dac-biet-property-detail {
+  color: #8b0000;
+  font-weight: 900;
 }

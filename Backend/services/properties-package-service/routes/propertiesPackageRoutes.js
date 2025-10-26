@@ -35,10 +35,6 @@ const packageValidation = [
       return true;
     }),
   
-  body('dailyPrice')
-    .isInt({ min: 0 })
-    .withMessage('Giá hàng ngày phải là số nguyên dương'),
-  
   body('freePushCount')
     .optional()
     .isInt({ min: 0 })

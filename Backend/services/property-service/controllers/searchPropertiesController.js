@@ -37,13 +37,36 @@ const searchController = {
         isDeleted: { $ne: true }
       };
 
-      // Text search - tìm trong title và description
+      // Thêm điều kiện kiểm tra gói chưa hết hạn
+      // Chỉ hiển thị tin đăng có gói còn hiệu lực hoặc không có gói (tin miễn phí)
+      const now = new Date();
+      query.$and = [
+        {
+          $or: [
+            { 'packageInfo.expiryDate': { $gt: now } }, // Gói còn hiệu lực theo thời gian
+            { 'packageInfo.expiryDate': { $exists: false } }, // Không có thông tin gói
+            { 'packageInfo.expiryDate': null } // Gói không có ngày hết hạn
+          ]
+        },
+        {
+          $or: [
+            { 'packageInfo.isActive': true }, // Gói đang active
+            { 'packageInfo.isActive': { $exists: false } }, // Không có thông tin isActive (tin miễn phí)
+            { 'packageInfo.isActive': null } // isActive null (tin miễn phí)
+          ]
+        }
+      ];
+
+      // Text search - tìm trong title và description (cập nhật logic để kết hợp với $and của package)
       if (search && search.trim()) {
-        query.$or = [
-          { title: { $regex: search.trim(), $options: 'i' } },
-          { description: { $regex: search.trim(), $options: 'i' } },
-          { detailAddress: { $regex: search.trim(), $options: 'i' } }
-        ];
+        // Kết hợp search text với điều kiện package expiry
+        query.$and.push({
+          $or: [
+            { title: { $regex: search.trim(), $options: 'i' } },
+            { description: { $regex: search.trim(), $options: 'i' } },
+            { detailAddress: { $regex: search.trim(), $options: 'i' } }
+          ]
+        });
       }
 
       // Location filters
@@ -334,6 +357,9 @@ const searchController = {
 
       const searchTerm = q.trim();
 
+      // Thêm điều kiện kiểm tra gói chưa hết hạn cho suggestions
+      const now = new Date();
+
       // Tìm suggestions từ title và địa chỉ
       const suggestions = await Property.aggregate([
         {
@@ -341,9 +367,27 @@ const searchController = {
             approvalStatus: 'approved',
             status: 'available',
             isDeleted: { $ne: true },
-            $or: [
-              { title: { $regex: searchTerm, $options: 'i' } },
-              { detailAddress: { $regex: searchTerm, $options: 'i' } }
+            $and: [
+              {
+                $or: [
+                  { 'packageInfo.expiryDate': { $gt: now } }, // Gói còn hiệu lực theo thời gian
+                  { 'packageInfo.expiryDate': { $exists: false } }, // Không có thông tin gói
+                  { 'packageInfo.expiryDate': null } // Gói không có ngày hết hạn
+                ]
+              },
+              {
+                $or: [
+                  { 'packageInfo.isActive': true }, // Gói đang active
+                  { 'packageInfo.isActive': { $exists: false } }, // Không có thông tin isActive (tin miễn phí)
+                  { 'packageInfo.isActive': null } // isActive null (tin miễn phí)
+                ]
+              },
+              {
+                $or: [
+                  { title: { $regex: searchTerm, $options: 'i' } },
+                  { detailAddress: { $regex: searchTerm, $options: 'i' } }
+                ]
+              }
             ]
           }
         },

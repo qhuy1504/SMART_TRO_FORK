@@ -501,3 +501,58 @@
     margin: 0 10px;
   }
 }
+
+/* Price with promotion styling for slider */
+.price-with-promotion-slider {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.original-price-slider {
+  position: absolute;
+  top: -18px;
+  /* 👈 đẩy lên trên giá khuyến mãi */
+  left: 0;
+  color: #28a745;
+  font-size: 14px;
+  text-decoration: line-through;
+  opacity: 0.8;
+}
+
+.promotion-price-slider {
+  color: #dc3545;
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1.2;
+}
+
+/* Property price container styling */
+.property-price {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.property-price i {
+  color: #28a745;
+  font-size: 12px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+/* Responsive for slider promotion price */
+@media (max-width: 768px) {
+  .price-with-promotion-slider {
+    gap: 1px;
+  }
+
+  .original-price-slider {
+    font-size: 10px;
+  }
+
+  .promotion-price-slider {
+    font-size: 12px;
+  }
+}

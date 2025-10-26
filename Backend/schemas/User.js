@@ -68,7 +68,120 @@ const userSchema = new mongoose.Schema({
     isActive: {
         type: Boolean,
         default: true
-    }
+    },
+    // Package plan hiện tại của user
+    packageType: {
+        type: String,
+        enum: ['trial', 'basic', 'vip', 'premium', 'custom', 'expired'],
+        default: 'trial'
+    },
+    currentPackagePlan: {
+        packagePlanId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'PackagePlan'
+        },
+        packageInstanceId: {
+            type: mongoose.Schema.Types.ObjectId,
+            default: () => new mongoose.Types.ObjectId() // Tự động tạo instance ID mới
+        },
+        packageName: String,
+        displayName: String,
+        priority: Number,
+        color: String,
+        stars: Number,
+        freePushCount: Number,
+        usedPushCount: {
+            type: Number,
+            default: 0
+        },
+        purchaseDate: Date,
+        expiryDate: Date,
+        isActive: {
+            type: Boolean,
+            default: true
+        },
+        status: {
+            type: String,
+            enum: ['active', 'expired', 'upgraded', 'cancelled', 'renewed'],
+            default: 'active'
+        },
+        propertiesLimits: [{
+            packageType: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'PropertiesPackage'
+            },
+            limit: Number,
+            used: {
+                type: Number,
+                default: 0
+            },
+            backupUsedCount: {
+                type: Number,
+                default: 0
+            }
+        }]
+    },
+    
+    // Lịch sử các gói đã sử dụng
+    packageHistory: [{
+        packagePlanId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'PackagePlan'
+        },
+        packageInstanceId: {
+            type: mongoose.Schema.Types.ObjectId // Instance ID để phân biệt các giai đoạn của cùng gói
+        },
+        packageName: String,
+        displayName: String,
+        priority: Number,
+        color: String,
+        stars: Number,
+        freePushCount: Number,
+        usedPushCount: {
+            type: Number,
+            default: 0
+        },
+        purchaseDate: Date,
+        expiryDate: Date,
+        status: {
+            type: String,
+            enum: ['active', 'expired', 'upgraded', 'cancelled', 'renewed'],
+            default: 'active'
+        },
+        propertiesLimits: [{
+            packageType: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'PropertiesPackage'
+            },
+            limit: Number,
+            used: {
+                type: Number,
+                default: 0
+            }
+        }],
+        // Thông tin tin đăng đã được chuyển sang gói khác
+        transferredProperties: [{
+            propertyId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'Property'
+            },
+            propertyTitle: String,
+            postType: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'PropertiesPackage'
+            },
+            transferredToPackage: {
+                packagePlanId: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: 'PackagePlan'
+                },
+                displayName: String
+            },
+            transferDate: Date
+        }],
+        upgradedAt: Date, // Ngày được nâng cấp (nếu status = 'upgraded')
+        expiredAt: Date   // Ngày hết hạn thực tế (nếu status = 'expired')
+    }]
 }, {
     timestamps: true
 });

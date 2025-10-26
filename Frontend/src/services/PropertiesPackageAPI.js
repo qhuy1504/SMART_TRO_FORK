@@ -190,10 +190,7 @@ class PropertyPackageAPI {
     }
   }
 
-  // Helper method để format giá tiền
-  formatPrice(price) {
-    return new Intl.NumberFormat('vi-VN').format(price);
-  }
+
 
   // Helper method để format giá tiền
   formatPrice(price) {
@@ -208,6 +205,25 @@ class PropertyPackageAPI {
       month: '2-digit',
       day: '2-digit'
     });
+  }
+
+  // Lấy danh sách properties của user để migration
+  async getUserPropertiesForMigration() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/my-properties/migration-properties`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching user properties for migration:', error);
+      throw error;
+    }
   }
 
   // Helper method để format thời gian

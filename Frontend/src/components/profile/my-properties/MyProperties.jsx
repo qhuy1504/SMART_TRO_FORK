@@ -1,16 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { myPropertiesAPI } from '../../../services/myPropertiesAPI';
+import PaymentAPI from '../../../services/PaymentPackageAPI';
+import adminPackagePlanAPI from '../../../services/adminPackagePlanAPI';
 import EditPropertyModal from '../edit-property-modal/EditPropertyModal';
 import '../ProfilePages.css';
 import './MyProperties.css';
 import './PaymentTags.css';
-import { FaEllipsisV, FaComment  } from "react-icons/fa";
+import './PackageModals.css';
+
+import { FaEllipsisV, FaComment } from "react-icons/fa";
 
 
 const MyProperties = () => {
   const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // States
   const [properties, setProperties] = useState([]);
@@ -43,10 +49,28 @@ const MyProperties = () => {
   // Package Info Modal
   const [showPackageModal, setShowPackageModal] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState(null);
-  
+
   // Cancel Package Modal
   const [showCancelPackageModal, setShowCancelPackageModal] = useState(false);
   const [cancelingPackage, setCancelingPackage] = useState(null);
+
+  // Current Package Info Modal
+  const [showCurrentPackageModal, setShowCurrentPackageModal] = useState(false);
+  const [currentPackageInfo, setCurrentPackageInfo] = useState(null);
+
+  // Upgrade Package Modal
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [availablePackages, setAvailablePackages] = useState([]);
+  const [hasShownUpgradeModal, setHasShownUpgradeModal] = useState(false);
+
+  // Package History Modal
+  const [showPackageHistoryModal, setShowPackageHistoryModal] = useState(false);
+  const [packageHistory, setPackageHistory] = useState([]);
+  const [loadingPackageHistory, setLoadingPackageHistory] = useState(false);
+  const [expandedHistoryItems, setExpandedHistoryItems] = useState({}); // Track expanded state for each item
+
+  // User package status
+  const [userPackageInfo, setUserPackageInfo] = useState(null);
 
   // Rejected files state
   const [rejectedFiles, setRejectedFiles] = useState({ images: [], video: [] });
@@ -65,24 +89,171 @@ const MyProperties = () => {
 
   // Load properties on component mount and filter changes (bỏ filters.search để không tự động search)
   useEffect(() => {
-    loadProperties();
+    // If we have search results, re-sort them when sort options change
+    if (searchResults.length > 0 && filters.search.trim()) {
+      const sortedResults = sortProperties(searchResults);
+      setSearchResults(sortedResults);
+
+      // Update displayed properties for current page
+      const startIndex = (pagination.page - 1) * pagination.limit;
+      const endIndex = startIndex + pagination.limit;
+      setProperties(sortedResults.slice(startIndex, endIndex));
+    } else {
+      // Normal API load when not in search mode
+      loadProperties();
+    }
   }, [filters.approvalStatus, filters.sortBy, filters.sortOrder, pagination.page]);
 
   // Load properties lần đầu khi component mount
   useEffect(() => {
     loadProperties();
+    loadUserPackageInfo(); // Load thông tin gói user
   }, []);
+
+  // Kiểm tra URL parameter để mở modal nâng cấp từ file new property
+  useEffect(() => {
+    const showUpgrade = searchParams.get('showUpgradeModal');
+    if (showUpgrade === 'true') {
+      // Xóa parameter khỏi URL
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        newParams.delete('showUpgradeModal');
+        return newParams;
+      });
+
+      // Mở modal sau một chút để đảm bảo component đã render xong
+      setTimeout(() => {
+        handleShowUpgradeModal();
+      }, 500);
+    }
+  }, [searchParams, setSearchParams]);
+
+  // Helper function to check if property package allows actions
+  const canPropertyPerformActions = (property) => {
+    // Kiểm tra tin đăng có thông tin gói không
+    if (!property.packageInfo) {
+      return {
+        canPromote: false,
+        canEdit: false,
+        message: 'Tin đăng chưa có thông tin gói'
+      };
+    }
+
+    // Kiểm tra tin đăng có gói plan không
+    if (!property.packageInfo.plan) {
+      return {
+        canPromote: false,
+        canEdit: false,
+        message: 'Tin đăng chưa chọn gói'
+      };
+    }
+
+    const packagePlan = property.packageInfo.plan;
+    const packageName = packagePlan.displayName || packagePlan.name || 'Gói tin';
+
+    // Kiểm tra gói có đang active không
+    if (!property.packageInfo.isActive) {
+      return {
+        canPromote: false,
+        canEdit: false,
+        message: `${packageName} không hoạt động`
+      };
+    }
+
+    // Kiểm tra xem gói của tin đăng còn hạn không
+    const packageExpiryDate = property.packageInfo.expiryDate;
+    if (packageExpiryDate) {
+      const now = new Date();
+      const expiryDate = new Date(packageExpiryDate);
+      const isPackageExpired = expiryDate < now;
+
+      if (isPackageExpired) {
+        return {
+          canPromote: false,
+          canEdit: false,
+          message: `${packageName} đã hết hạn vào ${expiryDate.toLocaleDateString('vi-VN')}`
+        };
+      }
+    }
+
+    // Kiểm tra gói trial đặc biệt
+    const isTrialPackage = packagePlan.name === 'trial' || 
+                          packageName.toLowerCase().includes('thử') ||
+                          packageName.toLowerCase().includes('trial');
+
+    if (isTrialPackage && !property.packageInfo.isActive) {
+      return {
+        canPromote: false,
+        canEdit: false,
+        message: 'Gói dùng thử đã hết hạn'
+      };
+    }
+
+    // Nếu gói còn hạn và active, cho phép thực hiện các hành động
+    return {
+      canPromote: true,
+      canEdit: true,
+      message: `${packageName} đang hoạt động`,
+      packageName: packageName,
+      packagePlan: packagePlan
+    };
+  };
+
+  // Load user package info
+  const loadUserPackageInfo = async () => {
+    try {
+      const response = await myPropertiesAPI.getCurrentUserPackage();
+      console.log('User package info:', response);
+      if (response.success) {
+        setUserPackageInfo(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading user package info:', error);
+    }
+  };
+
+  // Check if user needs to upgrade when package limit reached or expired
+  useEffect(() => {
+    const checkUpgradeNeeded = async () => {
+      if (userPackageInfo && !hasShownUpgradeModal) {
+        let shouldShowUpgrade = false;
+
+        // Kiểm tra gói đã hết hạn
+        const now = new Date();
+        const isExpired = userPackageInfo.expiryDate && new Date(userPackageInfo.expiryDate) < now;
+
+        if (isExpired) {
+          shouldShowUpgrade = true;
+        }
+        // Kiểm tra hết lượt đăng tin
+        else if (userPackageInfo.propertiesLimits && userPackageInfo.propertiesLimits.length > 0) {
+          const hasFullLimit = userPackageInfo.propertiesLimits.some(limit =>
+            limit.used >= limit.limit
+          );
+
+          if (hasFullLimit) {
+            shouldShowUpgrade = true;
+          }
+        }
+
+      }
+    };
+
+    if (userPackageInfo) {
+      checkUpgradeNeeded();
+    }
+  }, [properties, userPackageInfo, hasShownUpgradeModal]);
 
   // State để lưu danh sách properties gốc
   const [originalProperties, setOriginalProperties] = useState([]);
-  
+
   // State để lưu toàn bộ kết quả search
   const [searchResults, setSearchResults] = useState([]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (!event.target.closest('.property-dropdown')) {
+      if (!event.target.closest('.property-dropdown-row')) {
         setActiveDropdown(null);
       }
     };
@@ -104,16 +275,32 @@ const MyProperties = () => {
       };
 
       const response = await myPropertiesAPI.getMyProperties(params);
+      console.log('API response:', response);
+
+      // Debug: Log post type info for first property
+      if (response.success && response.data.properties && response.data.properties.length > 0) {
+        const firstProperty = response.data.properties[0];
+        console.log('First property packageInfo:', firstProperty.packageInfo);
+        if (firstProperty.packageInfo?.postType) {
+          console.log('Post type info:', getPostTypeInfo(firstProperty.packageInfo.postType));
+        }
+      }
       if (response.success) {
         // console.log('Properties loaded:', response.data.properties);
-        const loadedProperties = response.data.properties || [];
+        let loadedProperties = response.data.properties || [];
+
+        // Apply client-side sorting for local search results
+        if (params.search && params.search.trim() === '') {
+          loadedProperties = sortProperties(loadedProperties);
+        }
+
         setProperties(loadedProperties);
-        
+
         // Lưu danh sách gốc khi không có search
         if (!params.search || params.search.trim() === '') {
           setOriginalProperties(loadedProperties);
         }
-        
+
         // Cập nhật pagination với dữ liệu từ params nếu có
         setPagination(prev => ({
           ...prev,
@@ -163,12 +350,12 @@ const MyProperties = () => {
   // Handle search execution (thực hiện tìm kiếm)
   const executeSearch = () => {
     const searchTerm = filters.search.trim();
-    
+
     if (!searchTerm) {
       // Nếu search rỗng, reset search results và load lại từ API
       setSearchResults([]);
       setProperties([]);
-      
+
       const resetParams = {
         approvalStatus: filters.approvalStatus,
         sortBy: filters.sortBy,
@@ -177,7 +364,7 @@ const MyProperties = () => {
         page: 1,
         limit: pagination.limit
       };
-      
+
       loadPropertiesWithParams(resetParams);
       return;
     }
@@ -185,10 +372,10 @@ const MyProperties = () => {
     // Kiểm tra nếu là tìm kiếm theo mã tin (6 ký tự hex)
     if (searchTerm.length === 6 && /^[a-fA-F0-9]{6}$/i.test(searchTerm)) {
       // Tìm kiếm theo ID trong danh sách hiện tại trước
-      const localResult = originalProperties.filter(property => 
+      const localResult = originalProperties.filter(property =>
         property._id.slice(-6).toLowerCase() === searchTerm.toLowerCase()
       );
-      
+
       if (localResult.length > 0) {
         handleSearchResults(localResult);
         return;
@@ -198,7 +385,7 @@ const MyProperties = () => {
       const localResult = originalProperties.filter(property =>
         property.title.toLowerCase().includes(searchTerm.toLowerCase())
       );
-      
+
       if (localResult.length > 0) {
         handleSearchResults(localResult);
         return;
@@ -215,34 +402,75 @@ const MyProperties = () => {
 
   // Function để xử lý kết quả search và phân trang
   const handleSearchResults = (results) => {
-    setSearchResults(results);
-    const totalPages = Math.ceil(results.length / pagination.limit);
-    
+    // Sort results according to current filters
+    const sortedResults = sortProperties(results);
+
+    setSearchResults(sortedResults);
+    const totalPages = Math.ceil(sortedResults.length / pagination.limit);
+
     // Cập nhật pagination
     setPagination(prev => ({
       ...prev,
       page: 1,
-      total: results.length,
+      total: sortedResults.length,
       totalPages: totalPages
     }));
-    
+
     // Hiển thị kết quả của trang đầu tiên
     const startIndex = 0;
     const endIndex = pagination.limit;
-    setProperties(results.slice(startIndex, endIndex));
+    setProperties(sortedResults.slice(startIndex, endIndex));
+  };
+
+  // Function to sort properties based on current filters
+  const sortProperties = (propertiesToSort) => {
+    const sorted = [...propertiesToSort];
+
+    return sorted.sort((a, b) => {
+      let aValue, bValue;
+
+      switch (filters.sortBy) {
+        case 'priority':
+          // Lấy priority từ packageInfo.postType, ưu tiên số nhỏ hơn (priority cao hơn)
+          aValue = a.packageInfo?.postType?.priority || 999;
+          bValue = b.packageInfo?.postType?.priority || 999;
+          break;
+        case 'createdAt':
+          aValue = new Date(a.createdAt);
+          bValue = new Date(b.createdAt);
+          break;
+        case 'title':
+          aValue = a.title.toLowerCase();
+          bValue = b.title.toLowerCase();
+          break;
+        case 'rentPrice':
+          aValue = a.rentPrice || 0;
+          bValue = b.rentPrice || 0;
+          break;
+        default:
+          aValue = new Date(a.createdAt);
+          bValue = new Date(b.createdAt);
+      }
+
+      if (filters.sortOrder === 'asc') {
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      } else {
+        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+      }
+    });
   };
 
   // Handle clear search - reset về trang 1 và load lại toàn bộ danh sách
   const clearSearch = () => {
     // Reset search term
     setFilters(prev => ({ ...prev, search: '' }));
-    
+
     // Reset search results
     setSearchResults([]);
 
     // Reset properties
     setProperties([]);
-    
+
     // Load lại danh sách từ API với params reset
     const resetParams = {
       approvalStatus: filters.approvalStatus,
@@ -252,7 +480,7 @@ const MyProperties = () => {
       page: 1,
       limit: pagination.limit
     };
-    
+
     loadPropertiesWithParams(resetParams);
   };
 
@@ -267,7 +495,7 @@ const MyProperties = () => {
   const handleEdit = async (property) => {
     try {
       const response = await myPropertiesAPI.getPropertyForEdit(property._id);
-    
+
       if (response.success) {
         setEditingProperty(response.data);
         setShowEditModal(true);
@@ -308,6 +536,8 @@ const MyProperties = () => {
 
   // Handle dropdown toggle
   const handleDropdownToggle = (propertyId) => {
+    console.log('Dropdown toggle clicked for property:', propertyId);
+    console.log('Current activeDropdown:', activeDropdown);
     setActiveDropdown(activeDropdown === propertyId ? null : propertyId);
   };
 
@@ -319,15 +549,59 @@ const MyProperties = () => {
 
       // Call API để promote property lên đầu trang
       const response = await myPropertiesAPI.promotePropertyToTop(property._id);
+
       if (response.success) {
-        toast.success('Đã đưa tin đăng lên đầu trang thành công');
-        loadProperties(); // Reload list
+        // Thông báo thành công với thông tin lượt đẩy và gói
+        const pushInfo = response.data?.pushCount;
+        const packageName = response.data?.packageName;
+        let successMessage = 'Đã đưa tin đăng lên đầu trang thành công';
+
+        if (packageName) {
+          successMessage += ` (${packageName})`;
+        }
+
+        if (pushInfo) {
+          successMessage += ` - Còn lại ${pushInfo.remaining} lượt đẩy`;
+        }
+
+        toast.success(successMessage);
+
+        // Reload properties để cập nhật thứ tự
+        loadProperties();
+
+        // Cập nhật thông tin gói nếu có để hiển thị lượt đẩy mới
+        if (pushInfo && userPackageInfo) {
+          setUserPackageInfo(prev => ({
+            ...prev,
+            usedPushCount: pushInfo.used,
+            freePushCount: pushInfo.total
+          }));
+        }
       } else {
         toast.error(response.message || 'Không thể đưa tin đăng lên đầu trang');
       }
     } catch (error) {
       console.error('Error promoting property:', error);
-      toast.error('Lỗi khi đưa tin đăng lên đầu trang');
+
+      // Xử lý các loại lỗi cụ thể từ backend
+      if (error.response && error.response.data) {
+        const errorData = error.response.data;
+
+        // Hiển thị thông báo lỗi chi tiết từ backend
+        if (errorData.message) {
+          toast.error(errorData.message);
+        } else {
+          toast.error('Lỗi khi đưa tin đăng lên đầu trang');
+        }
+
+        // Nếu có thông tin về lượt đẩy trong lỗi, hiển thị thêm
+        if (errorData.data && errorData.data.usedPushCount !== undefined) {
+          const { usedPushCount, freePushCount } = errorData.data;
+          console.log(`Push count info: ${usedPushCount}/${freePushCount}`);
+        }
+      } else {
+        toast.error('Lỗi kết nối khi đưa tin đăng lên đầu trang');
+      }
     }
   };
 
@@ -335,9 +609,9 @@ const MyProperties = () => {
   const handlePayment = (property) => {
     // Đóng dropdown nếu đang mở
     setActiveDropdown(null);
-    
-    // Navigate to payment page với property ID
-    window.location.href = `/profile/properties-package?propertyId=${property._id}`;
+
+    // Navigate to payment page - không cần propertyId vì thanh toán cho toàn bộ tài khoản
+    window.location.href = `/profile/properties-package`;
   };
 
   // Handle toggle status confirmation
@@ -373,12 +647,14 @@ const MyProperties = () => {
       ...prev,
       page: newPage
     }));
-    
+
     // Chỉ sử dụng search results khi có dữ liệu search và search term không rỗng
     if (searchResults.length > 0 && filters.search.trim()) {
+      // Apply sort to search results before pagination
+      const sortedResults = sortProperties(searchResults);
       const startIndex = (newPage - 1) * pagination.limit;
       const endIndex = startIndex + pagination.limit;
-      setProperties(searchResults.slice(startIndex, endIndex));
+      setProperties(sortedResults.slice(startIndex, endIndex));
     }
     // Nếu không có search results hoặc search rỗng, useEffect sẽ tự động load từ API
   };
@@ -422,10 +698,123 @@ const MyProperties = () => {
     }
   };
 
+  // Handle view current package info
+  const handleViewCurrentPackage = async () => {
+    try {
+      // Refresh thông tin gói trước khi hiển thị
+      await loadUserPackageInfo();
+
+      // API call để lấy thông tin gói hiện tại của user
+      const response = await myPropertiesAPI.getCurrentUserPackage();
+      console.log('Current package info:', response);
+      if (response.success) {
+        setCurrentPackageInfo(response.data);
+        setShowCurrentPackageModal(true);
+      } else {
+        toast.error('Không thể tải thông tin gói tin');
+      }
+    } catch (error) {
+      console.error('Error loading current package:', error);
+      toast.error('Lỗi khi tải thông tin gói tin');
+    }
+  };
+
+  // Handle show upgrade modal
+  const handleShowUpgradeModal = async () => {
+    try {
+      // API call để lấy danh sách gói có sẵn
+      const response = await adminPackagePlanAPI.getAvailablePackages();
+      console.log('Available packages:', response.data);
+      if (response.success) {
+        setAvailablePackages(response.data || []);
+        setShowUpgradeModal(true);
+      } else {
+        toast.error('Không thể tải danh sách gói tin');
+      }
+    } catch (error) {
+      console.error('Error loading available packages:', error);
+      toast.error('Lỗi khi tải danh sách gói tin');
+    }
+  };
+
+  // Handle show package history modal
+  const handleShowPackageHistoryModal = async () => {
+    try {
+      setLoadingPackageHistory(true);
+      setShowPackageHistoryModal(true);
+
+      // API call để lấy lịch sử gói
+      const response = await PaymentAPI.getPackageHistory();
+      console.log('Package history response:', response);
+
+      if (response.success) {
+        setPackageHistory(response.data.packageHistory || []);
+        console.log('Package history loaded:', response.data.packageHistory);
+      } else {
+        toast.error('Không thể tải lịch sử gói tin');
+        setPackageHistory([]);
+      }
+    } catch (error) {
+      console.error('Error loading package history:', error);
+      toast.error('Lỗi khi tải lịch sử gói tin');
+      setPackageHistory([]);
+    } finally {
+      setLoadingPackageHistory(false);
+    }
+  };
+
+  // Handle toggle package history expansion for individual items
+  const handleToggleHistoryItemExpansion = (index) => {
+    setExpandedHistoryItems(prev => {
+      // Nếu item hiện tại đang mở, đóng nó
+      if (prev[index]) {
+        return {
+          ...prev,
+          [index]: false
+        };
+      }
+
+      // Nếu item hiện tại đang đóng, đóng tất cả các item khác và mở item này
+      return {
+        [index]: true
+      };
+    });
+  };
+
+  // Handle close package history modal
+  const handleClosePackageHistoryModal = () => {
+    setShowPackageHistoryModal(false);
+    setExpandedHistoryItems({}); // Reset all expansion states
+  };
+
+  // Handle upgrade package
+  const handleUpgradePackage = (packagePlan) => {
+    console.log('Upgrading to package:', packagePlan);
+    const packageId = packagePlan._id || packagePlan.id;
+    if (!packageId) {
+      console.error('Package ID not found:', packagePlan);
+      toast.error('Lỗi: Không tìm thấy ID gói tin');
+      return;
+    }
+
+    // Chuyển đến trang payment với package đã chọn và thông tin bổ sung
+    // Upgrade không cần propertyId vì là nâng cấp cho toàn bộ tài khoản
+    const params = new URLSearchParams({
+      packageId: packageId,
+      upgrade: 'true',
+      packageName: packagePlan.displayName || packagePlan.name,
+      packagePrice: packagePlan.price || packagePlan.dailyPrice || 0,
+      durationUnit: packagePlan.durationUnit || 'month',
+      duration: packagePlan.duration ? packagePlan.duration.toString() : '1' // Số lượng tương ứng với đơn vị
+    });
+
+    window.location.href = `/profile/properties-package?${params.toString()}`;
+  };
+
   // Get status badge
   const getStatusBadge = (status) => {
     const statusConfig = {
-      pending: { class: 'status-pending', text: 'Chờ duyệt', icon: 'fa-clock-o' },
+      pending: { class: 'status-pending', text: 'Chờ duyệt', icon: 'fa-regular fa-clock' },
       approved: { class: 'status-approved', text: 'Đã duyệt', icon: 'fa-check-circle' },
       rejected: { class: 'status-rejected', text: 'Bị từ chối', icon: 'fa-times-circle' },
       hidden: { class: 'status-hidden', text: 'Đã ẩn', icon: 'fa-eye-slash' }
@@ -442,6 +831,9 @@ const MyProperties = () => {
 
   // Format price
   const formatPrice = (price) => {
+    if (price === 0) {
+      return 'Miễn phí';
+    }
     return new Intl.NumberFormat('vi-VN').format(price);
   };
 
@@ -454,6 +846,22 @@ const MyProperties = () => {
       return (num / 1000).toFixed(1) + 'k';
     }
     return num.toString();
+  };
+
+  // Calculate total posts from propertiesLimits
+  const getTotalPosts = (propertiesLimits) => {
+    if (!propertiesLimits || !Array.isArray(propertiesLimits)) {
+      return 0;
+    }
+    return propertiesLimits.reduce((total, limit) => total + (limit.limit || 0), 0);
+  };
+
+  // Format price with currency (handles free packages)
+  const formatPriceWithCurrency = (price) => {
+    if (price === 0) {
+      return 'Miễn phí';
+    }
+    return `${formatPrice(price)} VNĐ`;
   };
 
   // Format date
@@ -469,15 +877,16 @@ const MyProperties = () => {
 
   // Calculate days remaining until expiry
   const getDaysRemaining = (expiryDate) => {
+
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
-    
+
     const expiry = new Date(expiryDate);
     expiry.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
-    
+
     const diffTime = expiry - today;
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays < 0) {
       return 'Đã hết hạn';
     } else if (diffDays === 0) {
@@ -491,15 +900,19 @@ const MyProperties = () => {
 
   // Get CSS class based on days remaining
   const getDaysRemainingClass = (expiryDate) => {
+    if (!expiryDate) {
+      return 'permanent';
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
-    
+
     const expiry = new Date(expiryDate);
     expiry.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
-    
+
     const diffTime = expiry - today;
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays < 0) {
       return 'expired';
     } else if (diffDays <= 3) {
@@ -508,6 +921,75 @@ const MyProperties = () => {
       return 'warning';
     } else {
       return 'safe';
+    }
+  };
+
+  // Check if package is expired
+  const isPackageExpired = (property) => {
+    if (!property.packageInfo || !property.packageInfo.expiryDate) {
+      return false;
+    }
+
+    const now = new Date();
+    const expiryDate = new Date(property.packageInfo.expiryDate);
+
+    return now > expiryDate;
+  };
+
+  // Get package type info
+  const getPackageTypeInfo = (type) => {
+    const packageTypeOptions = {
+      basic: { label: 'GÓI CƠ BẢN', color: '#28a745' },
+      vip: { label: 'GÓI VIP', color: '#ffc107' },
+      premium: { label: 'GÓI PREMIUM', color: '#dc3545' },
+      custom: { label: 'TÙY CHỈNH', color: '#6c757d' },
+      trial: { label: 'GÓI DÙNG THỬ', color: '#17a2b8' }
+    };
+    return packageTypeOptions[type] || { label: type?.toUpperCase(), color: '#000000ff' };
+  };
+
+  // Get post type info with priority and styling
+  const getPostTypeInfo = (postType) => {
+    if (!postType) return null;
+
+    // Map priority to CSS class and star count
+    const getPriorityInfo = (priority) => {
+      console.log('Getting priority info for priority:', priority);
+      if (priority <= 1) return { class: 'post-type-vip-dac-biet' };
+      if (priority <= 2) return { class: 'post-type-vip-noi-bat' };
+      if (priority <= 3) return { class: 'post-type-vip-1' };
+      if (priority <= 4) return { class: 'post-type-vip-2' };
+      if (priority <= 5) return { class: 'post-type-vip-3' };
+      return { class: 'post-type-thuong' };
+    };
+
+    const priorityInfo = getPriorityInfo(postType.priority || 5);
+
+    return {
+      displayName: postType.displayName || postType.name,
+      name: postType.name,
+      priority: postType.priority || 5,
+      color: postType.color || '#6c757d',
+      cssClass: priorityInfo.class,
+      stars: postType.stars,
+      _id: postType._id
+    };
+  };
+
+  // Format duration display
+  const formatDuration = (packageInfo) => {
+    console.log('Formatting duration for packageInfo:', packageInfo);
+    if (packageInfo.duration && packageInfo.durationUnit) {
+      const unitLabels = {
+        'day': 'ngày',
+        'month': 'tháng',
+        'year': 'năm'
+      };
+      return `${packageInfo.duration} ${unitLabels[packageInfo.durationUnit]}`;
+    } else if (packageInfo.durationDays) {
+      return `${packageInfo.durationDays} ngày`;
+    } else {
+      return '1 tháng';
     }
   };
 
@@ -522,6 +1004,169 @@ const MyProperties = () => {
       </div>
 
       <div className="content-card-my-properties">
+        <div className="package-plan-using">
+          <button
+            className="btn-current-package"
+            onClick={handleViewCurrentPackage}
+          >
+            <i className="fa fa-star"></i>
+            {userPackageInfo
+              ? userPackageInfo.packageType === 'trial'
+                ? 'GÓI DÙNG THỬ'
+                : userPackageInfo.packageType === 'expired'
+                  ? `${userPackageInfo.displayName?.toUpperCase()} (ĐÃ HẾT HẠN)`
+                  : userPackageInfo.displayName?.toUpperCase() || 'GÓI ĐANG SỬ DỤNG'
+              : 'GÓI ĐANG SỬ DỤNG'}
+
+          </button>
+          <button
+            className="btn-upgrade-package"
+            onClick={handleShowUpgradeModal}
+          >
+            <i className="fa fa-arrow-up"></i>
+            {userPackageInfo?.packageType === 'trial' ? 'NÂNG CẤP GÓI' : 'THAY ĐỔI GÓI'}
+          </button>
+
+          <button
+            className="btn-upgrade-package-history"
+            onClick={handleShowPackageHistoryModal}
+          >
+            <i className="fa fa-history"></i>
+            <span>GÓI ĐÃ SỬ DỤNG</span>
+          </button>
+        </div>
+
+        {/* Upgrade Notification */}
+        {userPackageInfo && (
+          <div>
+            {/* Package limit or expiry notification cho user */}
+            {userPackageInfo && (() => {
+              // Kiểm tra hết hạn
+              const now = new Date();
+              const isExpired = userPackageInfo.expiryDate && new Date(userPackageInfo.expiryDate) < now;
+
+              // Kiểm tra hết lượt đăng tin
+              let isOutOfLimit = false;
+              let limitMessage = '';
+
+              if (userPackageInfo.propertiesLimits && userPackageInfo.propertiesLimits.length > 0) {
+                const fullLimits = userPackageInfo.propertiesLimits.filter(limit =>
+                  limit.used >= limit.limit
+                );
+
+                if (fullLimits.length > 0) {
+                  isOutOfLimit = true;
+                  if (fullLimits.length === userPackageInfo.propertiesLimits.length) {
+                    limitMessage = 'Bạn đã sử dụng hết lượt đăng tin trong gói.';
+                  }
+                }
+              }
+
+              // Hiển thị notification cho gói hết hạn
+              if (isExpired) {
+                return (
+                  <div className="upgrade-notification">
+                    <div className="notification-content">
+                      <i className="fa fa-exclamation-triangle"></i>
+                      <span>
+                        {userPackageInfo.packageName === 'trial'
+                          ? 'Gói dùng thử của bạn đã hết hạn.'
+                          : `${userPackageInfo.displayName} đã hết hạn.`}
+                        <strong> {userPackageInfo.packageName === 'trial' ? 'Nâng cấp' : 'Gia hạn'} gói để tiếp tục hiển thị tin, đăng thêm tin mới!</strong>
+                      </span>
+                      <button
+                        className="btn-notification-upgrade"
+                        onClick={() => {
+                          if (userPackageInfo.packageType === 'expired' && userPackageInfo.packageName !== 'trial') {
+                            // Navigate directly to renewal page for expired packages
+                            const params = new URLSearchParams({
+                              renewal: 'true',
+                              packageType: 'expired',
+                              packageName: userPackageInfo.displayName || userPackageInfo.packageName,
+                              expiredPackageId: userPackageInfo.packageId || userPackageInfo._id,
+                              // Thêm thông tin gói để tính giá
+                              packagePrice: userPackageInfo.price || 0,
+                              durationUnit: userPackageInfo.durationUnit || 'month',
+                              duration: userPackageInfo.duration ? userPackageInfo.duration.toString() : '1',
+
+                            });
+                            window.location.href = `/profile/properties-package?${params.toString()}`;
+                          } else {
+                            // Show upgrade modal for trial packages
+                            handleShowUpgradeModal();
+                          }
+                        }}
+                      >
+                        <i className="fa fa-arrow-up"></i>
+                        <span>{userPackageInfo.packageName === 'trial' ? 'Nâng cấp ngay' : 'Gia hạn ngay'}</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Hiển thị notification cho hết lượt đăng tin
+              if (isOutOfLimit) {
+                return (
+                  <div className="upgrade-notification">
+                    <div className="notification-content">
+                      <i className="fa fa-exclamation-triangle"></i>
+                      <span>
+                        {limitMessage}
+                        <strong> Nâng cấp gói để mở rộng thêm số lượng tin đăng!</strong>
+                      </span>
+                      <button
+                        className="btn-notification-upgrade"
+                        onClick={() => {
+                          // Always show upgrade modal for out of limit cases
+                          handleShowUpgradeModal();
+                        }}
+                      >
+                        <i className="fa fa-arrow-up"></i>
+                        <span>Nâng cấp ngay</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
+              return null;
+            })()}
+
+            {/* Paid package success notification */}
+            {userPackageInfo.packageType && (
+              <div className="package-success-notification">
+                <div className="notification-content">
+                  {userPackageInfo.packageType !== 'expired' && (
+                    <>
+                      <i className="fa fa-check-circle"></i>
+                      <span>
+                        Bạn đang sử dụng <strong>{userPackageInfo.displayName}</strong>.
+                        Tận hưởng các quyền lợi đặc biệt!
+                      </span>
+                    </>
+                  )}
+                  <div className="package-stats">
+                    <span className="stat-item">
+                      <i className="fa fa-list"></i>
+                      Đã đăng: {properties.length} tin
+                    </span>
+                    <span className="stat-item">
+                      <i className="fa fa-calendar"></i>
+                      Hết hạn: {userPackageInfo.expiryDate ? (() => {
+                        const now = new Date();
+                        const expiryDate = new Date(userPackageInfo.expiryDate);
+                        const isExpired = now > expiryDate;
+                        return isExpired ? 'Đã hết hạn' : expiryDate.toLocaleDateString('vi-VN');
+                      })() : 'Vô thời hạn'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Filters & Search */}
         <div className="properties-controls">
           <div className="controls-left">
@@ -536,7 +1181,7 @@ const MyProperties = () => {
                 title="Nhập tiêu đề để tìm theo tên hoặc nhập 6 ký tự cuối của mã tin để tìm chính xác. Ấn Enter hoặc click nút tìm kiếm để thực hiện."
               />
               {filters.search && (
-                <button 
+                <button
                   type="button"
                   className="clear-search-btn-my-properties"
                   onClick={clearSearch}
@@ -545,7 +1190,7 @@ const MyProperties = () => {
                   <i className="fa fa-times"></i>
                 </button>
               )}
-              <button 
+              <button
                 type="button"
                 className="search-btn-my-properties"
                 onClick={executeSearch}
@@ -616,203 +1261,294 @@ const MyProperties = () => {
             </div>
           ) : (
             <>
-              <div className="properties-grid">
+              <div className="properties-list">
                 {properties.map(property => (
-                  <div key={property._id} className="property-card">
-                    <div className="property-image">
+                  <div key={property._id} className="property-row">
+                    {/* Image Section - Left */}
+                    <div className="property-image-section">
                       {property.images && property.images.length > 0 ? (
                         <img
                           src={property.images[0]}
                           alt={property.title}
+                          className="property-thumbnail"
                           onError={(e) => {
                             e.target.src = '/images/placeholder.jpg';
                           }}
                         />
                       ) : (
-                        <div className="no-image">
+                        <div className="no-image-placeholder">
                           <i className="fa fa-home"></i>
                         </div>
                       )}
 
-                      {/* Property ID Tag - Mã tin */}
-                      <div className="property-id-tag">
-                        <span className="id-tag">
+                      {/* Property ID Overlay */}
+                      <div className="property-id-overlay">
+                        <span className="id-badge">
                           <i className="fa fa-tag"></i>
-                          {property._id.slice(-6).toUpperCase()}
+                          #{property._id.slice(-6).toUpperCase()}
                         </span>
                       </div>
-                      
-                      <div className="property-status">
-                        {getStatusBadge(property.approvalStatus)}
-                      </div>
-                      {/* Payment Status Tag - hiển thị cho bài từ thứ 4 trở đi */}
-                      {property.postOrder && property.postOrder > 3 && (
-                        <div className="payment-status-tag">
-                          {property.packageStatus === 'cancelled' ? (
-                            <span className="cancelled-tag">
-                              <i className="fa fa-ban"></i>
-                              ĐÃ HỦY GÓI
-                            </span>
-                          ) : property.isPaid ? (
-                            <span className="paid-tag">
-                              <i className="fa fa-check-circle"></i>
-                              ĐÃ THANH TOÁN
-                            </span>
-                          ) : (
-                            <span className="unpaid-tag">
-                              <i className="fa fa-exclamation-triangle"></i>
-                              CHƯA THANH TOÁN
-                            </span>
-                          )}
-                        </div>
-                      )}                      {/* Dropdown Menu - hiện với pending, approved và rejected */}
-                      {(property.approvalStatus === 'pending' || property.approvalStatus === 'approved' || property.approvalStatus === 'rejected') && (
-                        <div className="property-dropdown">
-                          <button
-                            className="dropdown-toggle"
-                            onClick={() => handleDropdownToggle(property._id)}
-                          >
-                            <FaEllipsisV className="text-black cursor-pointer" />
-                          </button>
+                      {/* Package Status */}
+                      <div className="property-id-overlay-status-payment">
+                        {property.packageInfo && (
+                          <div className="payment-status-inline">
+                            {(() => {
+                              // Kiểm tra xem tin này có packageInfo không
+                              if (!property.packageInfo.plan) {
+                                return (
+                                  <span className="status-tag unpaid">
+                                    <i className="fa fa-exclamation-triangle"></i>
+                                    CẦN CHỌN GÓI
+                                  </span>
+                                );
+                              }
 
-                          {activeDropdown === property._id && (
-                            <div className="dropdown-menu">
-                              {property.approvalStatus === 'approved' && (
-                                <>
-                                  <button
-                                    className="dropdown-item"
-                                    onClick={() => handlePromoteProperty(property)}
-                                  >
-                                    <i className="fa fa-arrow-up"></i>
-                                    Đưa tin lên đầu trang
-                                  </button>
-                                  <button
-                                    className="dropdown-item"
-                                    onClick={() => handleToggleStatusConfirm(property)}
-                                  >
-                                    <i className={`fa ${property.status === 'available' ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                                    {property.status === 'available' ? 'Ẩn tin đăng' : 'Hiện tin đăng'}
-                                  </button>
-                                </>
-                              )}
-                              
-                              {/* Nút xóa - hiển thị cho tất cả trạng thái */}
-                              <button
-                                className="dropdown-item delete-item"
-                                onClick={() => handleDeleteConfirm(property)}
-                              >
-                                <i className="fa fa-trash"></i>
-                                Xóa tin đăng
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                              // Kiểm tra xem tin này có đang active không
+                              if (property.packageInfo.isActive) {
+                                return (
+                                  <span className="status-tag paid">
+                                    <i className="fa fa-check-circle"></i>
+                                    {property.packageInfo.plan?.displayName?.toUpperCase() || 'ĐÃ THANH TOÁN'}
+                                  </span>
+                                );
+                              }
 
-                    <div className="property-info">
-                      <h3 className="property-title">{property.title}</h3>
-                      <div className="property-details">
-                        <div className="detail-item">
-                          <i className="fa fa-money"></i>
-                          <span>{formatPrice(property.rentPrice)}</span>
-                          <span className="currency">VNĐ/tháng</span>
-                        </div>
-                        <div className="detail-item">
-                          <i className="fa fa-expand"></i>
-                          <span>{property.area}m²</span>
-                        </div>
-                        <div className="detail-item">
-                          <i className="fa fa-map-marker"></i>
-                          <span>{property.location?.detailAddress}, {property.location?.wardName}, {property.location?.districtName},{property.location?.provinceName}</span>
-                        </div>
-                        <div className="detail-item">
-                          <i className="fa fa-calendar"></i>
-                          <span>Đăng: {formatDate(property.createdAt)}</span>
-                        </div>
-                      </div>
+                              // Kiểm tra xem tin này có phải từ gói trial không (dựa vào plan name hoặc packageType)
+                              const isTrialPost = property.packageInfo.plan?.name === 'trial' || 
+                                                property.packageInfo.plan?.displayName?.toLowerCase().includes('thử') ||
+                                                property.packageInfo.plan?.displayName?.toLowerCase().includes('trial');
 
-                     
+                              if (isTrialPost) {
+                                return (
+                                  <span className="status-tag expired">
+                                    <i className="fa fa-gift"></i>
+                                    GÓI DÙNG THỬ - HẾT HẠN
+                                  </span>
+                                );
+                              }
 
-                      <div className="property-stats">
-                        <div className="stat-item">
-                          <i className="fa fa-eye"></i>
-                          <span>{formatNumber(property.views || 0)} lượt xem</span>
-                        </div>
-                        <div className="stat-item">
-                          <i className="fa fa-comment"></i>
-                          <span>{formatNumber(property.comments || 0)} bình luận</span>
-                        </div>
-                        <div className="stat-item">
-                          <i className="fa fa-heart"></i>
-                          <span>{formatNumber(property.favorites || 0)} yêu thích</span>
-                        </div>
-                      </div>
-                       {/* Fixed section cho package và payment status */}
-                      <div className="package-payment-fixed-section">
-                        {/* Package Info Button - chỉ hiển thị button khi có packageInfo, đã thanh toán và gói chưa bị hủy */}
-                        {property.packageInfo && property.packageInfo.isActive && property.isPaid && property.packageStatus !== 'cancelled' && (
-                          <div className="package-button-section">
-                            <button
-                              className="btn btn-package-info"
-                              onClick={() => handleViewPackageInfo(property)}
-                            >
-                              <i className="fa fa-star"></i>
-                              GÓI ĐANG SỬ DỤNG
-                            </button>
+                              // Các tin khác đã hết hạn
+                              return (
+                                <span className="status-tag expired">
+                                  <i className="fa-solid fa-circle-exclamation"></i>
+                                  {property.packageInfo.plan?.displayName?.toUpperCase() || 'GÓI'} HẾT HẠN
+                                </span>
+                              );
+                            })()}
                           </div>
                         )}
 
-                      
+                      </div>
+                      {/* Post Type Badge */}
+                      <div className="property-id-overlay-post-type">
+                        {property.packageInfo && property.packageInfo.postType && (
+                          <div className="post-type-inline">
+                            {(() => {
+                              const postTypeInfo = getPostTypeInfo(property.packageInfo.postType);
+                              console.log('Post type info for property', property._id, ':', postTypeInfo);
+                              if (!postTypeInfo) return null;
+
+                              return (
+                                <span
+                                  className={`post-type-badge-my-properties ${postTypeInfo.cssClass}`}
+                                  style={{
+                                    backgroundColor: postTypeInfo.color,
+                                    color: '#fff',
+                                    border: `2px solid ${postTypeInfo.color}`,
+                                    fontWeight: 'bold'
+                                  }}
+                                >
+                                  {postTypeInfo.stars > 0 && (
+                                    <div className="post-type-stars-my-properties">
+                                      {[...Array(postTypeInfo.stars)].map((_, index) => (
+                                        <i key={index} className="fa fa-star star-icon-my-properties"></i>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {postTypeInfo.displayName}
+
+                                </span>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Content Section - Center */}
+                    <div className="property-content-section">
+                      <div className="property-header-row">
+                        <h3 className="property-title-row">{property.title}</h3>
+                        <div className="status-group-row">
+                          <div className="property-status-row">
+                            {getStatusBadge(property.approvalStatus)}
+                          </div>
+
+                        </div>
                       </div>
 
-                      <div className="property-actions">
-                        {/* Nút Sửa - chỉ hiện ở pending và approved, không hiện ở rejected */}
-                        {property.approvalStatus !== 'rejected' && (
-                          <button
-                            className="btn btn-outline btn-edit"
-                            onClick={() => handleEdit(property)}
-                          >
-                            <i className="fa fa-edit"></i>
-                            Sửa
-                          </button>
-                        )}
-
-                        {/* Logic thanh toán dựa trên thứ tự bài đăng */}
-                        {property.approvalStatus === 'pending' && (
-                          <>
-                            {/* 3 bài đầu: Miễn phí, không hiện nút thanh toán */}
-                            {(!property.postOrder || property.postOrder <= 3) ? (
-                              <div className="free-post-notice">
-                                <span className="free-tag">
-                                  <i className="fa fa-gift"></i>
-                                  MIỄN PHÍ
-                                </span>
+                      <div className="property-details-row">
+                        <div className="price-area-group">
+                          <div className="price-info-my-properties">
+                            <i className="fa fa-money"></i>
+                            {property.promotionPrice && property.promotionPrice > 0 ? (
+                              <div className="price-with-promotion">
+                                <span className="original-price-my-properties">{formatPrice(property.rentPrice)}</span>
+                                <span className="promotion-price">{formatPrice(property.promotionPrice)} VNĐ/tháng</span>
                               </div>
                             ) : (
-                              /* Từ bài thứ 4: Hiển thị nút thanh toán khi chưa thanh toán HOẶC đã hủy gói */
-                              (!property.isPaid || property.packageStatus === 'cancelled') && (
-                                <button
-                                  className="btn btn-primary btn-payment"
-                                  onClick={() => handlePayment(property)}
-                                >
-                                  <i className="fa fa-credit-card"></i>
-                                  {property.packageStatus === 'cancelled' ? 'Chọn gói mới' : 'Thanh toán'}
-                                </button>
-                              )
+                              <span className="price-text">{formatPrice(property.rentPrice)} VNĐ/tháng</span>
                             )}
-                          </>
-                        )}
+                          </div>
+                          <div className="area-info">
+                            <i className="fa fa-expand"></i>
+                            <span>{property.area}m²</span>
+                          </div>
+                        </div>
 
-                        {/* Trạng thái rejected: chỉ Lý do + Dropdown */}
+                        <div className="location-row">
+                          <i className="fa fa-map-marker"></i>
+                          <span className="location-text">
+                            {property.location?.detailAddress}, {property.location?.wardName}, {property.location?.districtName}, {property.location?.provinceName}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="property-meta-row">
+                        <div className="meta-left">
+                          <div className="date-info">
+                            <i className="fa fa-calendar"></i>
+                            <span>Đăng: {formatDate(property.createdAt)}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="property-meta-row">
+                        <div className="property-stats-row">
+                          <div className="stat-item-row">
+                            <i className="fa fa-eye"></i>
+                            <span>{formatNumber(property.views || 0)}</span>
+                          </div>
+                          <div className="stat-item-row">
+                            <i className="fa fa-comment"></i>
+                            <span>{formatNumber(property.comments || 0)}</span>
+                          </div>
+                          <div className="stat-item-row">
+                            <i className="fa fa-heart"></i>
+                            <span>{formatNumber(property.favorites || 0)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions Section - Right */}
+                    <div className="property-actions-section">
+                      <div className="actions-top">
+                        {/* Dropdown Menu */}
+                        {(property.approvalStatus === 'pending' || property.approvalStatus === 'approved' || property.approvalStatus === 'rejected') && (
+                          <div className="property-dropdown-row">
+                            <button
+                              className="dropdown-toggle-row"
+                              onClick={() => handleDropdownToggle(property._id)}
+                            >
+                              <FaEllipsisV />
+                            </button>
+
+                            {activeDropdown === property._id && (
+                              <div className="dropdown-menu-row">
+                                {property.approvalStatus === 'approved' && (() => {
+                                  const packageCheck = canPropertyPerformActions(property);
+                                  return (
+                                    <>
+                                      {packageCheck.canPromote ? (
+                                        <button
+                                          className="dropdown-item-row"
+                                          onClick={() => handlePromoteProperty(property)}
+                                          title={packageCheck.message}
+                                        >
+                                          <i className="fa fa-arrow-up"></i>
+                                          Đẩy tin
+                                        </button>
+                                      ) : (
+                                        <button
+                                          className="dropdown-item-row disabled"
+                                          disabled
+                                          title={packageCheck.message}
+                                          style={{
+                                            opacity: 0.5,
+                                            cursor: 'not-allowed',
+                                            color: '#999'
+                                          }}
+                                        >
+                                          <i className="fa fa-arrow-up"></i>
+                                          Đẩy tin ({packageCheck.packageName ? `${packageCheck.packageName} hết hạn` : 'Gói hết hạn'})
+                                        </button>
+                                      )}
+                                      <button
+                                        className="dropdown-item-row"
+                                        onClick={() => handleToggleStatusConfirm(property)}
+                                      >
+                                        <i className={`fa ${property.status === 'available' ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                        {property.status === 'available' ? 'Ẩn tin' : 'Hiện tin'}
+                                      </button>
+                                    </>
+                                  );
+                                })()}
+
+                                <button
+                                  className="dropdown-item-row delete-item"
+                                  onClick={() => handleDeleteConfirm(property)}
+                                >
+                                  <i className="fa fa-trash"></i>
+                                  Xóa tin đăng
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="actions-main">
+
+                        {/* Edit Button */}
+                        {property.approvalStatus !== 'rejected' && (() => {
+                          const packageCheck = canPropertyPerformActions(property);
+                          return packageCheck.canEdit ? (
+                            <button
+                              className="btn-row btn-edit-row"
+                              onClick={() => handleEdit(property)}
+                              title={packageCheck.message}
+                            >
+                              <i className="fa fa-edit"></i>
+                              Sửa
+                            </button>
+                          ) : (
+                            <button
+                              className="btn-row btn-edit-row disabled"
+                              disabled
+                              title={packageCheck.message}
+                              style={{
+                                opacity: 0.5,
+                                cursor: 'not-allowed',
+                                backgroundColor: '#f5f5f5',
+                                color: '#999',
+                                border: '1px solid #000000ff'
+                              }}
+                            >
+                              <i className="fa fa-edit"></i>
+                              Sửa ({packageCheck.packageName ? `${packageCheck.packageName} hết hạn` : 'Gói hết hạn'})
+                            </button>
+                          );
+                        })()}
+
+                        {/* Rejected Status */}
                         {property.approvalStatus === 'rejected' && (
                           <button
-                            className="btn btn-info btn-view-detail"
+                            className="btn-row btn-reason-row"
                             onClick={() => handleViewDetail(property)}
-                            title="Xem chi tiết và lý do từ chối"
                           >
                             <i className="fa fa-eye"></i>
-                            Lý do
+                            Xem lý do
                           </button>
                         )}
                       </div>
@@ -834,13 +1570,69 @@ const MyProperties = () => {
                       Trước
                     </button>
 
-                    <div className="pagination-info-my-properties">
-                      Trang {pagination.page} / {pagination.totalPages}
-                      <span className="total-info">
-                        ({pagination.total} tin đăng)
-                      </span>
-                    </div>
+                    {/* Page Numbers */}
+                    <div className="pagination-numbers">
+                      {(() => {
+                        const totalPages = pagination.totalPages;
+                        const currentPage = pagination.page;
+                        const pages = [];
 
+                        // Logic để hiển thị các trang
+                        if (totalPages <= 7) {
+                          // Nếu tổng số trang <= 7, hiển thị tất cả
+                          for (let i = 1; i <= totalPages; i++) {
+                            pages.push(i);
+                          }
+                        } else {
+                          // Nếu > 7 trang, hiển thị thông minh
+                          if (currentPage <= 4) {
+                            // Trang hiện tại ở đầu: 1 2 3 4 5 ... last
+                            for (let i = 1; i <= 5; i++) {
+                              pages.push(i);
+                            }
+                            pages.push('...');
+                            pages.push(totalPages);
+                          } else if (currentPage >= totalPages - 3) {
+                            // Trang hiện tại ở cuối: 1 ... n-4 n-3 n-2 n-1 n
+                            pages.push(1);
+                            pages.push('...');
+                            for (let i = totalPages - 4; i <= totalPages; i++) {
+                              pages.push(i);
+                            }
+                          } else {
+                            // Trang hiện tại ở giữa: 1 ... current-1 current current+1 ... last
+                            pages.push(1);
+                            pages.push('...');
+                            for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+                              pages.push(i);
+                            }
+                            pages.push('...');
+                            pages.push(totalPages);
+                          }
+                        }
+
+                        return pages.map((page, index) => {
+                          if (page === '...') {
+                            return (
+                              <span key={`ellipsis-${index}`} className="pagination-ellipsis">
+                                ...
+                              </span>
+                            );
+                          }
+
+                          return (
+                            <button
+                              key={page}
+                              className={`pagination-number-btn ${page === currentPage ? 'active' : ''}`}
+                              onClick={() => handlePageChange(page)}
+                              disabled={page === currentPage}
+                            >
+                              {page}
+                            </button>
+                          );
+                        });
+                      })()}
+                    </div>
                     <button
                       className="pagination-btn-my-properties"
                       disabled={pagination.page === pagination.totalPages}
@@ -856,6 +1648,201 @@ const MyProperties = () => {
           )}
         </div>
       </div>
+
+      {/* Current Package Info Modal có thông tin gói tin hiện tại */}
+      {showCurrentPackageModal && currentPackageInfo && (
+        <div className="modal-overlay-current-package" onClick={() => setShowCurrentPackageModal(false)}>
+          <div className="current-package-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-current-package">
+              <h2>
+                <i className="fa fa-star"></i>
+                Gói tin đang sử dụng
+              </h2>
+              <button
+                className="close-btn-current-package"
+                onClick={() => setShowCurrentPackageModal(false)}
+              >
+                <i className="fa fa-times"></i>
+              </button>
+            </div>
+
+            <div className="modal-content-current-package">
+              <div className="current-package-info">
+
+
+                <div className="paid-package-info">
+                  <div className="package-header-paid">
+                    <div className="package-badge-paid" style={{ backgroundColor: currentPackageInfo.color || '#007bff' }}>
+                      <i className="fa fa-star"></i>
+                      {currentPackageInfo.packageType === 'expired'
+                        ? `${currentPackageInfo.displayName} (ĐÃ HẾT HẠN)`
+                        : currentPackageInfo.displayName}
+                    </div>
+                    <div className="package-price">
+                      <span className="price-amount">{formatPriceWithCurrency(currentPackageInfo.price)}</span>
+                      <span className="price-period">/{formatDuration(currentPackageInfo)}</span>
+                    </div>
+                  </div>
+
+                  <div className="package-timeline-current">
+                    <div className="timeline-item-current">
+                      <i className="fa fa-play-circle text-success"></i>
+                      <div className="timeline-content">
+                        <strong>Ngày bắt đầu</strong>
+                        <span>{formatDate(currentPackageInfo.startDate)}</span>
+                      </div>
+                    </div>
+                    <div className="timeline-item-current">
+                      <i className="fa fa-stop-circle text-danger"></i>
+                      <div className="timeline-content">
+                        <strong>Ngày hết hạn</strong>
+                        <span>{formatDate(currentPackageInfo.expiryDate)}</span>
+                      </div>
+                    </div>
+                    <div className="timeline-item-current">
+                      <i className={`fa fa-clock ${getDaysRemainingClass(currentPackageInfo.expiryDate)}`}></i>
+                      <div className="timeline-content">
+                        <strong>Thời gian còn lại</strong>
+                        <span className={`remaining-text ${getDaysRemainingClass(currentPackageInfo.expiryDate)}`}>
+                          {getDaysRemaining(currentPackageInfo.expiryDate)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="package-usage-stats">
+                    <h4>
+                      <i className="fa fa-chart-bar"></i>
+                      Thống kê sử dụng
+                    </h4>
+                    <div className="usage-grid">
+                      {currentPackageInfo.propertiesLimits && currentPackageInfo.propertiesLimits.map((limit, index) => (
+                        <div key={index} className="usage-item">
+                          <div className="usage-header">
+                            <div className="post-type-info">
+                              <span
+                                className="post-type-badge"
+                                style={{
+                                  backgroundColor: limit.packageType.color || '#007bff',
+                                  color: '#fff'
+                                }}
+                              >
+                                {limit.packageType.displayName}
+                              </span>
+                              {limit.packageType.priority && limit.packageType.priority <= 6 && (
+                                <div className="post-type-stars">
+                                  {[...Array(Math.min(5 - limit.packageType.priority + 1, 5))].map((_, starIndex) => (
+                                    <i key={starIndex} className="fa fa-star star-icon"></i>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <span className="usage-numbers">{limit.used || 0}/{limit.limit}</span>
+                          </div>
+                          <div className="usage-bar">
+                            <div
+                              className="usage-progress"
+                              style={{
+                                width: `${Math.min(((limit.used || 0) / limit.limit) * 100, 100)}%`,
+                                backgroundColor: limit.packageType.color || '#007bff'
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="push-count-section">
+                        <h4>
+                          <i className="fa fa-arrow-up"></i>
+                          Lượt đẩy tin
+                        </h4>
+                        <div className="push-count-stats">
+                          <div className="push-count-info">
+                            <div className="push-count-header">
+                              <span className="push-count-label">Đã sử dụng</span>
+                              <span className="push-count-numbers">
+                                {currentPackageInfo.usedPushCount || 0}/{currentPackageInfo.freePushCount || 0}
+                              </span>
+                            </div>
+                            <div className="push-count-bar">
+                              <div
+                                className="push-count-progress"
+                                style={{
+                                  width: `${Math.min(((currentPackageInfo.usedPushCount || 0) / (currentPackageInfo.freePushCount || 1)) * 100, 100)}%`
+                                }}
+                              ></div>
+                            </div>
+                            <div className="push-count-remaining">
+                              <i className="fa fa-gift"></i>
+                              <span>Còn lại: {Math.max((currentPackageInfo.freePushCount || 0) - (currentPackageInfo.usedPushCount || 0), 0)} lượt</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="package-features-current">
+                    <h4>
+                      <i className="fa fa-star"></i>
+                      Quyền lợi gói tin
+                    </h4>
+                    <ul className="features-list-my-properties">
+                      <li><i className="fa fa-check"></i> Tin được ưu tiên hiển thị</li>
+                      <li><i className="fa fa-check"></i> Đánh dấu tin VIP với màu nổi bật</li>
+                      <li><i className="fa fa-check"></i> Hỗ trợ khách hàng ưu tiên</li>
+                    </ul>
+
+
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <div className="modal-footer-current-package">
+              {currentPackageInfo.packageType === 'trial' ||
+                (currentPackageInfo.expiryDate && getDaysRemaining(currentPackageInfo.expiryDate).includes('hết hạn')) ? (
+                <button
+                  className="btn btn-upgrade-primary"
+                  onClick={() => {
+                    setShowCurrentPackageModal(false);
+                    handleShowUpgradeModal();
+                  }}
+                >
+                  <i className="fa fa-arrow-up"></i>
+                  Nâng cấp gói ngay
+                </button>
+              ) : userPackageInfo?.packageType === 'expired' && userPackageInfo?.packageName !== 'trial' ? (
+                <button
+                  className="btn btn-renewal-primary"
+                  onClick={() => {
+                    setShowCurrentPackageModal(false);
+                    // Navigate to properties-package page for renewal
+                    const params = new URLSearchParams({
+                      renewal: 'true',
+                      packageType: 'expired',
+                      packageName: currentPackageInfo.displayName || currentPackageInfo.packageName,
+                      expiredPackageId: currentPackageInfo.packageId || currentPackageInfo._id
+                    });
+                    window.location.href = `/profile/properties-package?${params.toString()}`;
+                  }}
+                >
+                  <i className="fa fa-refresh"></i>
+                  Gia hạn ngay
+                </button>
+              ) : (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setShowCurrentPackageModal(false)}
+                >
+                  <i className="fa fa-check"></i>
+                  Đã hiểu
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Package Info Modal */}
       {showPackageModal && selectedPackage && (
@@ -876,7 +1863,7 @@ const MyProperties = () => {
 
             <div className="modal-content-package">
               <div className="package-detail-content">
-        
+
 
                 <div className="package-info-detail">
                   <div className="package-name-detail">
@@ -916,9 +1903,9 @@ const MyProperties = () => {
                         <div className="feature-item">
                           <i className="fa fa-palette text-info"></i>
                           <span>
-                            Màu nổi bật: 
-                            <span 
-                              className="color-swatch" 
+                            Màu nổi bật:
+                            <span
+                              className="color-swatch"
                               style={{ backgroundColor: selectedPackage.packageInfo.color }}
                               title={selectedPackage.packageInfo.color}
                             ></span>
@@ -1008,7 +1995,7 @@ const MyProperties = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="modal-footer-package">
               <button
                 className="btn btn-cancel-package"
@@ -1017,6 +2004,203 @@ const MyProperties = () => {
                 <i className="fa fa-times-circle"></i>
                 Hủy gói
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upgrade Package Modal */}
+      {showUpgradeModal && (
+        <div className="modal-overlay-upgrade" onClick={() => setShowUpgradeModal(false)}>
+          <div className="upgrade-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-upgrade">
+              <h2>
+                <i className="fa fa-arrow-up"></i>
+                Chọn gói tin phù hợp
+              </h2>
+              <button
+                className="close-btn-upgrade"
+                onClick={() => setShowUpgradeModal(false)}
+              >
+                <i className="fa fa-times"></i>
+              </button>
+            </div>
+
+            <div className="modal-content-upgrade">
+              <div className="upgrade-notice-header">
+                <div className="notice-content">
+                  <i className="fa fa-info-circle"></i>
+                  <span>Chọn gói tin phù hợp để tận dụng tối đa hiệu quả đăng tin của bạn</span>
+                </div>
+              </div>
+
+              <div className="packages-grid">
+
+
+                {/* Available Packages */}
+                {availablePackages.map((packagePlan) => {
+                  const isCurrentPackage = userPackageInfo?.packageId === packagePlan._id ||
+                    userPackageInfo?.packageName === packagePlan.name;
+
+                  // Check if this is trial package and user is using a different package
+                  const isTrialPackageButUserHasOther = packagePlan.name === 'trial' &&
+                    userPackageInfo?.packageName &&
+                    userPackageInfo.packageName !== 'trial';
+
+                  // Check if this is the expired package
+                  const isExpiredPackage = userPackageInfo?.packageType === 'expired' &&
+                    (userPackageInfo?.packageId === packagePlan._id || userPackageInfo?.packageName === packagePlan.name);
+
+                  // Debug log
+                  if (packagePlan.name === 'trial') {
+                    console.log('Trial package check:', {
+                      packagePlan: packagePlan.name,
+                      userPackageName: userPackageInfo?.packageName,
+                      isTrialPackageButUserHasOther
+                    });
+                  }
+
+                  return (
+                    <div key={packagePlan._id} className={`package-card ${packagePlan.name} ${isCurrentPackage ? 'package-current' : ''} ${isTrialPackageButUserHasOther ? 'package-used' : ''} ${isExpiredPackage ? 'package-expired' : ''}`}>
+
+                      <div className="package-header-properties-plan">
+                        <div className="package-badge" style={{ backgroundColor: isExpiredPackage ? '#dc3545' : 'black' }}>
+                          <i className="fa fa-star"></i>
+                          {isExpiredPackage ? `${packagePlan.displayName}` : packagePlan.displayName}
+                        </div>
+                        <div className="package-price-plan">
+                          <span className="price-amount">{formatPriceWithCurrency(packagePlan.price)}</span>
+                          <span className="price-period">/{formatDuration(packagePlan)}</span>
+                        </div>
+                      </div>
+
+                      <div className="package-features">
+                        <h5>
+                          <i className="fa fa-list"></i>
+                          Quyền lợi gói tin
+                        </h5>
+                        <ul>
+                          {packagePlan.propertiesLimits && packagePlan.propertiesLimits.map((limit, index) => (
+                            <li key={index}>
+                              <i className="fa fa-check" style={{ color: limit.packageType.color }}></i>
+                              {limit.limit} tin {limit.packageType.displayName}
+                            </li>
+                          ))}
+                          <li>
+                            <i className="fa fa-arrow-up"></i>
+                            {packagePlan.freePushCount} lượt đẩy tin miễn phí
+                          </li>
+
+                          {packagePlan.name !== 'trial' && (
+                            <>
+                              <li>
+                                <i className="fa fa-headset"></i>
+                                Hỗ trợ khách hàng ưu tiên
+                              </li>
+                              <li>
+                                <i className="fa fa-star"></i>
+                                Tin được ưu tiên hiển thị
+                              </li>
+                            </>
+                          )}
+
+                        </ul>
+                      </div>
+
+                      <div className="package-action">
+                        {isCurrentPackage && userPackageInfo?.packageType !== 'expired' ? (
+                          <>
+                            <button className="btn-package active" disabled>
+                              <i className="fa fa-check"></i>
+                              Gói hiện tại
+                            </button>
+                          </>
+                        ) : isCurrentPackage &&
+                          userPackageInfo?.packageType === 'expired' &&
+                          userPackageInfo?.packageName === 'trial' ? (
+                          <button className="btn-package expired" disabled>
+                            <i className="fa fa-exclamation-circle"></i>
+                            ĐÃ HẾT HẠN
+                          </button>
+                        ) : isExpiredPackage && userPackageInfo?.packageName !== 'trial' ? (
+                          <button
+                            className="btn-notification-renewal"
+                            onClick={() => {
+                              // Navigate directly to renewal page for expired packages
+                              const params = new URLSearchParams({
+                                renewal: 'true',
+                                packageType: 'expired',
+                                packageName: userPackageInfo.displayName || userPackageInfo.packageName,
+                                expiredPackageId: userPackageInfo.packageId || userPackageInfo._id,
+                                // Thêm thông tin gói để tính giá
+                                packagePrice: userPackageInfo.price || 0,
+                                durationUnit: userPackageInfo.durationUnit || 'month',
+                                duration: userPackageInfo.duration ? userPackageInfo.duration.toString() : '1',
+
+                              });
+                              window.location.href = `/profile/properties-package?${params.toString()}`;
+                            }}
+                          >
+                            <i className="fa fa-refresh"></i>
+                            GIA HẠN NGAY
+                          </button>
+                        ) : isTrialPackageButUserHasOther ? (
+                          <button
+                            className="btn-package used"
+                            disabled
+                            title="Bạn đã sử dụng gói dùng thử và hiện đang sử dụng gói trả phí"
+                          >
+                            <i className="fa fa-check"></i>
+                            Đã sử dụng
+                          </button>
+                        ) : (
+                          <button
+                            className="btn-package upgrade"
+                            onClick={() => handleUpgradePackage(packagePlan)}
+                          >
+                            <i className="fa fa-arrow-up"></i>
+                            Nâng cấp ngay
+                          </button>
+                        )}
+                      </div>
+
+                      {packagePlan.name === 'premium' && (
+                        <div className="package-popular">
+                          <span>
+                            <i className="fa fa-fire"></i>
+                            Phổ biến nhất
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="upgrade-benefits">
+                <h4>
+                  <i className="fa fa-gift"></i>
+                  Tại sao nên nâng cấp?
+                </h4>
+                <div className="benefits-grid">
+                  <div className="benefit-item">
+                    <i className="fa fa-eye text-primary"></i>
+                    <span>Tin của bạn được nhiều người xem hơn</span>
+                  </div>
+                  <div className="benefit-item">
+                    <i className="fa fa-arrow-up text-success"></i>
+                    <span>Ưu tiên hiển thị trên trang chủ</span>
+                  </div>
+                  <div className="benefit-item">
+                    <i className="fa fa-star text-warning"></i>
+                    <span>Đánh dấu tin VIP nổi bật</span>
+                  </div>
+                  <div className="benefit-item">
+                    <i className="fa fa-chart-line text-info"></i>
+                    <span>Tăng khả năng cho thuê nhanh hơn</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1041,7 +2225,7 @@ const MyProperties = () => {
                 <i className="fa fa-times"></i>
               </button>
             </div>
-            
+
             <div className="modal-content-cancel-package">
               <div className="cancel-package-info">
                 <div className="property-info-cancel">
@@ -1058,7 +2242,7 @@ const MyProperties = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="warning-content">
                   <div className="warning-item">
                     <i className="fa fa-info-circle text-info"></i>
@@ -1073,13 +2257,13 @@ const MyProperties = () => {
                     <span>Hành động này không thể hoàn tác!</span>
                   </div>
                 </div>
-                
+
                 <div className="confirmation-question">
                   <strong>Bạn có chắc chắn muốn hủy gói tin này không?</strong>
                 </div>
               </div>
             </div>
-            
+
             <div className="modal-actions-cancel-package">
               <button
                 className="btn btn-secondary-cancel"
@@ -1149,7 +2333,7 @@ const MyProperties = () => {
                   <div className="detail-item">
                     <strong>Địa chỉ:</strong>
                     <span>
-                      {selectedProperty.location?.detailAddress}, {selectedProperty.location?.wardName}, 
+                      {selectedProperty.location?.detailAddress}, {selectedProperty.location?.wardName},
                       {selectedProperty.location?.districtName}, {selectedProperty.location?.provinceName}
                     </span>
                   </div>
@@ -1157,7 +2341,7 @@ const MyProperties = () => {
                     <strong>Ngày đăng:</strong>
                     <span>{formatDate(selectedProperty.createdAt)}</span>
                   </div>
-                  
+
                   {selectedProperty.approvalStatus === 'rejected' && selectedProperty.rejectionReason && (
                     <div className="detail-item reject-reason">
                       <strong>Lý do từ chối:</strong>
@@ -1201,7 +2385,7 @@ const MyProperties = () => {
             <div className="modal-header">
               <h3>Xác nhận {togglingProperty.status === 'available' ? 'ẩn' : 'hiện'} tin đăng</h3>
             </div>
-            <div className="modal-content">
+            <div className="modal-content-delete-my-properties">
               <p>Bạn có chắc chắn muốn {togglingProperty.status === 'available' ? 'ẩn' : 'hiện'} tin đăng:</p>
               <p className="property-title-delete">"{togglingProperty.title}"</p>
               {togglingProperty.status === 'available' && (
@@ -1253,7 +2437,7 @@ const MyProperties = () => {
                 <i className="fa fa-times"></i>
               </button>
             </div>
-            <div className="modal-content">
+            <div className="modal-content-delete-my-properties">
               <p>Bạn có chắc chắn muốn xóa tin đăng:</p>
               <p className="property-title-delete">"{deletingProperty.title}"</p>
               <p className="warning-text">
@@ -1279,6 +2463,267 @@ const MyProperties = () => {
                 Xóa tin đăng
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Package History Modal */}
+      {showPackageHistoryModal && (
+        <div className="modal-overlay-upgrade" onClick={handleClosePackageHistoryModal}>
+          <div className="upgrade-modal-used" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-upgrade">
+              <h2>
+                <i className="fa fa-history"></i>
+                Lịch sử gói đã sử dụng
+              </h2>
+              <button
+                className="close-btn-upgrade"
+                onClick={handleClosePackageHistoryModal}
+              >
+                <i className="fa fa-times"></i>
+              </button>
+            </div>
+
+            <div className="modal-content-upgrade">
+              {loadingPackageHistory ? (
+                <div className="loading-state">
+                  <i className="fa fa-spinner fa-spin"></i>
+                  <p>Đang tải lịch sử gói...</p>
+                </div>
+              ) : packageHistory.length === 0 ? (
+                <div className="empty-state">
+                  <i className="fa fa-history"></i>
+                  <h3>Chưa có lịch sử gói</h3>
+                  <p>Bạn chưa có lịch sử sử dụng gói nào trước đây.</p>
+                </div>
+              ) : (
+                <div className="package-history-content">
+                  <div className="package-history-header">
+                    <div className="history-info">
+                      <i className="fa fa-info-circle"></i>
+                      <span>Hiển thị tất cả các gói bạn đã sử dụng</span>
+                    </div>
+                  </div>
+
+                  <div className="package-history-list">
+                    {packageHistory.map((historyItem, index) => (
+                      <div key={index} className={`package-history-item ${historyItem.status} ${expandedHistoryItems[index] ? 'expanded' : ''}`}>
+                        <div className="history-item-header">
+                          <div className="package-info">
+                            <div className="package-badge-history">
+                              <i className="fa fa-star"></i>
+                              <span className='package-history-name'>{historyItem.displayName}</span>
+                            </div>
+
+                            {/* Tag hiển thị tổng số tin đăng đã chuyển gói */}
+                            {historyItem.transferredProperties && historyItem.transferredProperties.length > 0 && (
+                              <div className="transferred-properties-summary-tag">
+                                <i className="fa fa-exchange-alt"></i>
+                                <span>
+                                  {historyItem.transferredProperties.length} tin đã chuyển gói
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="package-timeline-history">
+                            <div className="timeline-item-history">
+                              <i className="fa fa-play-circle text-success"></i>
+                              <div className="timeline-content-history">
+                                <strong>Ngày bắt đầu</strong>
+                                <span>{formatDate(historyItem.purchaseDate)}</span>
+                              </div>
+                            </div>
+                            <div className="timeline-item-history">
+                              <i className="fa fa-stop-circle text-danger"></i>
+                              <div className="timeline-content-history">
+                                <strong>Ngày hết hạn</strong>
+                                <span>{formatDate(historyItem.expiryDate)}</span>
+                              </div>
+                            </div>
+                            <div className="timeline-item-history">
+                              <i className={`fa fa-clock ${historyItem.status === 'expired' ? 'text-danger' : historyItem.status === 'active' ? 'text-warning' : historyItem.status === 'renewed' ? 'text-success' : 'text-info'}`}></i>
+                              <div className="timeline-content-history">
+                                <strong>Trạng thái</strong>
+                                <span className={`status-text ${historyItem.status === 'expired' ? 'text-danger' : historyItem.status === 'active' ? 'text-warning' : historyItem.status === 'renewed' ? 'text-success' : 'text-info'}`}>
+                                  {historyItem.status === 'upgraded'
+                                    ? 'Đã nâng cấp'
+                                    : historyItem.status === 'renewed'
+                                      ? 'Đã gia hạn'
+                                      : historyItem.status === 'expired'
+                                        ? 'Đã hết hạn'
+                                        : historyItem.status === 'cancelled'
+                                          ? 'Đã hủy'
+                                          : 'Đang hoạt động'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Toggle button cho từng item */}
+                        <div className="package-history-item-toggle">
+                          <button
+                            className={`btn-toggle-history-item ${expandedHistoryItems[index] ? 'expanded' : ''}`}
+                            onClick={() => handleToggleHistoryItemExpansion(index)}
+                          >
+                            <span>{expandedHistoryItems[index] ? 'Thu gọn chi tiết' : 'Xem chi tiết'}</span>
+                            <i className="fa fa-chevron-down"></i>
+                          </button>
+                        </div>
+
+                        {expandedHistoryItems[index] && (
+                          <div className="history-item-details">
+                            <div className="package-limits-package-history">
+                              <h5>
+                                <i className="fa fa-list"></i>
+                                Giới hạn gói
+                              </h5>
+                              <div className="usage-grid">
+                                {historyItem.packagePlanId?.propertiesLimits?.map((limit, limitIndex) => {
+                                  // Tìm tin đăng đã được chuyển gói cho loại gói này
+                                  const transferredPropsForThisType = historyItem.transferredProperties?.filter(
+                                    transferredProp => transferredProp.postType._id?.toString() === limit.packageType._id?.toString()
+                                  ) || [];
+                                  console.log('Transferred properties for limit type:', limit.packageType?.displayName, transferredPropsForThisType);
+
+                                  return (
+                                    <div key={limitIndex} className="usage-item">
+                                      <div className="usage-header">
+                                        <div className="post-type-info">
+                                            {limit.packageType?.stars > 0 && (
+                                            <div className="post-type-stars">
+                                              {[...Array(limit.packageType.stars)].map((_, starIndex) => (
+                                                <i key={starIndex} className="fa fa-star star-icon"></i>
+                                              ))}
+                                            </div>
+                                          )}
+                                          <span
+                                            className="post-type-badge"
+                                            style={{
+                                              backgroundColor: limit.packageType?.color || '#007bff',
+                                              color: '#fff'
+                                            }}
+                                          >
+                                            {limit.packageType?.displayName || 'Unknown'}
+                                          </span>
+                                          {/* Hiển thị tag tin đăng đã chuyển gói ngay trong post-type-info */}
+                                          {transferredPropsForThisType.length > 0 && (
+                                            <div className="transferred-inline-tag">
+                                              <i className="fa fa-tag"></i>
+                                              <span>{transferredPropsForThisType.length} tin chuyển sang <strong>{transferredPropsForThisType[0].transferredToPackage?.displayName}</strong></span>
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        <span className="usage-numbers">
+                                          {limit.used || 0}/{limit.limit}
+                                        </span>
+                                      </div>
+
+                                      <div className="usage-bar">
+                                        <div
+                                          className="usage-progress"
+                                          style={{
+                                            width: `${Math.min(((limit.used || 0) / limit.limit) * 100, 100)}%`,
+                                            backgroundColor: limit.packageType?.color || '#007bff'
+                                          }}
+                                        ></div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+
+                              </div>
+                            </div>
+
+                            <div className="package-features-history">
+                              <div className="push-count-section">
+                                <h5>
+                                  <i className="fa fa-arrow-up"></i>
+                                  Lượt đẩy tin
+                                </h5>
+                                <div className="push-count-stats">
+                                  <div className="push-count-info">
+                                    <div className="push-count-header">
+                                      <span className="push-count-label">Đã sử dụng</span>
+                                      <span className="push-count-numbers">
+                                        {historyItem.usedPushCount || 0}/{historyItem.packagePlanId?.freePushCount || 0}
+                                      </span>
+                                    </div>
+                                    <div className="push-count-bar">
+                                      <div
+                                        className="push-count-progress"
+                                        style={{
+                                          width: `${Math.min(((historyItem.usedPushCount || 0) / (historyItem.packagePlanId?.freePushCount || 1)) * 100, 100)}%`
+                                        }}
+                                      ></div>
+                                    </div>
+                                    <div className="push-count-remaining">
+                                      <i className="fa fa-gift"></i>
+                                      <span>Còn lại: {Math.max((historyItem.packagePlanId?.freePushCount || 0) - (historyItem.usedPushCount || 0), 0)} lượt</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="feature-row">
+                                <i className="fa fa-calendar"></i>
+                                <span>
+                                  Sử dụng từ {formatDate(historyItem.purchaseDate)}
+                                  {historyItem.upgradedAt && ` (nâng cấp ${formatDate(historyItem.upgradedAt)})`}
+                                  {historyItem.renewedAt && ` (gia hạn ${formatDate(historyItem.renewedAt)})`}
+                                  {historyItem.expiredAt && ` (hết hạn ${formatDate(historyItem.expiredAt)})`}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="package-history-summary">
+                    <h4>
+                      <i className="fa fa-chart-bar"></i>
+                      Tổng kết
+                    </h4>
+                    <div className="summary-stats-package-history">
+                      <div className="stat-item-package-history">
+                        <strong>{packageHistory.length}</strong>
+                        <span>Gói đã sử dụng</span>
+                      </div>
+                      <div className="stat-item-package-history">
+                        <strong>
+                          {packageHistory.filter(item => item.status === 'upgraded').length}
+                        </strong>
+                        <span>Lần nâng cấp</span>
+                      </div>
+                      <div className="stat-item-package-history">
+                        <strong>
+                          {packageHistory.filter(item => item.status === 'renewed').length}
+                        </strong>
+                        <span>Lần gia hạn</span>
+                      </div>
+
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="modal-footer-current-package">
+                    <button
+                      className="btn btn-secondary-package-history"
+                      onClick={handleClosePackageHistoryModal}
+                    >
+                      <i className="fa fa-times"></i>
+                      Đóng
+                    </button>
+
+                  </div>
+                </div>
+              )}
+
+            </div>
+
           </div>
         </div>
       )}

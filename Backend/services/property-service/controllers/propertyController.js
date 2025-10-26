@@ -3,6 +3,10 @@
  */
 import propertyRepository from '../repositories/propertyRepository.js';
 import { uploadToCloudinary } from '../../shared/utils/cloudinary.js'; // Chỉ dùng cho video
+import User from '../../../schemas/User.js';
+import Property from '../../../schemas/Property.js';
+import PropertiesPackage from '../../../schemas/PropertiesPackage.js';
+import PackagePlan from '../../../schemas/PackagePlan.js';
 
 class PropertyController {
     // Tạo property mới với validation đầy đủ
@@ -388,9 +392,213 @@ class PropertyController {
                 });
             }
 
-            console.log('✅ Validation passed, proceeding to create property...');
+            console.log('Validation passed, proceeding to create property...');
+            console.log('req body postType:', req.body.postType);
+            // Kiểm tra postType và trừ limit từ gói user
+            if (!req.body.postType) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Loại tin đăng không được để trống',
+                    errors: { postType: 'Vui lòng chọn loại tin đăng' }
+                });
+            }
 
+            // Lấy thông tin user với gói tin hiện tại
+            const user = await User.findById(userId)
+                .populate({
+                    path: 'currentPackagePlan.packagePlanId',
+                    populate: {
+                        path: 'propertiesLimits.packageType',
+                        model: 'PropertiesPackage'
+                    }
+                })
+                .populate('currentPackagePlan.propertiesLimits.packageType');
 
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Không tìm thấy thông tin user'
+                });
+            }
+
+            // Đếm số tin đã đăng của user theo loại postType được chọn từ User schema
+            const postTypeId = req.body.postType;
+
+            // Lấy thông tin user với gói tin hiện tại để kiểm tra limit hiện tại
+            console.log(`Checking limits for user ${userId} and postType ${postTypeId}`);
+
+            // Kiểm tra limit từ gói hiện tại
+            let allowedLimit = 0;
+            let currentUsedCount = 0;
+            let hasValidPackage = false;
+            let packagePlan = null;
+            let userPackageLimit = null;
+
+            // Lấy gói hiện tại từ user
+            if (user.currentPackagePlan && user.currentPackagePlan.isActive) {
+                const currentPackage = user.currentPackagePlan;
+                
+                // Kiểm tra gói còn hiệu lực
+                const now = new Date();
+                const isActive = currentPackage.isActive && 
+                    (!currentPackage.expiryDate || new Date(currentPackage.expiryDate) > now);
+
+                if (isActive && currentPackage.packagePlanId) {
+                    // Lấy PackagePlan từ database với populate propertiesLimits
+                    packagePlan = await PackagePlan.findById(currentPackage.packagePlanId)
+                        .populate('propertiesLimits.packageType', 'name displayName')
+                        .lean();
+                    
+                
+                    
+                    if (packagePlan) {
+                        hasValidPackage = true;
+                        
+                        // Tìm limit hiện tại trong currentPackagePlan.propertiesLimits
+                        userPackageLimit = currentPackage.propertiesLimits?.find(limit => {
+                            // Xử lý cả trường hợp packageType là ObjectId và là object đã populate
+                            const packageTypeId = limit.packageType?._id ? 
+                                limit.packageType._id.toString() : 
+                                limit.packageType.toString();
+                            console.log(`Comparing packageTypeId: ${packageTypeId} with postTypeId: ${postTypeId}`);
+                            return packageTypeId === postTypeId;
+                        });
+                        
+                        console.log('Found userPackageLimit:', userPackageLimit);
+                        
+                        if (userPackageLimit) {
+                            allowedLimit = userPackageLimit.limit;
+                            currentUsedCount = userPackageLimit.used || 0;
+                           
+                        } else {
+                            // Nếu không tìm thấy trong currentPackage.propertiesLimits, 
+                            // tìm trong packagePlan.propertiesLimits và tạo mới
+                            const packageLimit = packagePlan.propertiesLimits?.find(limit => {
+                                // Xử lý cả trường hợp packageType là ObjectId và là object đã populate
+                                const packageTypeId = limit.packageType?._id ? 
+                                    limit.packageType._id.toString() : 
+                                    limit.packageType.toString();
+                                console.log(`Comparing packageLimit packageTypeId: ${packageTypeId} with postTypeId: ${postTypeId}`);
+                                return packageTypeId === postTypeId;
+                            });
+                            
+                          
+                            
+                            if (packageLimit) {
+                                allowedLimit = packageLimit.limit;
+                                currentUsedCount = 0; // Mới khởi tạo
+                                
+                                // Tạo mới entry trong currentPackagePlan.propertiesLimits
+                                if (!currentPackage.propertiesLimits) {
+                                    currentPackage.propertiesLimits = [];
+                                }
+                                
+                                currentPackage.propertiesLimits.push({
+                                    packageType: postTypeId,
+                                    limit: allowedLimit,
+                                    used: 0
+                                });
+                                
+                                await User.findByIdAndUpdate(userId, {
+                                    'currentPackagePlan.propertiesLimits': currentPackage.propertiesLimits
+                                });
+                                
+                                userPackageLimit = { packageType: postTypeId, limit: allowedLimit, used: 0 };
+                                console.log(`Created new limit entry: limit=${allowedLimit}, used=${currentUsedCount}`);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Nếu không có gói trả phí active, lấy gói trial
+            if (!hasValidPackage) {
+                packagePlan = await PackagePlan.findOne({ 
+                    type: 'trial', 
+                    isActive: true 
+                })
+                .populate('propertiesLimits.packageType', 'name displayName')
+                .lean();
+
+                if (packagePlan) {
+                    hasValidPackage = true;
+                    console.log('Using trial package for user:', userId);
+                    
+                    // Với gói trial, cũng lấy từ currentPackagePlan.propertiesLimits
+                    const trialLimit = packagePlan.propertiesLimits?.find(limit => {
+                        // Xử lý cả trường hợp packageType là ObjectId và là object đã populate
+                        const packageTypeId = limit.packageType?._id ? 
+                            limit.packageType._id.toString() : 
+                            limit.packageType.toString();
+                        console.log(`Trial limit - Comparing packageTypeId: ${packageTypeId} with postTypeId: ${postTypeId}`);
+                        return packageTypeId === postTypeId;
+                    });
+                    
+                    if (trialLimit) {
+                        allowedLimit = trialLimit.limit;
+                        
+                        // Tìm hoặc tạo limit trong currentPackagePlan.propertiesLimits cho trial
+                        if (user.currentPackagePlan && user.currentPackagePlan.propertiesLimits) {
+                            userPackageLimit = user.currentPackagePlan.propertiesLimits.find(limit => {
+                                // Xử lý cả trường hợp packageType là ObjectId và là object đã populate
+                                const packageTypeId = limit.packageType?._id ? 
+                                    limit.packageType._id.toString() : 
+                                    limit.packageType.toString();
+                                console.log(`Trial userLimit - Comparing packageTypeId: ${packageTypeId} with postTypeId: ${postTypeId}`);
+                                return packageTypeId === postTypeId;
+                            });
+                        }
+                        
+                        if (userPackageLimit) {
+                            currentUsedCount = userPackageLimit.used || 0;
+                        } else {
+                            // Nếu chưa có trong currentPackagePlan, khởi tạo với used = 0
+                            currentUsedCount = 0;
+                            
+                            // Tạo mới entry trong currentPackagePlan.propertiesLimits
+                            if (!user.currentPackagePlan) {
+                                user.currentPackagePlan = {
+                                    packagePlanId: packagePlan._id,
+                                    isActive: true,
+                                    propertiesLimits: []
+                                };
+                            }
+                            
+                            if (!user.currentPackagePlan.propertiesLimits) {
+                                user.currentPackagePlan.propertiesLimits = [];
+                            }
+                            
+                            user.currentPackagePlan.propertiesLimits.push({
+                                packageType: postTypeId,
+                                limit: allowedLimit,
+                                used: 0
+                            });
+                            
+                            await user.save();
+                            userPackageLimit = { packageType: postTypeId, limit: allowedLimit, used: 0 };
+                        }
+                    }
+                }
+            }
+
+            console.log(`PostType ${postTypeId}: used ${currentUsedCount}, allowed ${allowedLimit}`);
+
+            // Kiểm tra đã vượt quá limit chưa
+            if (currentUsedCount >= allowedLimit) {
+                const postTypeName = await PropertiesPackage.findById(postTypeId).select('displayName');
+                return res.status(400).json({
+                    success: false,
+                    message: `Bạn đã hết lượt đăng ${postTypeName?.displayName || 'loại tin này'}. Vui lòng nâng cấp gói hoặc chọn loại tin khác.`,
+                    errors: { 
+                        postType: `Đã vượt quá giới hạn ${allowedLimit} tin cho loại này` 
+                    },
+                    data: {
+                        usedCount: currentUsedCount,
+                        allowedLimit: allowedLimit,
+                        needsUpgrade: true
+                    }
+                });
+            }
 
             // Lấy kết quả từ AI moderation middleware (cả images và videos)
             let imageUrls = [];
@@ -499,6 +707,17 @@ class PropertyController {
                 images: imageUrls,
                 video: videoUrl,
 
+                // Package & Post Type
+                packageInfo: {
+                    plan: packagePlan._id,
+                    packageInstanceId: user.currentPackagePlan?.packageInstanceId, // Gắn với instance hiện tại
+                    postType: postTypeId,
+                    purchaseDate: now,
+                    expiryDate: user.currentPackagePlan?.expiryDate,
+                    isActive: true,
+                    status: 'active'
+                },
+
                 // Trạng thái và metadata
                 approvalStatus: 'pending', // Chờ admin duyệt
                 status: 'available',
@@ -514,13 +733,29 @@ class PropertyController {
             const userPropertiesCount = await propertyRepository.countUserProperties(userId);
             propertyData.postOrder = userPropertiesCount + 1;
             
-            // Xác định trạng thái thanh toán: 3 bài đầu miễn phí, từ bài thứ 4 cần thanh toán
-            propertyData.isPaid = propertyData.postOrder <= 3;
-            
-            console.log(`User ${userId} creating property #${propertyData.postOrder}, isPaid: ${propertyData.isPaid}`);
+            console.log(`User ${userId} creating property #${propertyData.postOrder}`);
 
             // Tạo property
             const property = await propertyRepository.create(propertyData);
+
+            // Cập nhật currentPackagePlan.propertiesLimits.used sau khi tạo property thành công
+            if (hasValidPackage && userPackageLimit) {
+                // Cập nhật used count trong currentPackagePlan.propertiesLimits
+                await User.findOneAndUpdate(
+                    { 
+                        _id: userId,
+                        'currentPackagePlan.propertiesLimits.packageType': postTypeId
+                    },
+                    {
+                        $inc: {
+                            'currentPackagePlan.propertiesLimits.$.used': 1
+                        }
+                    }
+                );
+                console.log(`Updated user ${userId} propertiesLimits.used for postType ${postTypeId}: ${currentUsedCount} -> ${currentUsedCount + 1}`);
+            } else {
+                console.warn(`Could not update propertiesLimits.used - hasValidPackage: ${hasValidPackage}, userPackageLimit: ${!!userPackageLimit}`);
+            }
 
             // Success response với thông tin AI moderation đầy đủ
             let message = 'Đăng tin thành công! Tin của bạn đang chờ admin duyệt.';
@@ -537,9 +772,18 @@ class PropertyController {
                     title: property.title,
                     approvalStatus: property.approvalStatus,
                     postOrder: property.postOrder,
-                    isPaid: property.isPaid,
-                    needsPayment: property.postOrder > 3 && !property.isPaid, // Cần thanh toán hay không
                     createdAt: property.createdAt,
+                    packageInfo: {
+                        plan: packagePlan._id,
+                        packageInstanceId: user.currentPackagePlan?.packageInstanceId, // Instance ID để debug
+                        postType: {
+                            id: postTypeId,
+                            usedCount: currentUsedCount + 1, // Số tin đã sử dụng sau khi đăng tin này
+                            allowedLimit: allowedLimit,
+                        },
+                        packageName: packagePlan?.name || 'unknown',
+                        packageType: packagePlan?.type || 'unknown'
+                    },
                     mediaUploaded: {
                         images: imageUrls.length,
                         video: videoUrl ? 1 : 0
@@ -601,6 +845,73 @@ class PropertyController {
         }
     }
 
+    // Helper function để cập nhật propertiesLimits.used khi xóa property
+    static async updateUsedCountOnDelete(userId, postTypeId) {
+        try {
+            await User.findOneAndUpdate(
+                { 
+                    _id: userId,
+                    'currentPackagePlan.propertiesLimits.packageType': postTypeId
+                },
+                {
+                    $inc: {
+                        'currentPackagePlan.propertiesLimits.$.used': -1
+                    }
+                }
+            );
+            console.log(`Decreased user ${userId} propertiesLimits.used for postType ${postTypeId}`);
+        } catch (error) {
+            console.error('Error updating used count on delete:', error);
+        }
+    }
+
+    // Helper function để đồng bộ dữ liệu cũ
+    static async syncPropertiesLimits(userId) {
+        try {
+            const user = await User.findById(userId);
+            if (!user || !user.currentPackagePlan) {
+                return false;
+            }
+
+            // Đếm số bài đăng thực tế từ Property collection
+            const postTypeCounts = await Property.aggregate([
+                {
+                    $match: {
+                        owner: new mongoose.Types.ObjectId(userId),
+                        approvalStatus: { $in: ['pending', 'approved'] }
+                    }
+                },
+                {
+                    $group: {
+                        _id: '$packageInfo.postType',
+                        count: { $sum: 1 }
+                    }
+                }
+            ]);
+
+            const usedCountMap = new Map();
+            postTypeCounts.forEach(item => {
+                if (item._id) {
+                    usedCountMap.set(item._id.toString(), item.count);
+                }
+            });
+
+            // Cập nhật used count trong propertiesLimits
+            for (const limit of user.currentPackagePlan.propertiesLimits) {
+                const actualUsed = usedCountMap.get(limit.packageType.toString()) || 0;
+                if (limit.used !== actualUsed) {
+                    limit.used = actualUsed;
+                    console.log(`Synced postType ${limit.packageType}: used count ${limit.used} -> ${actualUsed}`);
+                }
+            }
+
+            await user.save();
+            return true;
+        } catch (error) {
+            console.error('Error syncing propertiesLimits:', error);
+            return false;
+        }
+    }
   
 }
 

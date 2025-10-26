@@ -12,8 +12,22 @@ import {
 import './PropertyCard.css';
 
 const PropertyCard = ({ property, onPropertyClick, onFavoriteToggle, isLoggedIn }) => {
+    console.log('Rendering property :', property);
     const navigate = useNavigate();
     const { isFavorited } = useFavorites();
+
+    // Helper function để xử lý URL avatar Google
+    const getAvatarUrl = (avatar) => {
+        if (avatar && avatar.includes('googleusercontent.com')) {
+            // Cải thiện chất lượng ảnh Google
+            const baseUrl = avatar.split('=')[0];
+            const newUrl = `${baseUrl}=s200-c`;
+           
+            return newUrl;
+        }
+        return avatar || 'https://res.cloudinary.com/dapvuniyx/image/upload/v1755712519/avatar_gj5yhw.jpg';
+    };
+
     // Format price
     const formatPrice = (price) => {
         return new Intl.NumberFormat('vi-VN').format(price);
@@ -73,6 +87,40 @@ const PropertyCard = ({ property, onPropertyClick, onFavoriteToggle, isLoggedIn 
             );
         }
         return null;
+    };
+
+    // Get post type styling từ packageInfo.postType
+    const getPostTypeStyle = () => {
+        const postType = property.packageInfo?.postType;
+        if (!postType) return {};
+
+        return {
+            color: postType.color || '#000000',
+            textTransform: postType.textStyle || 'none',
+            fontWeight: postType.priority <= 2 ? 'bold' : 'normal'
+        };
+    };
+
+    // Get post type badge với stars
+    const getPostTypeBadge = () => {
+        const postType = property.packageInfo?.postType;
+        if (!postType) return null;
+
+        const stars = postType.stars || 0;
+        const starIcons = Array.from({ length: stars }, (_, i) => (
+            <FaStar key={i} className="star-icon" />
+        ));
+
+        return (
+            <div className="post-type-badge-property-card" style={{ color: postType.color }}>
+                
+                {stars > 0 && (
+                    <div className="post-type-stars">
+                        {starIcons}
+                    </div>
+                )}
+            </div>
+        );
     };
 
     // Handle card click
@@ -221,14 +269,38 @@ const PropertyCard = ({ property, onPropertyClick, onFavoriteToggle, isLoggedIn 
             {/* Property Info */}
             <div className="property-info-card">
                 <div className="property-header">
-                    <h3 className="property-title" title={property.title}>
-                        {property.title}
-                    </h3>
+                    <div className="title-section">
+                          {getPostTypeBadge()}
+                        <h3 
+                            className="property-title" 
+                            title={property.title}
+                            style={getPostTypeStyle()}
+                        >
+                            {property.title}
+                        </h3>
+                      
+                    </div>
                     <div className="property-price">
-                        <span className="price-value">
-                            {formatPrice(property.rentPrice)}
-                        </span>
-                        <span className="price-unit">VNĐ/tháng</span>
+                        {property.promotionPrice && property.promotionPrice > 0 ? (
+                            <>
+                                {/* Giá gốc bị gạch ngang */}
+                                <span className="price-value original-price">
+                                    {formatPrice(property.rentPrice)}
+                                </span>
+                                {/* Giá khuyến mãi */}
+                                <span className="price-value promotion-price">
+                                    {formatPrice(property.promotionPrice)}
+                                </span>
+                                <span className="price-unit">VNĐ/tháng</span>
+                            </>
+                        ) : (
+                            <>
+                                <span className="price-value">
+                                    {formatPrice(property.rentPrice)}
+                                </span>
+                                <span className="price-unit">VNĐ/tháng</span>
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -316,10 +388,18 @@ const PropertyCard = ({ property, onPropertyClick, onFavoriteToggle, isLoggedIn 
                     <div className="owner-info">
                         <div className="owner-avatar">
                             {property.owner?.avatar ? (
-                                <img src={property.owner.avatar} alt={property.owner.fullName} />
-                            ) : (
-                                <FaUser />
-                            )}
+                                <img
+                                    src={getAvatarUrl(property.owner.avatar)}
+                                    alt={property.owner.fullName}
+                                    crossOrigin="anonymous"
+                                    referrerPolicy="no-referrer"
+                                    onError={(e) => {
+                                       
+                                        e.target.src = 'https://res.cloudinary.com/dapvuniyx/image/upload/v1755712519/avatar_gj5yhw.jpg';
+                                    }}
+                                />
+                            ) : null}
+                            <FaUser style={{ display: property.owner?.avatar ? 'none' : 'block' }} />
                         </div>
                         <div className="owner-details">
                             <span className="owner-name">{property.owner?.fullName || 'Chủ trọ'}</span>
@@ -341,7 +421,7 @@ const PropertyCard = ({ property, onPropertyClick, onFavoriteToggle, isLoggedIn 
                             }}
                         >
                             <FaPhone />
-                            {property.owner?.phone|| 'Liên hệ'}
+                            {property.owner?.phone || 'Liên hệ'}
                         </button>
 
                         {/* Favorite button - Next to contact button */}

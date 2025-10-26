@@ -16,33 +16,84 @@ const orderSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  // Thông tin liên kết
+  // Thông tin liên kết (không bắt buộc vì có thể là upgrade tài khoản)
   propertyId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Property',
-    required: true
+    required: false
   },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
+  // Legacy packageId (giữ để tương thích)
   packageId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'PropertiesPackage',
-    required: true
+    ref: 'PropertiesPackage'
   },
+  
+  // PackagePlan mới
+  packagePlanId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'PackagePlan'
+  },
+  
+  // Loại tin được chọn từ PropertiesPackage (chỉ dùng cho property-specific payment, không dùng cho upgrade).
+  propertyType: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'PropertiesPackage'
+  },
+  
   // Thông tin gói đã chọn
   packageInfo: {
     name: String,
     duration: Number,
-    durationType: String,
-    dailyPrice: Number
+    durationUnit: String, // 'day', 'month', 'year'
+    dailyPrice: Number,
+    isRenewal: Boolean, // Đánh dấu có phải là order gia hạn không
+    expiredPackageId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'PackagePlan'
+    }
   },
+  
   // ID transaction khi thanh toán thành công
   transactionId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Transaction'
+  },
+  // Thông tin migration cho việc chuyển tin từ gói cũ sang gói mới
+  migration: {
+    selectedProperties: [{
+      propertyId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Property',
+        required: true
+      },
+      currentPostType: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'PropertiesPackage',
+        required: true
+      },
+      newPostType: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'PropertiesPackage'
+      },
+      propertyTitle: String,
+      currentPostTypeName: String,
+      newPostTypeName: String
+    }],
+    limitsUsage: mongoose.Schema.Types.Mixed // Object chứa thông tin giới hạn sử dụng
+  },
+  
+  // Thông tin hủy đơn hàng
+  cancelReason: {
+    type: String,
+    trim: true
+  },
+  cancelledAt: {
+    type: Date
   },
   created_at: {
     type: Date,

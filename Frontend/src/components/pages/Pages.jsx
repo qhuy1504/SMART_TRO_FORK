@@ -28,11 +28,12 @@ import NewPost from "../profile/new-property/NewProperty"
 import MyPosts from "../profile/my-properties/MyProperties.jsx"
 import Favorites from "../profile/favorites/Favorites"
 import PaymentHistory from "../profile/payment-history/PaymentHistory"
-import PricingProfile from "../profile/pricing/Pricing"
+import RentalPriceAnalytics from "../profile/rentalpriceanalytics/RentalPriceAnalytics.jsx"
 import PropertiesListing from "../properties/PropertiesListing"
 import PropertyDetail from "../properties/PropertyDetail"
 import ReportProperties from "../admin/report-properties/ReportManagement"
 import PropertiesPackagesManagement from "../admin/properties-packages/PropertiesPackagesManagement"
+import PackagePlanManagement from "../admin/package-plan/PackagePlanManagement"
 import PropertiesPackage from "../profile/properties-package/PropertiesPackage.jsx"
 import Payment from "../profile/payment/Payment.jsx"
 import PageTitleWrapper from "../common/PageTitleWrapper"
@@ -164,7 +165,7 @@ const Pages = () => {
             <Route path='my-posts' element={<MyPosts />} />
             <Route path='favorites' element={<Favorites />} />
             <Route path='payment-history' element={<PaymentHistory />} />
-            <Route path='pricing' element={<PricingProfile />} />
+            <Route path='pricing-analytics' element={<RentalPriceAnalytics />} />
             <Route path='properties-package' element={<PropertiesPackage />} />
             <Route path='payment' element={<Payment />} />
             <Route index element={<AccountManagement />} />
@@ -177,6 +178,7 @@ const Pages = () => {
           <Route path='/admin/rooms' element={<ProtectedRoute><RoomsManagement /></ProtectedRoute>} />
           <Route path='/admin/amenities' element={<ProtectedRoute><AmenitiesManagement /></ProtectedRoute>} />
           <Route path='/admin/properties-packages' element={<AdminProtectedRoute><PropertiesPackagesManagement /></AdminProtectedRoute>} />
+          <Route path='/admin/package-plans' element={<AdminProtectedRoute><PackagePlanManagement /></AdminProtectedRoute>} />
           <Route path='/admin/settings' element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path='/admin/tenants' element={<ProtectedRoute><Tenants /></ProtectedRoute>} />
           <Route path='/admin/contracts' element={<ProtectedRoute><Contracts /></ProtectedRoute>} />

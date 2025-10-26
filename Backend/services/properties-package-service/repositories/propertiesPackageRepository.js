@@ -6,7 +6,7 @@ class PropertiesPackageRepository {
   async getAllPackages() {
     try {
       return await PropertiesPackage.find({})
-        .sort({ priority: 1, dailyPrice: -1, isActive: -1 });
+        .sort({ priority: 1, isActive: -1 });
     } catch (error) {
       throw new Error(`Error getting packages: ${error.message}`);
     }
@@ -66,39 +66,7 @@ class PropertiesPackageRepository {
     }
   }
   
-  // Tính giá dựa trên gói và thời gian
-  calculatePrice(packageData, duration, durationType) {
-    const { dailyPrice, weeklyDiscount, monthlyDiscount } = packageData;
-    let totalPrice = 0;
-    
-    switch (durationType) {
-      case 'daily':
-        totalPrice = dailyPrice * duration;
-        break;
-      case 'weekly':
-        const weeklyPrice = dailyPrice * 7 * (1 - weeklyDiscount / 100);
-        totalPrice = weeklyPrice * duration;
-        break;
-      case 'monthly':
-        // Tính số ngày thực tế cho từng tháng
-        let totalDaysInMonths = 0;
-        const currentDate = new Date();
-        
-        for (let i = 0; i < duration; i++) {
-          const targetMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + i + 1, 0);
-          totalDaysInMonths += targetMonth.getDate();
-        }
-        
-        const monthlyPrice = dailyPrice * totalDaysInMonths * (1 - monthlyDiscount / 100);
-        totalPrice = monthlyPrice;
-        console.log(`Calculated monthly price for ${duration} month(s) (${totalDaysInMonths} days): ${totalPrice}`);
-        break;
-      default:
-        totalPrice = dailyPrice * duration;
-    }
-    
-    return Math.round(totalPrice);
-  }
+
   
   // Khởi tạo dữ liệu mẫu
   async initializeDefaultPackages() {
@@ -110,8 +78,6 @@ class PropertiesPackageRepository {
           name: 'tin_vip_dac_biet',
           displayName: 'TIN VIP ĐẶC BIỆT',
           description: 'Tin đăng đặc biệt với ưu tiên cao nhất và nhiều tính năng độc quyền',
-          dailyPrice: 100000,
-          freePushCount: 10,
           priority: 1,
           color: '#8b0000', // Dark Red
           textStyle: 'uppercase',
@@ -120,7 +86,6 @@ class PropertiesPackageRepository {
             'Hiển thị ở vị trí đầu tiên',
             'Màu đỏ đậm đặc biệt',
             '5 sao vàng',
-            '10 lượt đẩy tin miễn phí',
             'Ưu tiên cao nhất trên tất cả gói'
           ]
         },
@@ -128,17 +93,14 @@ class PropertiesPackageRepository {
           name: 'tin_vip_noi_bat',
           displayName: 'TIN VIP NỔI BẬT',
           description: 'Tin đăng luôn hiển thị ở đầu trang với màu đỏ và 5 sao',
-          dailyPrice: 50000,
-          freePushCount: 5,
-          priority: 1,
+          priority: 2,
           color: '#dc3545', // Red
           textStyle: 'uppercase',
-          stars: 5,
+          stars: 4,
           features: [
             'Hiển thị ở đầu trang',
             'Màu đỏ nổi bật',
-            '5 sao vàng',
-            '5 lượt đẩy tin miễn phí',
+            '4 sao vàng',
             'Nằm trên tất cả các tin khác'
           ]
         },
@@ -146,16 +108,13 @@ class PropertiesPackageRepository {
           name: 'tin_vip_1',
           displayName: 'TIN VIP 1',
           description: 'Tin đăng VIP cao cấp với màu hồng và 4 sao',
-          dailyPrice: 30000,
-          freePushCount: 3,
-          priority: 2,
+          priority: 3,
           color: '#e83e8c', // Pink
           textStyle: 'uppercase',
-          stars: 4,
+          stars: 3,
           features: [
             'Màu hồng nổi bật',
-            '4 sao vàng',
-            '3 lượt đẩy tin miễn phí',
+            '3 sao vàng',
             'Ưu tiên cao',
             'Hiển thị sau tin VIP Nổi Bật và trên các tin khác.'
           ]
@@ -164,16 +123,13 @@ class PropertiesPackageRepository {
           name: 'tin_vip_2',
           displayName: 'TIN VIP 2',
           description: 'Tin đăng VIP trung cấp với màu cam',
-          dailyPrice: 20000,
-          freePushCount: 2,
-          priority: 3,
+          priority: 4,
           color: '#fd7e14', // Orange
           textStyle: 'uppercase',
-          stars: 3,
+          stars: 2,
           features: [
             'Màu cam nổi bật',
-            '3 sao vàng',
-            '2 lượt đẩy tin miễn phí',
+            '2 sao vàng',
             'Ưu tiên trung bình',
             'Hiển thị sau tin VIP Nổi Bật, Tin VIP 1 và trên các tin khác.'
           ]
@@ -182,16 +138,13 @@ class PropertiesPackageRepository {
           name: 'tin_vip_3',
           displayName: 'TIN VIP 3',
           description: 'Tin đăng VIP cơ bản với màu xanh và 2 sao',
-          dailyPrice: 10000,
-          freePushCount: 1,
-          priority: 4,
-          color: '#20c997', // Teal
+          priority: 5,
+          color: '#27ae60', // Teal
           textStyle: 'uppercase',
-          stars: 2,
+          stars: 1,
           features: [
             'Màu xanh nổi bật',
-            '2 sao vàng',
-            '1 lượt đẩy tin miễn phí',
+            '1 sao vàng',
             'Ưu tiên cơ bản',
             'Hiển thị sau tin VIP Nổi Bật, Tin VIP 1, Tin VIP 2 và trên các tin khác.'
           ]
@@ -200,16 +153,13 @@ class PropertiesPackageRepository {
           name: 'tin_thuong',
           displayName: 'TIN THƯỜNG',
           description: 'Tin đăng thường với giá cả phải chăng',
-          dailyPrice: 5000,
-          freePushCount: 0,
-          priority: 5,
+          priority: 6,
           color: '#6c757d', // Gray
           textStyle: 'normal',
           stars: 0,
           features: [
             'Giá cả phải chăng',
             'Phù hợp người mới',
-            'Không có lượt đẩy tin miễn phí',
             'Hiển thị sau các tin VIP.'
           ]
         }

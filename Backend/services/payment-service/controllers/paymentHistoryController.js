@@ -25,12 +25,9 @@ const paymentHistoryController = {
 
       // Debug: Kiểm tra tổng số orders trong DB
       const allOrdersCount = await Order.countDocuments();
-      console.log('Total orders in entire DB:', allOrdersCount);
-      console.log('User ID from token:', userId);
-      
       // Debug: Kiểm tra xem có orders nào của user này không
       const userOrdersCount = await Order.countDocuments({ userId });
-      console.log('Orders for this user:', userOrdersCount);
+     
 
       // Tạo sort object
       const sort = {};
@@ -43,11 +40,6 @@ const paymentHistoryController = {
       // Lấy tổng số records
       const total = await Order.countDocuments(filter);
       const totalPages = Math.ceil(total / limitNum);
-
-      console.log('Filter used for query:', filter);
-      console.log('Sort object:', sort);
-      console.log('Skip:', skip, 'Limit:', limitNum);
-
       // Lấy danh sách orders với populate
       const orders = await Order.find(filter)
         .populate('propertyId', 'title images location')
@@ -57,11 +49,6 @@ const paymentHistoryController = {
         .skip(skip)
         .limit(limitNum)
         .lean();
-
-      console.log('Found orders count:', orders.length);
-      console.log('Total orders in DB:', total);
-
-     
       console.log(' Orders:', orders);
 
       res.json({
