@@ -39,53 +39,18 @@ const packagePlanSchema = new mongoose.Schema({
     min: 0
   },
 
-  // Thời hạn gói - cho phép 0 hoặc null cho gói trial vĩnh viễn
+  // Thời hạn gói (số)
   duration: {
     type: Number,
-    required: false, // Không bắt buộc để cho phép null
-    default: function() {
-      // Nếu là gói trial, mặc định null (vĩnh viễn).
-      return this.type === 'trial' ? null : 1;
-    },
-    validate: {
-      validator: function(value) {
-        // Nếu value là null hoặc undefined, luôn cho phép
-        if (value === null || value === undefined) {
-          return true;
-        }
-        
-        // Nếu là số, phải >= 0
-        if (typeof value === 'number') {
-          return value >= 0;
-        }
-        
-        return false;
-      },
-      message: 'Duration phải là số >= 0 hoặc null'
-    }
+    required: true,
+    min: 1
   },
 
-  // Đơn vị thời gian - cho phép null cho gói trial vĩnh viễn.
+  // Đơn vị thời gian
   durationUnit: {
     type: String,
-    enum: ['day', 'month', 'year', null],
-    default: function() {
-      // Nếu là gói trial và duration null, mặc định null
-      return (this.type === 'trial' && (this.duration === null || this.duration === 0)) ? null : 'month';
-    },
-    required: false, // Không bắt buộc để cho phép null
-    validate: {
-      validator: function(value) {
-        // Luôn cho phép null
-        if (value === null || value === undefined) {
-          return true;
-        }
-        
-        // Nếu có giá trị, phải là một trong các enum hợp lệ
-        return ['day', 'month', 'year'].includes(value);
-      },
-      message: 'DurationUnit phải là day, month, year hoặc null'
-    }
+    enum: ['day', 'month', 'year'],
+    required: true
   },
 
   /**
