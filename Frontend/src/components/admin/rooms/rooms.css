@@ -78,6 +78,56 @@
 
 .rooms-title { font-size:30px; font-weight:700; letter-spacing:.5px; background:linear-gradient(90deg,#1e3a8a,#9333ea); -webkit-background-clip:text; background-clip:text; color:transparent; }
 
+.import-excel-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+}
+
+.import-excel-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.6);
+}
+
+.import-excel-btn i {
+  font-size: 18px;
+}
+
+.export-excel-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+}
+
+.export-excel-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.6);
+}
+
+.export-excel-btn i {
+  font-size: 18px;
+}
+
 .add-room-btn {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
@@ -109,11 +159,194 @@
   border: 1px solid #e2e8f0;
 }
 
+/* Header Search */
+.header-search {
+  flex: 1;
+  max-width: 500px;
+  margin-left: 24px;
+}
+
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 18px;
+  color: #667eea;
+  font-size: 16px;
+  pointer-events: none;
+  z-index: 2;
+  transition: all 0.3s ease;
+}
+
+.search-input {
+  width: 100%;
+  padding: 14px 50px 14px 50px;
+  border: 2px solid #e2e8f0;
+  border-radius: 30px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.3s ease;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1), 0 4px 20px rgba(102, 126, 234, 0.15);
+  background: white;
+}
+
+.search-input:focus + .search-icon {
+  color: #5a67d8;
+  transform: scale(1.1);
+}
+
+.search-input::placeholder {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.clear-search-btn {
+  position: absolute;
+  right: 14px;
+  background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: white;
+  font-size: 12px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.clear-search-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+}
+
+/* Action Buttons */
+.rooms-actions {
+  display: flex;
+  gap: 16px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+  padding: 16px 0;
+}
+
+.action-btn {
+  padding: 12px 24px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: inherit;
+  position: relative;
+  overflow: hidden;
+}
+
+.action-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.action-btn:hover::before {
+  left: 100%;
+}
+
+/* Primary Button - Thêm phòng mới */
+.action-btn.primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.action-btn.primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+/* Tính tiền Excel - Green */
+.action-btn:nth-child(2) {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.action-btn:nth-child(2):hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+}
+
+/* Import Excel - Orange */
+.action-btn:nth-child(3) {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+}
+
+.action-btn:nth-child(3):hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+}
+
+/* Xuất Excel - Teal */
+.action-btn:nth-child(4) {
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
+}
+
+.action-btn:nth-child(4):hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(6, 182, 212, 0.4);
+}
+
+/* Default action button fallback */
+.action-btn:not(.primary):not(:nth-child(2)):not(:nth-child(3)):not(:nth-child(4)) {
+  background: #f8fafc;
+  color: #64748b;
+  border: 2px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.action-btn:not(.primary):not(:nth-child(2)):not(:nth-child(3)):not(:nth-child(4)):hover {
+  background: white;
+  border-color: #cbd5e1;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Legacy filters-grid - keeping for compatibility */
 .filters-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
+  grid-template-columns: 2fr 1fr auto;
+  gap: 20px;
   align-items: end;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  border: 2px solid #e5e7eb;
 }
 
 .filter-group {
@@ -121,20 +354,39 @@
   flex-direction: column;
 }
 
+.filter-group.search-group {
+  flex: 1;
+}
+
 .filter-label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #374151;
   margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter-label i {
+  color: #667eea;
+  font-size: 12px;
 }
 
 .filter-input, .filter-select {
-  padding: 10px 16px;
+  padding: 12px 16px;
   border: 2px solid #e5e7eb;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
   background: white;
+  font-family: inherit;
+}
+
+.search-input {
+  padding-left: 40px;
+  background: white url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667eea' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3ccircle cx='11' cy='11' r='8'/%3e%3cpath d='m21 21-4.35-4.35'/%3e%3c/svg%3e") no-repeat 12px center;
+  background-size: 16px 16px;
 }
 
 .filter-input:focus, .filter-select:focus {
@@ -143,6 +395,52 @@
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
+.filter-actions {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.btn-filter {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.btn-filter {
+  background: #667eea;
+  color: white;
+}
+
+.btn-filter:hover {
+  background: #5a67d8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-filter.secondary {
+  background: #f8fafc;
+  color: #64748b;
+  border: 2px solid #e2e8f0;
+}
+
+.btn-filter.secondary:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Deprecated styles - keeping for backward compatibility */
 .search-btn, .reset-btn {
   padding: 10px 20px;
   border-radius: 8px;
@@ -175,46 +473,101 @@
 /* Status Tabs */
 .status-tabs {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   margin-bottom: 24px;
   overflow-x: auto;
+  padding: 4px;
+  background: #f8fafc;
+  border-radius: 30px;
+  border: 1px solid #e2e8f0;
 }
 
 .status-tab {
-  padding: 10px 20px;
+  padding: 12px 20px;
   border-radius: 25px;
-  border: 2px solid #e2e8f0;
-  background: white;
-  color: #6b7280;
+  border: 2px solid transparent;
+  background: transparent;
+  color: #64748b;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
   white-space: nowrap;
   display: flex;
   align-items: center;
   gap: 8px;
+  position: relative;
 }
 
-.status-tab.active {
-  background: #667eea;
+/* Tab colors for each status */
+.status-tab:nth-child(1) { /* Tất cả */
+  color: #475569;
+}
+.status-tab:nth-child(1).active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  border-color: #667eea;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.status-tab:nth-child(2) { /* Còn trống */
+  color: #059669;
+}
+.status-tab:nth-child(2).active {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+}
+
+.status-tab:nth-child(3) { /* Đã thuê */
+  color: #dc2626;
+}
+.status-tab:nth-child(3).active {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+}
+
+.status-tab:nth-child(4) { /* Đã đặt */
+  color: #d97706;
+}
+.status-tab:nth-child(4).active {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+}
+
+.status-tab:nth-child(5) { /* Sắp kết thúc */
+  color: #7c2d12;
+}
+.status-tab:nth-child(5).active {
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(234, 88, 12, 0.4);
 }
 
 .status-tab:hover:not(.active) {
-  background: #f8fafc;
-  border-color: #cbd5e0;
+  background: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .tab-count {
   background: rgba(255, 255, 255, 0.2);
-  padding: 2px 8px;
-  border-radius: 12px;
+  padding: 4px 10px;
+  border-radius: 14px;
   font-size: 12px;
+  font-weight: 700;
+  min-width: 24px;
+  text-align: center;
+}
+
+.status-tab:not(.active) .tab-count {
+  background: #e2e8f0;
+  color: #64748b;
 }
 
 .status-tab.active .tab-count {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
 }
 
 /* Rooms Grid */
@@ -400,6 +753,67 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+  .rooms-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  
+  .header-search {
+    margin-left: 0;
+    max-width: none;
+  }
+  
+  .search-input {
+    font-size: 16px; /* Prevent zoom on iOS */
+    padding: 16px 50px 16px 50px;
+  }
+  
+  .status-tabs {
+    gap: 8px;
+    padding: 8px;
+  }
+  
+  .status-tab {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+  
+  .tab-count {
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+  
+  .rooms-actions {
+    gap: 12px;
+    justify-content: stretch;
+  }
+  
+  .action-btn {
+    flex: 1;
+    min-width: 120px;
+    justify-content: center;
+    padding: 14px 16px;
+    font-size: 13px;
+  }
+  
+  .filters-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 16px;
+  }
+  
+  .filter-actions {
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+  }
+  
+  .btn-filter {
+    width: 100%;
+    justify-content: center;
+  }
+  
   .room-list-item {
     flex-direction: column;
     min-height: auto;
@@ -1333,35 +1747,46 @@ body .room-modal-backdrop .room-modal .room-modal-content .room-form-group.full 
   font-style: italic;
 }
 
-/* Pagination */
+/* Pagination - Payment Style */
 .pagination {
+  margin-top: 32px;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.pagination-info {
+  text-align: center;
+}
+
+.pagination-text {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.pagination-controls {
+  display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 32px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .pagination-btn {
-  padding: 8px 12px;
-  border: 2px solid #e2e8f0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: white;
-  color: #6b7280;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s;
-  font-weight: 600;
-}
-
-.pagination-btn:hover:not(:disabled) {
-  border-color: #667eea;
-  color: #667eea;
-}
-
-.pagination-btn.active {
-  background: #667eea;
-  color: white;
-  border-color: #667eea;
+  color: #6b7280;
+  font-size: 14px;
+  transition: all 0.2s ease;
 }
 
 .pagination-btn:disabled {
@@ -1369,10 +1794,55 @@ body .room-modal-backdrop .room-modal .room-modal-content .room-form-group.full 
   cursor: not-allowed;
 }
 
-.pagination-info {
-  margin: 0 16px;
-  font-size: 14px;
+.pagination-btn:not(:disabled):hover {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+.pagination-numbers {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pagination-number {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
   color: #6b7280;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.pagination-number:hover {
+  background: #f8fafc;
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.pagination-number.active {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+  font-weight: 600;
+}
+
+.pagination-dots {
+  padding: 0 8px;
+  color: #9ca3af;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
 }
 
 /* Responsive */
@@ -1384,6 +1854,30 @@ body .room-modal-backdrop .room-modal .room-modal-content .room-form-group.full 
   .rooms-header {
     flex-direction: column;
     align-items: stretch;
+  }
+  
+  .pagination-info {
+    font-size: 13px;
+  }
+  
+  .pagination-controls {
+    gap: 4px;
+  }
+  
+  .pagination-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 12px;
+  }
+  
+  .pagination-number {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+  
+  .pagination-numbers {
+    gap: 2px;
   }
   
   .filters-grid {
@@ -7007,4 +7501,844 @@ div.modal.vehicle-modal .empty-section .empty-content button.btn-primary {
   margin-bottom: 6px;
   text-transform: none;
   letter-spacing: 0;
+}
+
+/* Mark as Expiring Confirmation Modal */
+.room-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  padding: 20px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.room-confirm-modal {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 520px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideDown 0.3s ease;
+  overflow: hidden;
+  position: relative;
+  z-index: 10002;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.room-confirm-header {
+  padding: 24px 28px;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #93c5fd;
+}
+
+.room-confirm-icon {
+  font-size: 28px;
+  color: #2563eb;
+}
+
+.room-confirm-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e40af;
+}
+
+.room-confirm-body {
+  padding: 28px;
+}
+
+.room-confirm-body p {
+  margin: 0 0 16px 0;
+  font-size: 15px;
+  color: #334155;
+  line-height: 1.6;
+}
+
+.room-confirm-body p:last-child {
+  margin-bottom: 0;
+}
+
+.room-confirm-body strong {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.room-confirm-info {
+  background: #f0f9ff;
+  border-left: 4px solid #3b82f6;
+  padding: 16px;
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.room-confirm-info i {
+  color: #3b82f6;
+  margin-top: 2px;
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+.room-confirm-info div {
+  flex: 1;
+}
+
+.room-confirm-info p {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #1e40af;
+  font-weight: 600;
+}
+
+.room-confirm-info ul {
+  margin: 0;
+  padding-left: 20px;
+  list-style: disc;
+}
+
+.room-confirm-info li {
+  font-size: 14px;
+  color: #334155;
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+
+.room-confirm-footer {
+  padding: 20px 28px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.room-confirm-btn-cancel,
+.room-confirm-btn-confirm {
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+/* Import Excel Modal Styles */
+.import-modal-content {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-width: 1100px;
+  width: 92%;
+  max-height: 88vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 10006;
+}
+
+.import-modal-content .modal-header {
+  padding: 24px 28px;
+  border-bottom: 1px solid #e5e7eb;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.import-modal-content .modal-header h3 {
+  color: #1f2937;
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.import-modal-content .modal-header h3 i {
+  font-size: 24px;
+  color: #3b82f6;
+}
+
+.import-modal-content .modal-close-btn {
+  color: #6b7280;
+  background: transparent;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.import-modal-content .modal-close-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.import-modal-content .modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px;
+  background: #fafbfc;
+}
+
+.import-modal-content .modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.import-modal-content .modal-body::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.import-modal-content .modal-body::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.import-modal-content .modal-body::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.import-section {
+  margin-bottom: 24px;
+}
+
+.import-top-section {
+  margin-bottom: 24px;
+  padding: 20px;
+  background: white;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  text-align: left;
+}
+
+.template-download-area {
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.template-download-btn {
+  background: #8b5cf6;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.template-download-btn:hover {
+  background: #7c3aed;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.template-download-btn:active {
+  transform: translateY(0);
+}
+
+.template-download-btn i {
+  font-size: 16px;
+}
+
+.import-hint {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: #eff6ff;
+  border-left: 3px solid #3b82f6;
+  border-radius: 8px;
+  color: #1e40af;
+  font-size: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.5;
+}
+
+.import-hint i {
+  color: #3b82f6;
+  font-size: 16px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.file-upload-label {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 10px;
+}
+
+.file-upload-label i {
+  color: #10b981;
+  margin-right: 6px;
+}
+
+.file-input {
+  display: none;
+}
+
+.file-input-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  background: white;
+  border: 2px dashed #cbd5e1;
+  border-radius: 10px;
+  color: #64748b;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  justify-content: center;
+}
+
+.file-input-btn:hover {
+  border-color: #3b82f6;
+  background: #f0f9ff;
+  color: #3b82f6;
+}
+
+.file-input-btn i {
+  font-size: 18px;
+}
+
+.preview-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preview-title i {
+  color: #3b82f6;
+  font-size: 18px;
+}
+
+.import-data-grid {
+  max-height: 400px;
+  overflow: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.import-data-grid::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.import-data-grid::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+
+.import-data-grid::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.import-data-grid::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.import-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  table-layout: fixed;
+}
+
+.import-table thead {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  z-index: 10;
+}
+
+.import-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #64748b;
+  border-bottom: 2px solid #e5e7eb;
+  white-space: nowrap;
+  font-size: 13px;
+  background: #f8fafc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.import-table th:nth-child(1) { width: 60px; } /* STT */
+.import-table th:nth-child(2) { width: 120px; } /* Tên phòng */
+.import-table th:nth-child(3) { width: 110px; } /* Trạng thái */
+.import-table th:nth-child(4) { width: 140px; } /* Giá thuê */
+.import-table th:nth-child(5) { width: 120px; } /* Giá cọc */
+.import-table th:nth-child(6) { width: 100px; } /* Diện tích */
+.import-table th:nth-child(7) { width: 100px; } /* Sức chứa */
+.import-table th:nth-child(8) { width: 80px; } /* Hợp lệ */
+
+.import-table td {
+  padding: 8px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #475569;
+}
+
+.import-table tbody tr {
+  transition: background 0.15s ease;
+  background: white;
+}
+
+.import-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.import-table tbody tr.invalid-row {
+  background: #fef2f2;
+}
+
+.import-table tbody tr.invalid-row:hover {
+  background: #fee2e2;
+}
+
+/* Editable cells in import table */
+.editable-cell {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #374151;
+  background: white;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.editable-cell:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: #f0f9ff;
+}
+
+.editable-cell:hover {
+  border-color: #cbd5e1;
+}
+
+.invalid-row .editable-cell {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.invalid-row .editable-cell:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+  background: white;
+}
+
+/* Highlight for first column (room name) in invalid rows */
+.invalid-row td:nth-child(2) .editable-cell {
+  border-color: #ef4444;
+  border-width: 2px;
+  font-weight: 600;
+}
+
+.editable-select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #374151;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.editable-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.editable-select:hover {
+  border-color: #cbd5e1;
+}
+
+/* Remove spinner from number inputs */
+.editable-cell[type="number"]::-webkit-inner-spin-button,
+.editable-cell[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.editable-cell[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.valid-icon {
+  color: #10b981;
+  font-size: 18px;
+}
+
+.invalid-icon {
+  color: #ef4444;
+  font-size: 18px;
+  cursor: help;
+}
+
+.import-warning {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: #fef3c7;
+  border-left: 3px solid #f59e0b;
+  border-radius: 8px;
+  color: #92400e;
+  font-size: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.5;
+}
+
+.import-warning i {
+  color: #f59e0b;
+  font-size: 16px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+/* Import Summary Stats */
+.import-summary {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.summary-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  font-size: 14px;
+  color: #374151;
+}
+
+.summary-item i {
+  font-size: 16px;
+}
+
+.summary-item strong {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.summary-total {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.summary-total i {
+  color: #3b82f6;
+}
+
+.summary-valid {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
+.summary-valid i {
+  color: #10b981;
+}
+
+.summary-invalid {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.summary-invalid i {
+  color: #ef4444;
+}
+
+.import-modal-content .modal-footer {
+  padding: 20px 28px;
+  border-top: 1px solid #e5e7eb;
+  background: white;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btn-cancel {
+  padding: 10px 24px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  color: #6b7280;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.btn-cancel:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  color: #374151;
+}
+
+.btn-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-import {
+  padding: 10px 24px;
+  background: #3b82f6;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.btn-import:hover:not(:disabled) {
+  background: #2563eb;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-import:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-import i.fa-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.room-confirm-btn-cancel {
+  background: white;
+  color: #64748b;
+  border: 2px solid #e2e8f0;
+}
+
+.room-confirm-btn-cancel:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.room-confirm-btn-confirm {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+}
+
+.room-confirm-btn-confirm:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -6px rgba(59, 130, 246, 0.5);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+/* ==================== BILLING EXCEL MODAL ==================== */
+
+/* Billing Button */
+.billing-excel-btn {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(245, 158, 11, 0.3);
+}
+
+.billing-excel-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(245, 158, 11, 0.4);
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+}
+
+.billing-excel-btn i {
+  font-size: 18px;
+}
+
+/* Billing Table Specific Styles (keeps unique billing table styling) */
+.billing-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.billing-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #f97316;
+}
+
+.billing-table thead th {
+  padding: 14px 10px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  border-bottom: 2px solid #ea580c;
+  white-space: nowrap;
+}
+
+.billing-table thead th:nth-child(1) { width: 50px; }  /* STT */
+.billing-table thead th:nth-child(2) { width: 85px; } /* Phòng */
+.billing-table thead th:nth-child(3) { width: 115px; } /* Khách thuê */
+.billing-table thead th:nth-child(4) { width: 135px; } /* Kỳ thanh toán */
+.billing-table thead th:nth-child(5) { width: 95px; } /* Tiền phòng */
+.billing-table thead th:nth-child(6) { width: 90px; } /* Loại nước */
+.billing-table thead th:nth-child(7) { width: 75px; }  /* Điện cũ */
+.billing-table thead th:nth-child(8) { width: 75px; }  /* Điện mới */
+.billing-table thead th:nth-child(9) { width: 65px; }  /* Tiêu thụ điện */
+.billing-table thead th:nth-child(10) { width: 95px; } /* Tiền điện */
+.billing-table thead th:nth-child(11) { width: 75px; }  /* Nước cũ */
+.billing-table thead th:nth-child(12) { width: 75px; } /* Nước mới */
+.billing-table thead th:nth-child(13) { width: 75px; } /* Tiêu thụ/SL */
+.billing-table thead th:nth-child(14) { width: 95px; }/* Tiền nước */
+.billing-table thead th:nth-child(15) { width: 85px; } /* Phí DV */
+.billing-table thead th:nth-child(16) { width: 115px; }/* Tổng tiền */
+.billing-table thead th:nth-child(17) { width: 70px; } /* Hợp lệ */
+
+.billing-table tbody tr {
+  border-bottom: 1px solid #f3f4f6;
+  transition: background 0.2s ease;
+}
+
+.billing-table tbody tr:hover {
+  background: #fef3c7;
+}
+
+.billing-table tbody tr.invalid-row {
+  background: #fef2f2;
+}
+
+.billing-table tbody tr.invalid-row:hover {
+  background: #fee2e2;
+}
+
+.billing-table tbody td {
+  padding: 10px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.billing-table tbody td.total-cell {
+  font-weight: 600;
+  color: #f97316;
+  font-size: 14px;
+}
+
+.billing-table .badge-water-type {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #dbeafe;
+  color: #1e40af;
+  white-space: nowrap;
+}
+
+.billing-table .text-muted {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.billing-table .editable-cell {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 13px;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.billing-table .editable-cell:focus {
+  outline: none;
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+}
+
+.billing-table tr.invalid-row .editable-cell {
+  border-color: #ef4444;
+}
+
+.btn-create-invoices i.fa-spinner {
+  animation: spin 1s linear infinite;
 }

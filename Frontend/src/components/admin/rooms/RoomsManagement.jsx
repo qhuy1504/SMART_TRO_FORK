@@ -1,3 +1,4 @@
+/* global XLSX */
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import SideBar from "../../common/adminSidebar";
@@ -21,16 +22,13 @@ const RoomsManagement = () => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [searchFilters, setSearchFilters] = useState({
-    search: '',
-    status: '',
-    priceMin: '',
-    priceMax: ''
+    search: ''
   });
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
     totalItems: 0,
-    itemsPerPage: 12
+    itemsPerPage: 7
   });
   const [statusCounts, setStatusCounts] = useState({ all:0, available:0, rented:0, reserved:0, expiring:0 });
   const [depositContracts, setDepositContracts] = useState([]);
@@ -97,7 +95,35 @@ const RoomsManagement = () => {
   
   // Room Transfer Modal States
   const [showRoomTransferModal, setShowRoomTransferModal] = useState(false);
+  
+  // Import Excel Modal States
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importData, setImportData] = useState([]);
+  const [importLoading, setImportLoading] = useState(false);
+
+  // Billing Excel Modal States
+  const [showBillingModal, setShowBillingModal] = useState(false);
+  const [billingFile, setBillingFile] = useState(null);
+  const [billingData, setBillingData] = useState([]);
+  const [billingLoading, setBillingLoading] = useState(false);
   const [selectedRoomForTransfer, setSelectedRoomForTransfer] = useState(null);
+  
+  // Expiring Confirm Modal States
+  const [showExpiringConfirmModal, setShowExpiringConfirmModal] = useState(false);
+  const [selectedRoomForExpiring, setSelectedRoomForExpiring] = useState(null);
+  
+  // Cancel Expiring Modal States
+  const [showCancelExpiringModal, setShowCancelExpiringModal] = useState(false);
+  const [selectedRoomForCancelExpiring, setSelectedRoomForCancelExpiring] = useState(null);
+  
+  // Terminate Contract Modal States
+  const [showTerminateContractModal, setShowTerminateContractModal] = useState(false);
+  const [selectedRoomForTerminate, setSelectedRoomForTerminate] = useState(null);
+  const [createFinalInvoice, setCreateFinalInvoice] = useState(false);
+  const [terminatingContract, setTerminatingContract] = useState(false);
+  const [pendingTermination, setPendingTermination] = useState(false); // Flag để xử lý kết thúc sau khi tạo hóa đơn
+  
   const [currentRoomContract, setCurrentRoomContract] = useState(null);
   const [availableRoomsForTransfer, setAvailableRoomsForTransfer] = useState([]);
   const [loadingAvailableRooms, setLoadingAvailableRooms] = useState(false);
@@ -133,7 +159,6 @@ const RoomsManagement = () => {
   const [loadingInvoiceInfo, setLoadingInvoiceInfo] = useState(false);
   const [savingInvoice, setSavingInvoice] = useState(false);
   const [contractInfo, setContractInfo] = useState(null);
-  const [sendZaloInvoice, setSendZaloInvoice] = useState(true); // Default checked
   const [invoiceFormErrors, setInvoiceFormErrors] = useState({});
   
   const [rentalContractData, setRentalContractData] = useState({
@@ -293,8 +318,6 @@ const RoomsManagement = () => {
       const params = {
         page: pagination.currentPage,
         limit: pagination.itemsPerPage,
-        minPrice: searchFilters.priceMin || undefined,
-        maxPrice: searchFilters.priceMax || undefined,
         search: searchFilters.search || undefined,
         status: activeTab !== 'all' ? activeTab : undefined
       };
@@ -303,8 +326,13 @@ const RoomsManagement = () => {
     const list = res.data.rooms.map(r => ({
           id: r._id,
           name: r.roomNumber,
+          roomNumber: r.roomNumber,
             status: r.status,
             price: r.price,
+            deposit: r.deposit,
+            electricityPrice: r.electricityPrice,
+            waterPrice: r.waterPrice,
+            servicePrice: r.servicePrice,
             area: r.area,
             capacity: r.capacity,
             vehicleCount: r.vehicleCount,
@@ -455,12 +483,941 @@ const RoomsManagement = () => {
 
   const resetFilters = () => {
     setSearchFilters({
-      search: '',
-      status: '',
-      priceMin: '',
-      priceMax: ''
+      search: ''
     });
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
   };
+
+  const handleExportExcel = () => {
+    try {
+      if (!window.XLSX) {
+        showToast('error', 'Thư viện Excel chưa được tải');
+        return;
+      }
+
+      if (rooms.length === 0) {
+        showToast('error', 'Không có dữ liệu để xuất');
+        return;
+      }
+
+      // Prepare data for export
+      const exportData = rooms.map((room, index) => {
+        // Process amenities - more robust handling
+        let amenitiesText = '-';
+        if (room.amenities) {
+          if (Array.isArray(room.amenities)) {
+            // If array of strings
+            if (typeof room.amenities[0] === 'string') {
+              amenitiesText = room.amenities.join(', ');
+            }
+            // If array of objects with name/label property
+            else if (typeof room.amenities[0] === 'object') {
+              amenitiesText = room.amenities
+                .map(a => a?.name || a?.label || a?.title || JSON.stringify(a))
+                .filter(Boolean)
+                .join(', ');
+            }
+          } else if (typeof room.amenities === 'object') {
+            // If object, try to extract meaningful values
+            const values = Object.entries(room.amenities)
+              .filter(([key, value]) => value && key !== '_id' && key !== '__v')
+              .map(([key, value]) => {
+                if (typeof value === 'string') return value;
+                if (typeof value === 'object' && value.name) return value.name;
+                return key;
+              });
+            amenitiesText = values.length > 0 ? values.join(', ') : JSON.stringify(room.amenities);
+          } else if (typeof room.amenities === 'string') {
+            amenitiesText = room.amenities;
+          }
+        }
+
+        // Format water price - Room schema only has waterPrice (VNĐ/m³)
+        const waterPriceText = room.waterPrice 
+          ? `${room.waterPrice.toLocaleString('vi-VN')} VNĐ/m³` 
+          : '-';
+
+        return {
+          'STT': index + 1,
+          'Tên phòng': room.name || room.roomNumber || '-',
+          'Trạng thái': room.status === 'available' ? 'Trống' :
+                       room.status === 'rented' ? 'Đã thuê' :
+                       room.status === 'deposit' ? 'Đã đặt cọc' :
+                       room.status === 'expiring' ? 'Sắp kết thúc' :
+                       room.status === 'maintenance' ? 'Bảo trì' : room.status || '-',
+          'Giá thuê (VNĐ/tháng)': room.price ? room.price.toLocaleString('vi-VN') : '-',
+          'Giá cọc (VNĐ)': room.deposit ? room.deposit.toLocaleString('vi-VN') : '-',
+          'Diện tích (m²)': room.area || '-',
+          'Sức chứa (người)': room.capacity || '-',
+          'Số xe tối đa': room.vehicleCount || room.maxVehicles || '-',
+          'Giá điện (VNĐ/kWh)': room.electricityPrice ? room.electricityPrice.toLocaleString('vi-VN') : '-',
+          'Giá nước': waterPriceText,
+          'Phí dịch vụ (VNĐ/tháng)': room.servicePrice ? room.servicePrice.toLocaleString('vi-VN') : '-',
+          'Tiện ích': amenitiesText
+        };
+      });
+
+      // Create worksheet
+      const ws = window.XLSX.utils.json_to_sheet(exportData);
+
+      // Set column widths
+      const colWidths = [
+        { wch: 5 },  // STT
+        { wch: 20 }, // Tên phòng
+        { wch: 15 }, // Trạng thái
+        { wch: 18 }, // Giá thuê
+        { wch: 15 }, // Giá cọc
+        { wch: 12 }, // Diện tích
+        { wch: 15 }, // Sức chứa
+        { wch: 12 }, // Số xe tối đa
+        { wch: 18 }, // Giá điện
+        { wch: 25 }, // Giá nước
+        { wch: 20 }, // Phí dịch vụ
+        { wch: 40 }  // Tiện ích
+      ];
+      ws['!cols'] = colWidths;
+
+      // Create workbook
+      const wb = window.XLSX.utils.book_new();
+      window.XLSX.utils.book_append_sheet(wb, ws, 'Danh sách phòng');
+
+      // Generate filename with current date
+      const today = new Date();
+      const dateStr = `${today.getDate()}-${today.getMonth() + 1}-${today.getFullYear()}`;
+      const filename = `Danh_sach_phong_${dateStr}.xlsx`;
+
+      // Save file
+      window.XLSX.writeFile(wb, filename);
+
+      showToast('success', t('rooms.exportSuccess', 'Xuất Excel thành công!'));
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+      showToast('error', t('rooms.exportError', 'Lỗi khi xuất Excel: ') + error.message);
+    }
+  };
+
+  // Import Excel Functions
+  const handleDownloadTemplate = () => {
+    try {
+      if (!window.XLSX) {
+        showToast('error', 'Thư viện Excel chưa được tải');
+        return;
+      }
+
+      // Create template data with one example row
+      const templateData = [
+        {
+          'Tên phòng': 'P101',
+          'Trạng thái': 'Trống',
+          'Giá thuê (VNĐ/tháng)': '3000000',
+          'Giá cọc (VNĐ)': '3000000',
+          'Diện tích (m²)': '25',
+          'Sức chứa (người)': '2',
+          'Số xe tối đa': '1',
+          'Giá điện (VNĐ/kWh)': '3500',
+          'Giá nước (VNĐ/m³)': '25000',
+          'Phí dịch vụ (VNĐ/tháng)': '150000',
+          'Mô tả': 'Phòng đầy đủ tiện nghi, thoáng mát'
+        }
+      ];
+
+      const ws = window.XLSX.utils.json_to_sheet(templateData);
+      
+      // Set column widths
+      const colWidths = [
+        { wch: 15 }, // Tên phòng
+        { wch: 15 }, // Trạng thái
+        { wch: 20 }, // Giá thuê
+        { wch: 18 }, // Giá cọc
+        { wch: 15 }, // Diện tích
+        { wch: 18 }, // Sức chứa
+        { wch: 15 }, // Số xe
+        { wch: 20 }, // Giá điện
+        { wch: 22 }, // Giá nước
+        { wch: 22 }, // Phí dịch vụ
+        { wch: 40 }  // Mô tả
+      ];
+      ws['!cols'] = colWidths;
+
+      const wb = window.XLSX.utils.book_new();
+      window.XLSX.utils.book_append_sheet(wb, ws, 'Mẫu Import Phòng');
+
+      window.XLSX.writeFile(wb, 'Mau_Import_Phong.xlsx');
+      showToast('success', 'Tải file mẫu thành công!');
+    } catch (error) {
+      console.error('Error downloading template:', error);
+      showToast('error', 'Lỗi khi tải file mẫu: ' + error.message);
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'];
+    if (!validTypes.includes(file.type)) {
+      showToast('error', 'Vui lòng chọn file Excel (.xlsx, .xls)');
+      return;
+    }
+
+    setImportFile(file);
+    readExcelFile(file);
+  };
+
+  const readExcelFile = (file) => {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = window.XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = window.XLSX.utils.sheet_to_json(firstSheet);
+
+        // Transform data to match Room schema
+        const transformedData = jsonData.map((row, index) => {
+          // Map status
+          let status = 'available';
+          const statusText = row['Trạng thái']?.toLowerCase().trim();
+          if (statusText === 'đã thuê' || statusText === 'rented') status = 'rented';
+          else if (statusText === 'đã đặt cọc' || statusText === 'deposit' || statusText === 'reserved') status = 'reserved';
+          else if (statusText === 'sắp kết thúc' || statusText === 'expiring') status = 'expiring';
+
+          return {
+            id: `temp-${index}`,
+            roomNumber: row['Tên phòng']?.toString() || '',
+            status: status,
+            price: parseFloat(row['Giá thuê (VNĐ/tháng)']?.toString().replace(/[^0-9]/g, '') || 0),
+            deposit: parseFloat(row['Giá cọc (VNĐ)']?.toString().replace(/[^0-9]/g, '') || 0),
+            area: parseFloat(row['Diện tích (m²)'] || 0),
+            capacity: parseInt(row['Sức chứa (người)'] || 1),
+            vehicleCount: parseInt(row['Số xe tối đa'] || 0),
+            electricityPrice: parseFloat(row['Giá điện (VNĐ/kWh)']?.toString().replace(/[^0-9]/g, '') || 3500),
+            waterPrice: parseFloat(row['Giá nước (VNĐ/m³)']?.toString().replace(/[^0-9]/g, '') || 25000),
+            servicePrice: parseFloat(row['Phí dịch vụ (VNĐ/tháng)']?.toString().replace(/[^0-9]/g, '') || 150000),
+            description: row['Mô tả'] || '',
+            isValid: true,
+            errors: []
+          };
+        });
+
+        // Validate data
+        const validatedData = transformedData.map((room, index) => {
+          const errors = [];
+          
+          // Check required fields
+          if (!room.roomNumber) errors.push('Thiếu tên phòng');
+          if (room.price <= 0) errors.push('Giá thuê không hợp lệ');
+          if (room.deposit < 0) errors.push('Giá cọc không hợp lệ');
+          if (room.area <= 0) errors.push('Diện tích không hợp lệ');
+
+          // Check duplicate in import file
+          const duplicateInFile = transformedData.filter(
+            (r, i) => i !== index && r.roomNumber && r.roomNumber.toLowerCase() === room.roomNumber?.toLowerCase()
+          );
+          if (duplicateInFile.length > 0) {
+            errors.push('Tên phòng bị trùng trong file');
+          }
+
+          // Check duplicate with existing rooms
+          const duplicateInSystem = rooms.find(
+            (r) => r.roomNumber && room.roomNumber && r.roomNumber.toLowerCase() === room.roomNumber.toLowerCase()
+          );
+          if (duplicateInSystem) {
+            errors.push('Tên phòng đã tồn tại trong hệ thống');
+          }
+          
+          return {
+            ...room,
+            isValid: errors.length === 0,
+            errors
+          };
+        });
+
+        setImportData(validatedData);
+        showToast('success', `Đọc được ${validatedData.length} phòng từ file Excel`);
+      } catch (error) {
+        console.error('Error reading Excel file:', error);
+        showToast('error', 'Lỗi khi đọc file Excel: ' + error.message);
+        setImportData([]);
+      }
+    };
+
+    reader.onerror = () => {
+      showToast('error', 'Lỗi khi đọc file');
+      setImportData([]);
+    };
+
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleImport = async () => {
+    if (importData.length === 0) {
+      showToast('error', 'Không có dữ liệu để import');
+      return;
+    }
+
+    const validRooms = importData.filter(room => room.isValid);
+    if (validRooms.length === 0) {
+      showToast('error', 'Không có phòng hợp lệ để import');
+      return;
+    }
+
+    setImportLoading(true);
+    try {
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const room of validRooms) {
+        try {
+          const roomData = {
+            roomNumber: room.roomNumber,
+            price: room.price,
+            deposit: room.deposit,
+            area: room.area,
+            capacity: room.capacity,
+            vehicleCount: room.vehicleCount,
+            electricityPrice: room.electricityPrice,
+            waterPrice: room.waterPrice,
+            servicePrice: room.servicePrice,
+            description: room.description,
+            status: room.status,
+            amenities: [],
+            images: []
+          };
+
+          await roomsAPI.createRoom(roomData);
+          successCount++;
+        } catch (error) {
+          console.error('Error importing room:', room.roomNumber, error);
+          failCount++;
+        }
+      }
+
+      showToast('success', `Import thành công ${successCount} phòng${failCount > 0 ? `, thất bại ${failCount} phòng` : ''}`);
+      
+      // Close modal and refresh rooms list
+      setShowImportModal(false);
+      setImportFile(null);
+      setImportData([]);
+      fetchRooms();
+    } catch (error) {
+      console.error('Error during import:', error);
+      showToast('error', 'Lỗi khi import: ' + error.message);
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const handleEditImportRow = (index, field, value) => {
+    const updatedData = [...importData];
+    updatedData[index][field] = value;
+
+    // Re-validate all rows (to check duplicates)
+    updatedData.forEach((room, idx) => {
+      const errors = [];
+      
+      // Check required fields
+      if (!room.roomNumber) errors.push('Thiếu tên phòng');
+      if (room.price <= 0) errors.push('Giá thuê không hợp lệ');
+      if (room.deposit < 0) errors.push('Giá cọc không hợp lệ');
+      if (room.area <= 0) errors.push('Diện tích không hợp lệ');
+
+      // Check duplicate room name in import data
+      const duplicateInImport = updatedData.filter(
+        (r, i) => i !== idx && r.roomNumber && r.roomNumber.toLowerCase() === room.roomNumber?.toLowerCase()
+      );
+      if (duplicateInImport.length > 0) {
+        errors.push('Tên phòng bị trùng trong file');
+      }
+
+      // Check duplicate with existing rooms
+      const duplicateInSystem = rooms.find(
+        (r) => r.roomNumber && room.roomNumber && r.roomNumber.toLowerCase() === room.roomNumber.toLowerCase()
+      );
+      if (duplicateInSystem) {
+        errors.push('Tên phòng đã tồn tại trong hệ thống');
+      }
+
+      updatedData[idx].isValid = errors.length === 0;
+      updatedData[idx].errors = errors;
+    });
+
+    setImportData(updatedData);
+  };
+
+  // ==================== BILLING EXCEL FUNCTIONS ====================
+  
+  const handleGenerateBillingTemplate = async () => {
+    try {
+      setBillingLoading(true);
+
+      // Lấy tất cả các phòng đang được thuê
+      const roomsResponse = await roomsAPI.searchRooms({
+        status: 'rented',
+        page: 1,
+        limit: 1000
+      });
+
+      console.log('Rooms Response:', roomsResponse);
+
+      // Fix: API trả về data.rooms chứ không phải data trực tiếp
+      const rentedRooms = roomsResponse?.data?.rooms || roomsResponse?.rooms || [];
+      
+      if (rentedRooms.length === 0) {
+        showToast('warning', 'Không có phòng nào đang được thuê');
+        setBillingLoading(false);
+        return;
+      }
+
+      console.log('Rented rooms:', rentedRooms.length, rentedRooms);
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      
+      // Prepare data rows with billing period for each room
+      const today = new Date();
+
+      const data = [
+        [
+          'STT',
+          'Tên phòng',
+          'Khách thuê',
+          'Kỳ thanh toán (Từ - Đến)',
+          'Tiền phòng (đ/tháng)',
+          'Số người thuê',
+          'Giá điện (đ/kWh)',
+          'Điện cũ (số)',
+          'Điện mới (số)',
+          'Loại tính nước',
+          'Giá nước/Người (đ)',
+          'Nước cũ (số)',
+          'Nước mới (số)',
+          'Phí dịch vụ (đ)',
+          'Ghi chú',
+          'Mã HĐ (ẩn - đừng xóa)' // Hidden column for invoice creation
+        ]
+      ];
+
+      let recordCount = 0;
+
+      // Process each rented room - giống như lúc lập hóa đơn
+      for (let i = 0; i < rentedRooms.length; i++) {
+        const room = rentedRooms[i];
+        console.log(`\n=== Processing room ${i + 1}/${rentedRooms.length}: ${room.roomNumber} ===`);
+        console.log('Room ID:', room._id || room.id);
+        console.log('Room status:', room.status);
+        
+        try {
+          // Lấy thông tin hợp đồng hiện tại của phòng - GIỐNG LÚC LẬP HÓA ĐƠN
+          const contractResponse = await contractsAPI.getContractsByRoom(room._id || room.id);
+          console.log('Contract Response:', contractResponse);
+          
+          if (!contractResponse.success || !contractResponse.data || contractResponse.data.length === 0) {
+            console.log('❌ No contract for room:', room.roomNumber);
+            continue;
+          }
+
+          console.log('Contracts found:', contractResponse.data.length);
+          console.log('Contract statuses:', contractResponse.data.map(c => ({ id: c._id, status: c.status })));
+
+          // Lấy hợp đồng đang hoạt động - GIỐNG LÚC LẬP HÓA ĐƠN
+          const activeContract = contractResponse.data.find(contract => contract.status === 'active');
+          
+          if (!activeContract) {
+            console.log('❌ No active contract for room:', room.roomNumber);
+            console.log('Available contracts:', contractResponse.data.map(c => ({ status: c.status, id: c._id })));
+            continue;
+          }
+
+          console.log('✅ Active contract found:', activeContract._id);
+
+          const contractId = activeContract._id || activeContract.id;
+          const isWaterPerPerson = activeContract.waterChargeType === 'per_person';
+          const tenantCount = activeContract.tenants?.length || 0;
+          
+          // Lấy thông tin hóa đơn cuối cùng để lấy chỉ số và tính kỳ thanh toán
+          let electricOld = activeContract.currentElectricIndex || 0;
+          let waterOld = activeContract.currentWaterIndex || 0;
+          let periodStartDate, periodEndDate;
+
+          try {
+            const invoiceInfoResponse = await invoicesAPI.getNewInvoiceInfo(contractId);
+            
+            if (invoiceInfoResponse.success) {
+              const { lastInvoice } = invoiceInfoResponse.data;
+              
+              if (lastInvoice) {
+                electricOld = lastInvoice.electricNewReading || electricOld;
+                // Chỉ lấy waterOld nếu KHÔNG tính theo người
+                if (!isWaterPerPerson) {
+                  waterOld = lastInvoice.waterNewReading || waterOld;
+                }
+                
+                // Kỳ thanh toán mới = từ ngày kết thúc kỳ cũ + 1 ngày
+                if (lastInvoice.periodEnd) {
+                  const lastPeriodEnd = new Date(lastInvoice.periodEnd);
+                  periodStartDate = new Date(lastPeriodEnd);
+                  periodStartDate.setDate(periodStartDate.getDate() + 1);
+                }
+              }
+            }
+          } catch (err) {
+            console.log('No previous invoice for contract:', contractId);
+          }
+
+          // Nếu không có hóa đơn trước, lấy từ ngày bắt đầu hợp đồng
+          if (!periodStartDate) {
+            periodStartDate = activeContract.startDate ? new Date(activeContract.startDate) : new Date();
+          }
+          
+          // Kỳ kết thúc = cuối tháng của periodStart (ngày 30 hoặc 31)
+          periodEndDate = new Date(periodStartDate);
+          periodEndDate.setMonth(periodEndDate.getMonth() + 1);
+          periodEndDate.setDate(0); // Ngày cuối tháng trước = cuối tháng của periodStart
+          
+          const periodStr = `${periodStartDate.toLocaleDateString('vi-VN')} - ${periodEndDate.toLocaleDateString('vi-VN')}`;
+
+          // Lấy tên khách thuê từ hợp đồng
+          const tenantNames = activeContract.tenants?.map(t => t.fullName || '').filter(n => n).join(', ') || '';
+          console.log('Tenant names:', tenantNames);
+          console.log('Tenants array:', activeContract.tenants);
+          
+          // Lấy giá từ hợp đồng
+          const monthlyRent = activeContract.monthlyRent || room.price || 0;
+          const electricRate = activeContract.electricPrice || room.electricityPrice || 3000;
+          const servicePrice = activeContract.servicePrice || room.servicePrice || 0;
+          
+          // Xử lý giá nước dựa trên loại tính
+          let waterRateDisplay, waterOldDisplay, waterNewDisplay;
+          
+          if (isWaterPerPerson) {
+            // Tính theo người: Hiển thị giá/người, không có chỉ số
+            waterRateDisplay = activeContract.waterPricePerPerson || 50000;
+            waterOldDisplay = '-'; // Không cần chỉ số cũ
+            waterNewDisplay = '-'; // Không cần chỉ số mới
+          } else {
+            // Tính theo số đo: Hiển thị giá/m³, có chỉ số cũ/mới
+            waterRateDisplay = activeContract.waterPrice || room.waterPrice || 20000;
+            waterOldDisplay = waterOld;
+            waterNewDisplay = ''; // User will fill
+          }
+
+          console.log('Water billing type:', isWaterPerPerson ? 'perPerson' : 'perCubicMeter');
+          console.log('Rates - Rent:', monthlyRent, 'Electric:', electricRate, 'Water:', waterRateDisplay, 'Service:', servicePrice);
+          console.log('Billing period:', periodStr);
+
+          data.push([
+            recordCount + 1,
+            room.roomNumber || '',
+            tenantNames,
+            periodStr, // Kỳ thanh toán riêng cho từng phòng
+            monthlyRent, // Tiền phòng
+            tenantCount,
+            electricRate,
+            electricOld,
+            '', // Electric new - user will fill
+            isWaterPerPerson ? 'Theo người' : 'Theo số đo',
+            waterRateDisplay,
+            waterOldDisplay,
+            waterNewDisplay,
+            servicePrice,
+            '', // Ghi chú
+            contractId // Mã HĐ ở cột cuối (ẩn)
+          ]);
+
+          recordCount++;
+          console.log(`✅ Added record ${recordCount} for room ${room.roomNumber}`);
+        } catch (error) {
+          console.error('❌ Error processing room:', room.roomNumber, error);
+        }
+      }
+
+      console.log(`\n=== SUMMARY: ${recordCount} records added ===`);
+
+      if (recordCount === 0) {
+        showToast('warning', 'Không có hợp đồng nào đang hoạt động');
+        setBillingLoading(false);
+        return;
+      }
+
+      // Create worksheet
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      
+      // Set column widths
+      ws['!cols'] = [
+        { wch: 5 },   // STT
+        { wch: 25 },  // Mã hợp đồng
+        { wch: 15 },  // Tên phòng
+        { wch: 20 },  // Khách thuê
+        { wch: 15 },  // Giá điện
+        { wch: 12 },  // Điện cũ
+        { wch: 12 },  // Điện mới
+        { wch: 15 },  // Giá nước
+        { wch: 18 },  // Loại tính nước
+        { wch: 12 },  // Nước cũ
+        { wch: 12 },  // Nước mới
+        { wch: 15 },  // Phí dịch vụ
+        { wch: 30 }   // Ghi chú
+      ];
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Tính tiền');
+      
+      // Download file
+      const date = new Date();
+      const fileName = `Tinh_Tien_Thang_${date.getMonth() + 1}_${date.getFullYear()}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+      
+      showToast('success', `Đã tạo file mẫu với ${recordCount} hợp đồng`);
+    } catch (error) {
+      console.error('Error generating billing template:', error);
+      showToast('error', 'Lỗi khi tạo file mẫu: ' + error.message);
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
+  const handleBillingFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'];
+    if (!validTypes.includes(file.type) && !file.name.match(/\.(xlsx|xls)$/)) {
+      showToast('error', 'Vui lòng chọn file Excel (.xlsx hoặc .xls)');
+      return;
+    }
+
+    setBillingFile(file);
+    readBillingExcelFile(file);
+  };
+
+  const readBillingExcelFile = (file) => {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        setBillingLoading(true);
+        
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        // Skip header row
+        const rows = jsonData.slice(1);
+        
+        const billingRecords = rows
+          .filter(row => row && row.length > 0 && row[15]) // Must have contract ID (last column)
+          .map((row, index) => {
+            const isWaterPerPerson = row[9]?.toString().trim() === 'Theo người';
+            const tenantCount = parseInt(row[5]) || 0;
+            
+            const record = {
+              stt: row[0] || index + 1,
+              roomNumber: row[1]?.toString().trim() || '',
+              tenantName: row[2]?.toString().trim() || '',
+              billingPeriod: row[3]?.toString().trim() || '', // Kỳ thanh toán
+              monthlyRent: parseFloat(row[4]) || 0, // Tiền phòng
+              tenantCount: tenantCount,
+              electricRate: parseFloat(row[6]) || 3000,
+              electricOld: parseFloat(row[7]) || 0,
+              electricNew: parseFloat(row[8]) || 0,
+              waterBillingType: isWaterPerPerson ? 'perPerson' : 'perCubicMeter',
+              waterRate: parseFloat(row[10]) || (isWaterPerPerson ? 50000 : 20000),
+              waterOld: row[11] === '-' ? 0 : (parseFloat(row[11]) || 0),
+              waterNew: row[12] === '-' ? 0 : (parseFloat(row[12]) || 0),
+              servicePrice: parseFloat(row[13]) || 0,
+              note: row[14]?.toString().trim() || '',
+              contractId: row[15]?.toString().trim() || '', // Mã HĐ ở cột cuối (ẩn)
+              errors: [],
+              isValid: true
+            };
+
+            // Validate
+            const errors = [];
+            
+            if (!record.contractId) errors.push('Thiếu mã hợp đồng');
+            if (record.electricNew < record.electricOld) errors.push('Chỉ số điện mới phải >= chỉ số cũ');
+            
+            // Chỉ validate chỉ số nước nếu tính theo số đo
+            if (!isWaterPerPerson && record.waterNew < record.waterOld) {
+              errors.push('Chỉ số nước mới phải >= chỉ số cũ');
+            }
+            
+            if (record.electricRate <= 0) errors.push('Giá điện không hợp lệ');
+            if (record.waterRate <= 0) errors.push('Giá nước không hợp lệ');
+            
+            if (isWaterPerPerson && tenantCount <= 0) {
+              errors.push('Số người thuê phải > 0');
+            }
+
+            // Calculate amounts
+            const electricConsumption = record.electricNew - record.electricOld;
+            record.electricAmount = electricConsumption * record.electricRate;
+            
+            // Tính tiền nước dựa trên loại tính
+            if (isWaterPerPerson) {
+              // Tính theo người: số người × giá/người
+              record.waterAmount = tenantCount * record.waterRate;
+            } else {
+              // Tính theo số đo: (mới - cũ) × giá/m³
+              const waterConsumption = record.waterNew - record.waterOld;
+              record.waterAmount = waterConsumption * record.waterRate;
+            }
+            
+            record.totalAmount = (record.monthlyRent || 0) + record.electricAmount + record.waterAmount + record.servicePrice;
+
+            record.errors = errors;
+            record.isValid = errors.length === 0;
+            
+            return record;
+          });
+
+        setBillingData(billingRecords);
+        
+        if (billingRecords.length === 0) {
+          showToast('warning', 'File không có dữ liệu hợp lệ');
+        } else {
+          const validCount = billingRecords.filter(r => r.isValid).length;
+          showToast('success', `Đọc file thành công: ${validCount}/${billingRecords.length} bản ghi hợp lệ`);
+        }
+      } catch (error) {
+        console.error('Error reading billing file:', error);
+        showToast('error', 'Lỗi khi đọc file: ' + error.message);
+        setBillingData([]);
+      } finally {
+        setBillingLoading(false);
+      }
+    };
+
+    reader.onerror = () => {
+      showToast('error', 'Lỗi khi đọc file');
+      setBillingLoading(false);
+    };
+
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleEditBillingRow = (index, field, value) => {
+    const updatedData = [...billingData];
+    updatedData[index][field] = parseFloat(value) || 0;
+
+    // Re-validate and recalculate
+    const record = updatedData[index];
+    const isWaterPerPerson = record.waterBillingType === 'perPerson';
+    const errors = [];
+    
+    if (!record.contractId) errors.push('Thiếu mã hợp đồng');
+    if (record.electricNew < record.electricOld) errors.push('Chỉ số điện mới phải >= chỉ số cũ');
+    
+    // Chỉ validate chỉ số nước nếu tính theo số đo
+    if (!isWaterPerPerson && record.waterNew < record.waterOld) {
+      errors.push('Chỉ số nước mới phải >= chỉ số cũ');
+    }
+    
+    if (record.electricRate <= 0) errors.push('Giá điện không hợp lệ');
+    if (record.waterRate <= 0) errors.push('Giá nước không hợp lệ');
+    
+    if (isWaterPerPerson && record.tenantCount <= 0) {
+      errors.push('Số người thuê phải > 0');
+    }
+
+    // Recalculate amounts
+    const electricConsumption = record.electricNew - record.electricOld;
+    record.electricAmount = electricConsumption * record.electricRate;
+    
+    // Tính tiền nước dựa trên loại tính
+    if (isWaterPerPerson) {
+      // Tính theo người: số người × giá/người
+      record.waterAmount = record.tenantCount * record.waterRate;
+    } else {
+      // Tính theo số đo: (mới - cũ) × giá/m³
+      const waterConsumption = record.waterNew - record.waterOld;
+      record.waterAmount = waterConsumption * record.waterRate;
+    }
+    
+    record.totalAmount = (record.monthlyRent || 0) + record.electricAmount + record.waterAmount + record.servicePrice;
+
+    record.errors = errors;
+    record.isValid = errors.length === 0;
+
+    setBillingData(updatedData);
+  };
+
+  const handleCreateInvoices = async () => {
+    try {
+      setBillingLoading(true);
+
+      const validRecords = billingData.filter(r => r.isValid);
+      if (validRecords.length === 0) {
+        showToast('warning', 'Không có bản ghi hợp lệ để tạo hóa đơn');
+        return;
+      }
+
+      let successCount = 0;
+      let failCount = 0;
+      const errors = [];
+
+      for (const record of validRecords) {
+        try {
+          console.log('Creating invoice for contract:', record.contractId);
+          
+          // Calculate dates
+          const today = new Date();
+          const issueDate = today.toISOString().split('T')[0]; // YYYY-MM-DD
+          const dueDate = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // +7 days
+          
+          // Parse billing period from Excel (format: "DD/MM/YYYY - DD/MM/YYYY")
+          let periodStart, periodEnd;
+          if (record.billingPeriod) {
+            const [startStr, endStr] = record.billingPeriod.split(' - ');
+            if (startStr && endStr) {
+              // Convert DD/MM/YYYY to YYYY-MM-DD
+              const [startDay, startMonth, startYear] = startStr.trim().split('/');
+              const [endDay, endMonth, endYear] = endStr.trim().split('/');
+              periodStart = `${startYear}-${startMonth.padStart(2, '0')}-${startDay.padStart(2, '0')}`;
+              periodEnd = `${endYear}-${endMonth.padStart(2, '0')}-${endDay.padStart(2, '0')}`;
+            }
+          }
+          
+          // Fallback to current month if parsing fails
+          if (!periodStart || !periodEnd) {
+            periodStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+            periodEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+          }
+          
+          console.log('Billing period:', periodStart, '-', periodEnd);
+          
+          // Build charges array (các khoản thu)
+          const charges = [];
+          
+          // Tiền phòng (rent) - LUÔN có
+          if (record.monthlyRent > 0) {
+            charges.push({
+              type: 'rent',
+              description: 'Tiền thuê phòng',
+              quantity: 1,
+              unitPrice: record.monthlyRent,
+              amount: record.monthlyRent
+            });
+          }
+          
+          // Tiền điện
+          if (record.electricAmount > 0) {
+            charges.push({
+              type: 'electricity',
+              description: `Tiền điện (${record.electricNew - record.electricOld} kWh × ${record.electricRate.toLocaleString('vi-VN')}đ)`,
+              quantity: record.electricNew - record.electricOld,
+              unitPrice: record.electricRate,
+              amount: record.electricAmount
+            });
+          }
+          
+          // Tiền nước
+          if (record.waterAmount > 0) {
+            if (record.waterBillingType === 'perPerson') {
+              charges.push({
+                type: 'water',
+                description: `Tiền nước (${record.tenantCount} người × ${record.waterRate.toLocaleString('vi-VN')}đ)`,
+                quantity: record.tenantCount,
+                unitPrice: record.waterRate,
+                amount: record.waterAmount
+              });
+            } else {
+              charges.push({
+                type: 'water',
+                description: `Tiền nước (${record.waterNew - record.waterOld} m³ × ${record.waterRate.toLocaleString('vi-VN')}đ)`,
+                quantity: record.waterNew - record.waterOld,
+                unitPrice: record.waterRate,
+                amount: record.waterAmount
+              });
+            }
+          }
+          
+          // Phí dịch vụ (dùng 'other' thay vì 'service')
+          if (record.servicePrice > 0) {
+            charges.push({
+              type: 'other',
+              description: 'Phí dịch vụ',
+              quantity: 1,
+              unitPrice: record.servicePrice,
+              amount: record.servicePrice
+            });
+          }
+
+          const invoiceData = {
+            contractId: record.contractId,
+            issueDate: issueDate,
+            dueDate: dueDate,
+            periodStart: periodStart,
+            periodEnd: periodEnd,
+            electricOldReading: record.electricOld,
+            electricNewReading: record.electricNew,
+            electricRate: record.electricRate,
+            waterOldReading: record.waterOld,
+            waterNewReading: record.waterNew,
+            waterRate: record.waterRate,
+            waterBillingType: record.waterBillingType,
+            charges: charges,
+            notes: record.note || '',
+            sendZaloInvoice: true
+          };
+
+          console.log('Invoice data:', invoiceData);
+
+          const response = await fetch('http://localhost:5000/api/invoices', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(invoiceData)
+          });
+
+          const result = await response.json();
+          console.log('Invoice creation response:', result);
+
+          if (response.ok && result.success) {
+            successCount++;
+            console.log(`✅ Invoice created for contract ${record.contractId}`);
+          } else {
+            failCount++;
+            errors.push(`Phòng ${record.roomNumber}: ${result.message || 'Lỗi không xác định'}`);
+            console.error(`❌ Failed to create invoice for contract ${record.contractId}:`, result);
+          }
+        } catch (error) {
+          console.error('Error creating invoice for contract:', record.contractId, error);
+          failCount++;
+          errors.push(`Phòng ${record.roomNumber}: ${error.message}`);
+        }
+      }
+
+      if (successCount > 0) {
+        showToast('success', `Tạo thành công ${successCount} hóa đơn${failCount > 0 ? `, thất bại ${failCount} hóa đơn` : ''}. Email đã được gửi kèm mã QR thanh toán.`);
+      }
+      
+      if (errors.length > 0) {
+        console.error('Invoice creation errors:', errors);
+        showToast('error', `Có lỗi xảy ra:\n${errors.slice(0, 3).join('\n')}`);
+      }
+      
+      // Close modal and reset
+      if (successCount > 0) {
+        setShowBillingModal(false);
+        setBillingFile(null);
+        setBillingData([]);
+      }
+    } catch (error) {
+      console.error('Error creating invoices:', error);
+      showToast('error', 'Lỗi khi tạo hóa đơn: ' + error.message);
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
 
   const handleCancelDeposit = async (roomNumber) => {
     // Find deposit contract with populated room data
@@ -859,6 +1816,7 @@ const RoomsManagement = () => {
         // Chuẩn bị dữ liệu tenant
         const tenantPayload = {
           fullName: tenantData.tenantName,
+          email: tenantData.tenantEmail,
           phone: tenantData.tenantPhone,
           identificationNumber: tenantData.tenantId,
           landlord: null, // Sẽ được backend tự động gán
@@ -1306,6 +2264,7 @@ const RoomsManagement = () => {
           tenants: finalTenants.map(tenant => ({
             _id: tenant._id, // Lưu ID để update
             tenantName: tenant.fullName || '',
+            tenantEmail: tenant.email || '',
             tenantPhone: tenant.phone || '',
             tenantId: tenant.identificationNumber || '', // Sửa từ idCard thành identificationNumber
             tenantImages: tenant.images || []
@@ -2293,14 +3252,22 @@ const RoomsManagement = () => {
         charges: invoiceFormData.charges,
         discount: invoiceFormData.discount || 0,
         notes: invoiceFormData.notes,
-        sendZaloInvoice: sendZaloInvoice
+        sendZaloInvoice: true // Luôn gửi email với QR code
       };
 
       const response = await invoicesAPI.createInvoice(invoiceData);
 
       if (response.success) {
-        showToast('success', 'Tạo hóa đơn thành công');
+        // Backend tự động gửi email khi sendZaloInvoice = true
+        showToast('success', 'Tạo hóa đơn thành công. Email đã được gửi kèm mã QR thanh toán.');
         setShowInvoiceModal(false);
+        
+        // Nếu đang trong flow kết thúc hợp đồng, thực hiện kết thúc sau khi tạo hóa đơn
+        if (pendingTermination) {
+          await executeTerminateContract();
+          setPendingTermination(false);
+        }
+        
         // Reset form
         setInvoiceFormData({
           issueDate: new Date().toISOString().split('T')[0],
@@ -2309,12 +3276,12 @@ const RoomsManagement = () => {
           periodEnd: '',
           electricOldReading: 0,
           electricNewReading: 0,
-          electricRate: 3500, // Sẽ được cập nhật từ hợp đồng khi load
+          electricRate: 3500,
           waterOldReading: 0,
           waterNewReading: 0,
-          waterRate: 20000, // Sẽ được cập nhật từ hợp đồng khi load
-          waterBillingType: 'perCubicMeter', // Sẽ được cập nhật từ hợp đồng khi load
-          waterPricePerPerson: 50000, // Sẽ được cập nhật từ hợp đồng khi load
+          waterRate: 20000,
+          waterBillingType: 'perCubicMeter',
+          waterPricePerPerson: 50000,
           charges: [{
             type: 'rent',
             description: 'Tiền phòng',
@@ -2327,8 +3294,8 @@ const RoomsManagement = () => {
         });
         setContractInfo(null);
         setSelectedRoomForInvoice(null);
-        setSendZaloInvoice(true); // Reset to default
-        setInvoiceFormErrors({}); // Reset errors
+        setInvoiceFormErrors({});
+        fetchRooms(); // Refresh danh sách phòng
       } else {
         showToast('error', response.message || 'Lỗi khi tạo hóa đơn');
       }
@@ -2437,24 +3404,178 @@ const RoomsManagement = () => {
   };
 
   const handleTerminateContract = (room) => {
-    // TODO: Implement terminate contract modal/page
-    if (window.confirm(t('rooms.messages.confirmTerminate'))) {
-      console.log('Terminate contract for room:', room);
-      showToast('info', t('rooms.messages.terminateContractDev') || 'Chức năng đang phát triển');
+    setSelectedRoomForTerminate(room);
+    setCreateFinalInvoice(false);
+    setShowTerminateContractModal(true);
+  };
+
+  const confirmTerminateContract = async () => {
+    if (!selectedRoomForTerminate) return;
+    
+    // Nếu chọn tạo hóa đơn tháng cuối, mở form tạo hóa đơn
+    if (createFinalInvoice) {
+      setShowTerminateContractModal(false);
+      setPendingTermination(true); // Đánh dấu sẽ kết thúc hợp đồng sau khi tạo hóa đơn
+      await handleCreateInvoice(selectedRoomForTerminate);
+      return;
+    }
+    
+    // Nếu không tạo hóa đơn, kết thúc hợp đồng luôn
+    await executeTerminateContract();
+  };
+
+  const executeTerminateContract = async () => {
+    if (!selectedRoomForTerminate) return;
+    
+    setTerminatingContract(true);
+    setShowTerminateContractModal(false);
+    
+    try {
+      // 1. Lấy tất cả hợp đồng của phòng
+      const contractsRes = await contractsAPI.getContractsByRoom(selectedRoomForTerminate.id);
+      
+      if (contractsRes.success && contractsRes.data) {
+        const activeContracts = Array.isArray(contractsRes.data) 
+          ? contractsRes.data.filter(c => c.status === 'active' || c.status === 'expiring')
+          : (contractsRes.data.status === 'active' || contractsRes.data.status === 'expiring' ? [contractsRes.data] : []);
+        
+        // 2. Xóa hoặc cập nhật trạng thái hợp đồng về 'terminated'
+        for (const contract of activeContracts) {
+          await contractsAPI.updateContract(contract._id, { status: 'terminated' });
+        }
+        
+        // 3. Lấy tất cả khách thuê của phòng và xóa khỏi phòng
+        const tenantsRes = await tenantsAPI.getTenantsByRoom(selectedRoomForTerminate.id, { status: 'active' });
+        const tenants = tenantsRes.success ? (Array.isArray(tenantsRes.data) ? tenantsRes.data : []) : [];
+        
+        // 4. Cập nhật phòng: xóa tenants và chuyển status về available
+        await roomsAPI.updateRoom(selectedRoomForTerminate.id, { 
+          status: 'available',
+          tenants: []
+        });
+        
+        showToast('success', `Đã kết thúc hợp đồng và xóa ${tenants.length} khách thuê khỏi phòng`);
+        fetchRooms();
+      }
+    } catch (error) {
+      console.error('Error terminating contract:', error);
+      showToast('error', 'Lỗi khi kết thúc hợp đồng');
+    } finally {
+      setTerminatingContract(false);
+      setSelectedRoomForTerminate(null);
+      setCreateFinalInvoice(false);
     }
   };
 
+  const cancelTerminateContract = () => {
+    setShowTerminateContractModal(false);
+    setSelectedRoomForTerminate(null);
+    setCreateFinalInvoice(false);
+  };
+
   const handleMarkAsExpiring = async (room) => {
-    if (window.confirm(t('rooms.messages.confirmMarkExpiring'))) {
-      try {
-        await roomsAPI.updateRoom(room.id, { status: 'expiring' });
-        showToast('success', t('rooms.messages.markedAsExpiring'));
-        fetchRooms();
-      } catch (error) {
-        console.error('Error marking room as expiring:', error);
-        showToast('error', t('rooms.messages.errorMarkingExpiring'));
+    setSelectedRoomForExpiring(room);
+    setShowExpiringConfirmModal(true);
+  };
+
+  const confirmMarkAsExpiring = async () => {
+    if (!selectedRoomForExpiring) return;
+    
+    setShowExpiringConfirmModal(false);
+    
+    try {
+      // 1. Cập nhật trạng thái phòng
+      await roomsAPI.updateRoom(selectedRoomForExpiring.id, { status: 'expiring' });
+      
+      // 2. Lấy tất cả hợp đồng đang hoạt động của phòng
+      const contractsRes = await contractsAPI.getContractsByRoom(selectedRoomForExpiring.id);
+      
+      if (contractsRes.success && contractsRes.data) {
+        const activeContracts = Array.isArray(contractsRes.data) 
+          ? contractsRes.data.filter(c => c.status === 'active')
+          : (contractsRes.data.status === 'active' ? [contractsRes.data] : []);
+        
+        if (activeContracts.length > 0) {
+          // 3. Cập nhật trạng thái tất cả hợp đồng đang hoạt động
+          const updatePromises = activeContracts.map(contract => 
+            contractsAPI.updateContract(contract._id, { status: 'expiring' })
+          );
+          
+          await Promise.all(updatePromises);
+          
+          showToast('success', `Đã đánh dấu phòng và ${activeContracts.length} hợp đồng sắp kết thúc`);
+        } else {
+          showToast('success', t('rooms.messages.markedAsExpiring') || 'Đã đánh dấu phòng sắp kết thúc');
+        }
+      } else {
+        showToast('success', t('rooms.messages.markedAsExpiring') || 'Đã đánh dấu phòng sắp kết thúc');
       }
+      
+      fetchRooms();
+    } catch (error) {
+      console.error('Error marking room as expiring:', error);
+      showToast('error', t('rooms.messages.errorMarkingExpiring') || 'Lỗi khi đánh dấu sắp kết thúc');
+    } finally {
+      setSelectedRoomForExpiring(null);
     }
+  };
+
+  const cancelMarkAsExpiring = () => {
+    setShowExpiringConfirmModal(false);
+    setSelectedRoomForExpiring(null);
+  };
+
+  // Handle cancel expiring status - revert back to rented/active
+  const handleCancelExpiring = (room) => {
+    setSelectedRoomForCancelExpiring(room);
+    setShowCancelExpiringModal(true);
+  };
+
+  const confirmCancelExpiring = async () => {
+    if (!selectedRoomForCancelExpiring) return;
+    
+    setShowCancelExpiringModal(false);
+    
+    try {
+      // 1. Cập nhật trạng thái phòng về 'rented'
+      await roomsAPI.updateRoom(selectedRoomForCancelExpiring.id, { status: 'rented' });
+      
+      // 2. Lấy tất cả hợp đồng đang sắp kết thúc của phòng
+      const contractsRes = await contractsAPI.getContractsByRoom(selectedRoomForCancelExpiring.id);
+      
+      if (contractsRes.success && contractsRes.data) {
+        const expiringContracts = Array.isArray(contractsRes.data) 
+          ? contractsRes.data.filter(c => c.status === 'expiring')
+          : (contractsRes.data.status === 'expiring' ? [contractsRes.data] : []);
+        
+        if (expiringContracts.length > 0) {
+          // 3. Cập nhật trạng thái tất cả hợp đồng về 'active'
+          const updatePromises = expiringContracts.map(contract => 
+            contractsAPI.updateContract(contract._id, { status: 'active' })
+          );
+          
+          await Promise.all(updatePromises);
+          
+          showToast('success', `Đã hủy báo kết thúc phòng và ${expiringContracts.length} hợp đồng`);
+        } else {
+          showToast('success', 'Đã hủy báo kết thúc phòng');
+        }
+      } else {
+        showToast('success', 'Đã hủy báo kết thúc phòng');
+      }
+      
+      fetchRooms();
+    } catch (error) {
+      console.error('Error cancelling expiring status:', error);
+      showToast('error', 'Lỗi khi hủy báo kết thúc');
+    } finally {
+      setSelectedRoomForCancelExpiring(null);
+    }
+  };
+
+  const cancelCancelExpiring = () => {
+    setShowCancelExpiringModal(false);
+    setSelectedRoomForCancelExpiring(null);
   };
 
   // Handle deposit contract form changes
@@ -2899,6 +4020,35 @@ const RoomsManagement = () => {
     });
   };
 
+  // Pagination helper function (like payments management)
+  const getPaginationRange = () => {
+    const { currentPage, totalPages } = pagination;
+    const delta = 2;
+    const range = [];
+    const rangeWithDots = [];
+    let l;
+
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
+        range.push(i);
+      }
+    }
+
+    range.forEach((i) => {
+      if (l) {
+        if (i - l === 2) {
+          rangeWithDots.push(l + 1);
+        } else if (i - l !== 1) {
+          rangeWithDots.push('...');
+        }
+      }
+      rangeWithDots.push(i);
+      l = i;
+    });
+
+    return rangeWithDots;
+  };
+
   return (
     <>
     <div className="rooms-container">
@@ -2907,56 +4057,28 @@ const RoomsManagement = () => {
         {/* Header */}
         <div className="rooms-header">
           <h1 className="rooms-title">{t('rooms.title')}</h1>
-          <div className="header-actions">
-            <button className="add-room-btn" onClick={openCreateModal}>
-              <i className="fas fa-plus"></i>
-              {t('rooms.addNew')}
-            </button>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="rooms-filters">
-          <div className="filters-grid">
-            <div className="filter-group">
-              <label className="filter-label">{t('rooms.search')}</label>
+          <div className="header-search">
+            <div className="search-box">
+              <i className="fas fa-search search-icon"></i>
               <input
                 type="text"
-                className="filter-input"
-                placeholder={t('rooms.searchPlaceholder')}
+                className="search-input"
+                placeholder="Tìm kiếm phòng theo số phòng, mô tả..."
                 value={searchFilters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && fetchRooms()}
               />
-            </div>
-            <div className="filter-group">
-              <label className="filter-label">{t('rooms.priceFrom')}</label>
-              <input
-                type="number"
-                className="filter-input"
-                placeholder="0"
-                value={searchFilters.priceMin}
-                onChange={(e) => handleFilterChange('priceMin', e.target.value)}
-              />
-            </div>
-            <div className="filter-group">
-              <label className="filter-label">{t('rooms.priceTo')}</label>
-              <input
-                type="number"
-                className="filter-input"
-                placeholder="10000000"
-                value={searchFilters.priceMax}
-                onChange={(e) => handleFilterChange('priceMax', e.target.value)}
-              />
-            </div>
-            <div className="filter-group">
-              <button className="search-btn" onClick={fetchRooms}>
-                <i className="fas fa-search"></i> {t('rooms.search')}
-              </button>
-            </div>
-            <div className="filter-group">
-              <button className="reset-btn" onClick={resetFilters}>
-                <i className="fas fa-redo"></i> {t('rooms.reset')}
-              </button>
+              {searchFilters.search && (
+                <button 
+                  className="clear-search-btn"
+                  onClick={() => {
+                    setSearchFilters(prev => ({ ...prev, search: '' }));
+                    fetchRooms();
+                  }}
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -2967,12 +4089,35 @@ const RoomsManagement = () => {
             <button
               key={status}
               className={`status-tab ${activeTab === status ? 'active' : ''}`}
-              onClick={() => setActiveTab(status)}
+              onClick={() => {
+                setActiveTab(status);
+                setPagination(prev => ({ ...prev, currentPage: 1 }));
+              }}
             >
               {label}
               <span className="tab-count">{statusCounts[status]}</span>
             </button>
           ))}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="rooms-actions">
+          <button className="action-btn primary" onClick={openCreateModal}>
+            <i className="fas fa-plus"></i>
+            {t('rooms.addNew', 'Thêm phòng mới')}
+          </button>
+          <button className="action-btn" onClick={() => setShowBillingModal(true)}>
+            <i className="fas fa-file-invoice-dollar"></i>
+            {t('rooms.billingExcel', 'Tính tiền Excel')}
+          </button>
+          <button className="action-btn" onClick={() => setShowImportModal(true)}>
+            <i className="fas fa-file-import"></i>
+            {t('rooms.importExcel', 'Import Excel')}
+          </button>
+          <button className="action-btn" onClick={handleExportExcel}>
+            <i className="fas fa-file-excel"></i>
+            {t('rooms.exportExcel', 'Xuất Excel')}
+          </button>
         </div>
 
         {/* Rooms Grid */}
@@ -3204,6 +4349,18 @@ const RoomsManagement = () => {
                                       {t('rooms.actions.markAsExpiring')}
                                     </button>
                                   )}
+                                  {room.status === 'expiring' && (
+                                    <button
+                                      className="action-menu-item success"
+                                      onClick={() => {
+                                        handleCancelExpiring(room);
+                                        setOpenActionMenu(null);
+                                      }}
+                                    >
+                                      <i className="fas fa-undo"></i>
+                                      Hủy báo kết thúc
+                                    </button>
+                                  )}
                                   <button
                                     className="action-menu-item danger"
                                     onClick={() => {
@@ -3260,28 +4417,82 @@ const RoomsManagement = () => {
         )}
 
         {/* Pagination */}
-        {rooms.length > 0 && (
+        {rooms.length > 0 && pagination.totalPages > 1 && (
           <div className="pagination">
-            <button 
-              className="pagination-btn"
-              disabled={pagination.currentPage === 1}
-              onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
-            >
-              <i className="fas fa-chevron-left"></i>
-            </button>
-            
-            <span className="pagination-info">
-              {t('rooms.pagination.page')} {pagination.currentPage} / {pagination.totalPages} 
-              ({pagination.totalItems} {t('rooms.pagination.rooms')})
-            </span>
-            
-            <button 
-              className="pagination-btn"
-              disabled={pagination.currentPage === pagination.totalPages}
-              onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
-            >
-              <i className="fas fa-chevron-right"></i>
-            </button>
+            {/* Pagination Info */}
+            <div className="pagination-info">
+              <span className="pagination-text">
+                {t('rooms.pagination.page', 'Trang')} {pagination.currentPage} / {pagination.totalPages} 
+                ({pagination.totalItems} {t('rooms.pagination.rooms', 'phòng')})
+              </span>
+            </div>
+
+            <div className="pagination-controls">
+              {/* First Page Button */}
+              <button
+                className="pagination-btn"
+                disabled={pagination.currentPage === 1}
+                onClick={() => setPagination(p => ({ ...p, currentPage: 1 }))}
+                title={t('rooms.pagination.firstPage', 'Trang đầu')}
+              >
+                <i className="fas fa-angle-double-left" />
+              </button>
+
+              {/* Previous Page Button */}
+              <button
+                className="pagination-btn"
+                disabled={pagination.currentPage === 1}
+                onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage - 1 }))}
+                title={t('rooms.pagination.previousPage', 'Trang trước')}
+              >
+                <i className="fas fa-chevron-left" />
+              </button>
+              
+              {/* Page Numbers */}
+              <div className="pagination-numbers">
+                {getPaginationRange().map((page, index) => (
+                  page === '...' ? (
+                    <span key={index} className="pagination-dots">...</span>
+                  ) : (
+                    <button
+                      key={index}
+                      className={`pagination-number ${pagination.currentPage === page ? 'active' : ''}`}
+                      onClick={() => setPagination(p => ({ ...p, currentPage: page }))}
+                      title={`${t('rooms.pagination.page', 'Trang')} ${page}`}
+                    >
+                      {page}
+                    </button>
+                  )
+                ))}
+              </div>
+              
+              {/* Next Page Button */}
+              <button
+                className="pagination-btn"
+                disabled={pagination.currentPage === pagination.totalPages}
+                onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage + 1 }))}
+                title={t('rooms.pagination.nextPage', 'Trang sau')}
+              >
+                <i className="fas fa-chevron-right" />
+              </button>
+
+              {/* Last Page Button */}
+              <button
+                className="pagination-btn"
+                disabled={pagination.currentPage === pagination.totalPages}
+                onClick={() => setPagination(p => ({ ...p, currentPage: pagination.totalPages }))}
+                title={t('rooms.pagination.lastPage', 'Trang cuối')}
+              >
+                <i className="fas fa-angle-double-right" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Fallback pagination info nếu chỉ có 1 trang */}
+        {rooms.length > 0 && pagination.totalPages <= 1 && (
+          <div style={{textAlign: 'center', padding: '20px', color: '#666'}}>
+            {t('rooms.pagination.allShown', 'Tất cả')} {pagination.totalItems} {t('rooms.pagination.rooms', 'phòng')} {t('rooms.pagination.displayed', 'đã được hiển thị')}
           </div>
         )}
       </div>
@@ -4130,7 +5341,7 @@ const RoomsManagement = () => {
                             <label htmlFor={`tenantImages_${index}`} className="image-upload-btn">
                               <div className="image-upload-placeholder">
                                 <i className="fas fa-plus-circle"></i>
-                                <span>Thêm ảnh</span>
+                                <span>{t('contracts.rental.form.addImage', 'Thêm ảnh')}</span>
                                 <small>({tenant.tenantImages ? tenant.tenantImages.length : 0}/5)</small>
                               </div>
                             </label>
@@ -4236,8 +5447,8 @@ const RoomsManagement = () => {
               ) : (
                 <div className="no-vehicles-message">
                   <i className="fas fa-car"></i>
-                  <p>Chưa có thông tin phương tiện nào</p>
-                  <small>Nhấn "Thêm xe" để thêm thông tin phương tiện</small>
+                  <p>{t('contracts.rental.vehicleInfo.noVehicles', 'Chưa có thông tin phương tiện nào')}</p>
+                  <small>{t('contracts.rental.vehicleInfo.noVehiclesDesc', 'Nhấn "Thêm xe" để thêm thông tin phương tiện')}</small>
                 </div>
               )}
             </div>
@@ -4247,30 +5458,30 @@ const RoomsManagement = () => {
             <div className="rental-contract-right">
               {/* Room Information */}
               <div className="form-section">
-                <h3><i className="fas fa-home"></i> Thông tin phòng</h3>
+                <h3><i className="fas fa-home"></i> {t('contracts.rental.roomInfo.title', 'Thông tin phòng')}</h3>
                 
                 <div className="room-info-card">
                   <div className="room-info-item">
-                    <span className="info-label">Tên phòng:</span>
+                    <span className="info-label">{t('contracts.rental.roomInfo.roomName', 'Tên phòng:')}</span>
                     <span className="info-value">{selectedRoomForContract.name}</span>
                   </div>
                   <div className="room-info-item">
-                    <span className="info-label">Sức chứa:</span>
-                    <span className="info-value">{selectedRoomForContract.capacity} người</span>
+                    <span className="info-label">{t('contracts.rental.roomInfo.capacity', 'Sức chứa:')}</span>
+                    <span className="info-value">{selectedRoomForContract.capacity} {t('contracts.rental.roomInfo.capacityUnit', 'người')}</span>
                   </div>
                   <div className="room-info-item">
-                    <span className="info-label">Diện tích:</span>
+                    <span className="info-label">{t('contracts.rental.roomInfo.area', 'Diện tích:')}</span>
                     <span className="info-value">{selectedRoomForContract.area} m²</span>
                   </div>
                   <div className="room-info-item">
-                    <span className="info-label">Giá phòng:</span>
+                    <span className="info-label">{t('contracts.rental.roomInfo.price', 'Giá phòng:')}</span>
                     <span className="info-value highlight">{Number(selectedRoomForContract.price).toLocaleString('vi-VN')} VNĐ</span>
                   </div>
                   
                   {/* Amenities */}
                   {selectedRoomForContract.amenities && selectedRoomForContract.amenities.length > 0 && (
                     <div className="room-info-item amenities-item">
-                      <span className="info-label">Tiện ích:</span>
+                      <span className="info-label">{t('contracts.rental.roomInfo.amenities', 'Tiện ích:')}</span>
                       <div className="amenities-list" style={{
                         display: 'flex', 
                         flexWrap: 'wrap', 
@@ -4304,12 +5515,12 @@ const RoomsManagement = () => {
 
             {/* Contract Information */}
             <div className="form-section">
-              <h3><i className="fas fa-calendar-alt"></i> Thông tin hợp đồng</h3>
+              <h3><i className="fas fa-calendar-alt"></i> {t('contracts.rental.contractInfo.title', 'Thông tin hợp đồng')}</h3>
               
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="startDate" className="form-label">
-                    Ngày bắt đầu <span className="required">*</span>
+                    {t('contracts.rental.contractInfo.startDate', 'Ngày bắt đầu')} <span className="required">*</span>
                   </label>
                   <input
                     type="date"
@@ -4323,7 +5534,7 @@ const RoomsManagement = () => {
 
                 <div className="form-group">
                   <label htmlFor="endDate" className="form-label">
-                    Ngày kết thúc <span className="required">*</span>
+                    {t('contracts.rental.contractInfo.endDate', 'Ngày kết thúc')} <span className="required">*</span>
                   </label>
                   <div className="date-input-container">
                     <input
@@ -4338,17 +5549,17 @@ const RoomsManagement = () => {
                         type="button"
                         className="quick-date-btn"
                         onClick={() => setEndDateQuick(6)}
-                        title="6 tháng từ ngày bắt đầu"
+                        title={t('contracts.rental.contractInfo.quickDate6M', '6 tháng từ ngày bắt đầu')}
                       >
-                        6T
+                        {t('contracts.rental.contractInfo.quick6M', '6T')}
                       </button>
                       <button
                         type="button"
                         className="quick-date-btn"
                         onClick={() => setEndDateQuick(12)}
-                        title="1 năm từ ngày bắt đầu"
+                        title={t('contracts.rental.contractInfo.quickDate1Y', '1 năm từ ngày bắt đầu')}
                       >
-                        1N
+                        {t('contracts.rental.contractInfo.quick1Y', '1N')}
                       </button>
                     </div>
                   </div>
@@ -4359,7 +5570,7 @@ const RoomsManagement = () => {
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="deposit" className="form-label">
-                    Tiền cọc <span className="required">*</span>
+                    {t('contracts.rental.contractInfo.deposit', 'Tiền cọc')} <span className="required">*</span>
                   </label>
                   <div className="form-input-group">
                     <i className="input-icon fas fa-money-bill-wave"></i>
@@ -4380,7 +5591,7 @@ const RoomsManagement = () => {
 
                 <div className="form-group">
                   <label htmlFor="monthlyRent" className="form-label">
-                    Tiền thuê hàng tháng <span className="required">*</span>
+                    {t('contracts.rental.contractInfo.monthlyRent', 'Tiền thuê hàng tháng')} <span className="required">*</span>
                   </label>
                   <div className="form-input-group">
                     <i className="input-icon fas fa-home"></i>
@@ -4403,12 +5614,12 @@ const RoomsManagement = () => {
 
             {/* Pricing Information */}
             <div className="form-section">
-              <h3><i className="fas fa-calculator"></i> Chi phí dịch vụ</h3>
+              <h3><i className="fas fa-calculator"></i> {t('contracts.rental.serviceInfo.title', 'Chi phí dịch vụ')}</h3>
               
               <div className="service-pricing-grid">
                 <div className="form-group">
                   <label htmlFor="electricityPrice" className="form-label">
-                    Giá điện (VNĐ/kWh)
+                    {t('contracts.rental.serviceInfo.electricityPrice', 'Giá điện (VNĐ/kWh)')}
                   </label>
                   <div className="form-input-group">
                     <i className="input-icon fas fa-bolt"></i>
@@ -4428,7 +5639,7 @@ const RoomsManagement = () => {
 
                 <div className="form-group">
                   <label htmlFor="servicePrice" className="form-label">
-                    Phí dịch vụ (VNĐ/tháng)
+                    {t('contracts.rental.serviceInfo.servicePrice', 'Phí dịch vụ (VNĐ/tháng)')}
                   </label>
                   <div className="form-input-group">
                     <i className="input-icon fas fa-concierge-bell"></i>
@@ -4448,22 +5659,22 @@ const RoomsManagement = () => {
 
                 <div className="form-group">
                   <label className="form-label">
-                    Cách tính tiền nước
+                    {t('contracts.rental.serviceInfo.waterChargeType', 'Cách tính tiền nước')}
                   </label>
                   <select
                     className="form-input"
                     value={rentalContractData.waterChargeType}
                     onChange={(e) => setRentalContractData(prev => ({...prev, waterChargeType: e.target.value}))}
                   >
-                    <option value="fixed">💧 Giá cố định</option>
-                    <option value="per_person">👥 Tính theo người</option>
+                    <option value="fixed">{t('contracts.rental.serviceInfo.waterChargeFixed', '💧 Giá cố định')}</option>
+                    <option value="per_person">{t('contracts.rental.serviceInfo.waterChargePerPerson', '👥 Tính theo người')}</option>
                   </select>
                 </div>
 
                 {rentalContractData.waterChargeType === 'fixed' && (
                   <div className="form-group">
                     <label htmlFor="waterPrice" className="form-label">
-                      Giá nước<br />(VNĐ/khối)
+                      {t('contracts.rental.serviceInfo.waterPrice', 'Giá nước')}<br />{t('contracts.rental.serviceInfo.waterPriceUnit', '(VNĐ/khối)')}
                     </label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-tint"></i>
@@ -4485,7 +5696,7 @@ const RoomsManagement = () => {
                 {rentalContractData.waterChargeType === 'per_person' && (
                   <div className="form-group">
                     <label htmlFor="waterPricePerPerson" className="form-label">
-                      Giá nước theo người (VNĐ/người/tháng)
+                      {t('contracts.rental.serviceInfo.waterPricePerPerson', 'Giá nước theo người (VNĐ/người/tháng)')}
                     </label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-user-friends"></i>
@@ -4508,7 +5719,7 @@ const RoomsManagement = () => {
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="paymentCycle" className="form-label">
-                    Chu kỳ thanh toán
+                    {t('contracts.rental.serviceInfo.paymentCycle', 'Chu kỳ thanh toán')}
                   </label>
                   <select
                     id="paymentCycle"
@@ -4516,23 +5727,23 @@ const RoomsManagement = () => {
                     value={rentalContractData.paymentCycle}
                     onChange={(e) => setRentalContractData(prev => ({...prev, paymentCycle: e.target.value}))}
                   >
-                    <option value="monthly">📅 Hàng tháng</option>
-                    <option value="quarterly">📊 Hàng quý</option>
-                    <option value="yearly">📈 Hàng năm</option>
+                    <option value="monthly">{t('contracts.rental.serviceInfo.paymentMonthly', '📅 Hàng tháng')}</option>
+                    <option value="quarterly">{t('contracts.rental.serviceInfo.paymentQuarterly', '📊 Hàng quý')}</option>
+                    <option value="yearly">{t('contracts.rental.serviceInfo.paymentYearly', '📈 Hàng năm')}</option>
                   </select>
                 </div>
 
                 <div className="form-group">
                   <label htmlFor="notes" className="form-label">
-                    Ghi chú
+                    {t('contracts.rental.serviceInfo.notes', 'Ghi chú')}
                   </label>
                   <textarea
                     id="notes"
                     className="form-input"
+                    rows="3"
                     value={rentalContractData.notes}
                     onChange={(e) => setRentalContractData(prev => ({...prev, notes: e.target.value}))}
-                    placeholder={t('contracts.form.notesPlaceholder')}
-                    rows="3"
+                    placeholder={t('contracts.rental.serviceInfo.notesPlaceholder', 'Nhập ghi chú bổ sung (tùy chọn)')}
                     style={{resize: 'vertical', minHeight: '80px'}}
                   />
                 </div>
@@ -4540,11 +5751,11 @@ const RoomsManagement = () => {
 
               {/* Current Meter Readings */}
               <div className="meter-readings-section">
-                <h3><i className="fas fa-tachometer-alt"></i>Chỉ số điện nước hiện tại</h3>
+                <h3><i className="fas fa-tachometer-alt"></i>{t('contracts.rental.meterReadings.title', 'Chỉ số điện nước hiện tại')}</h3>
                 <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">
-                      Chỉ số điện (kWh) <span className="required">*</span>
+                      {t('contracts.rental.meterReadings.electricIndex', 'Chỉ số điện (kWh)')} <span className="required">*</span>
                     </label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-bolt"></i>
@@ -4554,7 +5765,7 @@ const RoomsManagement = () => {
                         className={`form-input ${rentalContractErrors.currentElectricIndex ? 'error' : ''}`}
                         value={rentalContractData.currentElectricIndex}
                         onChange={(e) => setRentalContractData(prev => ({...prev, currentElectricIndex: e.target.value}))}
-                        placeholder="Nhập chỉ số điện hiện tại"
+                        placeholder={t('contracts.rental.meterReadings.electricIndexPlaceholder', 'Nhập chỉ số điện hiện tại')}
                       />
                     </div>
                     {rentalContractErrors.currentElectricIndex && (
@@ -4564,7 +5775,7 @@ const RoomsManagement = () => {
                   
                   <div className="form-group">
                     <label className="form-label">
-                      Chỉ số nước (m³) <span className="required">*</span>
+                      {t('contracts.rental.meterReadings.waterIndex', 'Chỉ số nước (m³)')} <span className="required">*</span>
                     </label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-tint"></i>
@@ -4574,7 +5785,7 @@ const RoomsManagement = () => {
                         className={`form-input ${rentalContractErrors.currentWaterIndex ? 'error' : ''}`}
                         value={rentalContractData.currentWaterIndex}
                         onChange={(e) => setRentalContractData(prev => ({...prev, currentWaterIndex: e.target.value}))}
-                        placeholder="Nhập chỉ số nước hiện tại"
+                        placeholder={t('contracts.rental.meterReadings.waterIndexPlaceholder', 'Nhập chỉ số nước hiện tại')}
                       />
                     </div>
                     {rentalContractErrors.currentWaterIndex && (
@@ -4641,16 +5852,16 @@ const RoomsManagement = () => {
             {loadingTenants ? (
               <div className="loading-container">
                 <div className="loading-spinner"></div>
-                <p>Đang tải danh sách khách thuê...</p>
+                <p>{t('contracts.rental.tenantsSection.loading', 'Đang tải danh sách khách thuê...')}</p>
               </div>
             ) : roomTenants.length === 0 ? (
               <div className="empty-tenants">
                 <div className="empty-icon">👥</div>
-                <h3>Chưa có khách thuê</h3>
-                <p>Phòng này chưa có khách thuê nào.</p>
+                <h3>{t('contracts.rental.tenantsSection.noTenants', 'Chưa có khách thuê')}</h3>
+                <p>{t('contracts.rental.tenantsSection.noTenantsDesc', 'Phòng này chưa có khách thuê nào.')}</p>
                 <button className="btn-primary" onClick={handleAddTenant}>
                   <i className="fas fa-user-plus"></i>
-                  Thêm khách thuê đầu tiên
+                  {t('contracts.rental.tenantInfo.addTenant', 'Thêm khách thuê đầu tiên')}
                 </button>
               </div>
             ) : (
@@ -4722,11 +5933,11 @@ const RoomsManagement = () => {
               <div className="form-section">
                 <h4 className="section-title">
                   <i className="fas fa-user"></i>
-                  Thông tin khách thuê
+                  {t('contracts.rental.form.tenantInfoTitle', 'Thông tin khách thuê')}
                 </h4>
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Họ và tên *</label>
+                    <label className="form-label">{t('contracts.rental.form.fullName', 'Họ và tên *')}</label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-user"></i>
                       <input
@@ -4734,7 +5945,7 @@ const RoomsManagement = () => {
                         className="form-input"
                         value={tenantFormData.fullName}
                         onChange={(e) => setTenantFormData(prev => ({...prev, fullName: e.target.value}))}
-                        placeholder="Nhập họ và tên"
+                        placeholder={t('contracts.rental.form.fullNamePlaceholder', 'Nhập họ và tên')}
                       />
                     </div>
                     {tenantFormErrors.fullName && (
@@ -4742,7 +5953,7 @@ const RoomsManagement = () => {
                     )}
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Số điện thoại *</label>
+                    <label className="form-label">{t('contracts.rental.form.phone', 'Số điện thoại *')}</label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-phone"></i>
                       <input
@@ -4750,7 +5961,7 @@ const RoomsManagement = () => {
                         className="form-input"
                         value={tenantFormData.phone}
                         onChange={(e) => setTenantFormData(prev => ({...prev, phone: e.target.value}))}
-                        placeholder="Nhập số điện thoại"
+                        placeholder={t('contracts.rental.form.phonePlaceholder', 'Nhập số điện thoại')}
                       />
                     </div>
                     {tenantFormErrors.phone && (
@@ -4761,7 +5972,7 @@ const RoomsManagement = () => {
                 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Email</label>
+                    <label className="form-label">{t('contracts.rental.form.email', 'Email')}</label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-envelope"></i>
                       <input
@@ -4769,7 +5980,7 @@ const RoomsManagement = () => {
                         className="form-input"
                         value={tenantFormData.email}
                         onChange={(e) => setTenantFormData(prev => ({...prev, email: e.target.value}))}
-                        placeholder="email@example.com"
+                        placeholder={t('contracts.rental.form.emailPlaceholder', 'email@example.com')}
                       />
                     </div>
                     {tenantFormErrors.email && (
@@ -4777,7 +5988,7 @@ const RoomsManagement = () => {
                     )}
                   </div>
                   <div className="form-group">
-                    <label className="form-label">CMND/CCCD *</label>
+                    <label className="form-label">{t('contracts.rental.form.idNumber', 'CMND/CCCD *')}</label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-id-card"></i>
                       <input
@@ -4785,7 +5996,7 @@ const RoomsManagement = () => {
                         className="form-input"
                         value={tenantFormData.identificationNumber}
                         onChange={(e) => setTenantFormData(prev => ({...prev, identificationNumber: e.target.value}))}
-                        placeholder="Nhập số CMND/CCCD"
+                        placeholder={t('contracts.rental.form.idNumberPlaceholder', 'Nhập số CMND/CCCD')}
                       />
                     </div>
                     {tenantFormErrors.identificationNumber && (
@@ -4796,7 +6007,7 @@ const RoomsManagement = () => {
                 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Địa chỉ</label>
+                    <label className="form-label">{t('contracts.rental.form.address', 'Địa chỉ')}</label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-map-marker-alt"></i>
                       <input
@@ -4804,7 +6015,7 @@ const RoomsManagement = () => {
                         className="form-input"
                         value={tenantFormData.address}
                         onChange={(e) => setTenantFormData(prev => ({...prev, address: e.target.value}))}
-                        placeholder="Nhập địa chỉ (không bắt buộc)"
+                        placeholder={t('contracts.rental.form.addressPlaceholder', 'Nhập địa chỉ (không bắt buộc)')}
                       />
                     </div>
                     {tenantFormErrors.address && (
@@ -4816,7 +6027,7 @@ const RoomsManagement = () => {
                 {/* Image Upload Section */}
                 <div className="form-row">
                   <div className="form-group full-width">
-                    <label className="form-label">Ảnh căn cước/chân dung</label>
+                    <label className="form-label">{t('contracts.rental.form.idImages', 'Ảnh căn cước/chân dung')}</label>
                     <div className="image-upload-section">
                       <div className="image-upload-area">
                         <input
@@ -4830,7 +6041,7 @@ const RoomsManagement = () => {
                             const filesToAdd = files.slice(0, availableSlots);
                             
                             if (files.length > availableSlots) {
-                              showToast(`Chỉ có thể tải lên tối đa 5 ảnh. Đã thêm ${filesToAdd.length} ảnh đầu tiên.`, 'warning');
+                              showToast(t('contracts.rental.form.maxImagesWarning', `Chỉ có thể tải lên tối đa 5 ảnh. Đã thêm ${filesToAdd.length} ảnh đầu tiên.`, {count: filesToAdd.length}), 'warning');
                             }
                             
                             setTenantFormData(prev => ({
@@ -4894,7 +6105,7 @@ const RoomsManagement = () => {
                               className="btn-add-vehicle"
                               onClick={() => setShowVehicleForm(true)}
                             >
-                              <i className="fas fa-plus"></i> Thêm thông tin xe ({currentVehicles}/{maxVehicles})
+                              <i className="fas fa-plus"></i> {t('vehicles.form.addVehicleInfo', 'Thêm thông tin xe')} ({currentVehicles}/{maxVehicles})
                             </button>
                           </div>
                         </div>
@@ -4904,13 +6115,13 @@ const RoomsManagement = () => {
                         <div className="vehicle-form-section">
                           <div className="form-row">
                             <div className="form-group">
-                              <label className="form-label">Biển số xe</label>
+                              <label className="form-label">{t('vehicles.form.licensePlate', 'Biển số xe')}</label>
                               <input
                                 type="text"
                                 className="form-input"
                                 value={tenantFormData.vehicleLicensePlate}
                                 onChange={(e) => setTenantFormData(prev => ({...prev, vehicleLicensePlate: e.target.value}))}
-                                placeholder="Nhập biển số xe"
+                                placeholder={t('vehicles.form.licensePlatePlaceholder', 'Nhập biển số xe')}
                               />
                             </div>
                             <div className="form-group">
@@ -4934,7 +6145,7 @@ const RoomsManagement = () => {
                                   setTenantFormData(prev => ({...prev, vehicleLicensePlate: '', vehicleType: ''}));
                                 }}
                               >
-                                <i className="fas fa-times"></i> Bỏ thông tin xe
+                                <i className="fas fa-times"></i> {t('vehicles.form.removeVehicleInfo', 'Bỏ thông tin xe')}
                               </button>
                             </div>
                           </div>
@@ -4946,7 +6157,7 @@ const RoomsManagement = () => {
                           <div className="form-group full-width">
                             <div className="vehicle-limit-message">
                               <i className="fas fa-info-circle"></i>
-                              Phòng này đã đạt giới hạn xe ({currentVehicles}/{maxVehicles})
+                              {t('vehicles.form.vehicleLimitReached', 'Phòng này đã đạt giới hạn xe')} ({currentVehicles}/{maxVehicles})
                             </div>
                           </div>
                         </div>
@@ -4960,7 +6171,7 @@ const RoomsManagement = () => {
 
           <div className="room-modal-footer">
             <button className="btn-secondary" onClick={closeTenantModals} disabled={savingTenant}>
-              <i className="fas fa-times"></i> Hủy
+              <i className="fas fa-times"></i> {t('common.cancel', 'Hủy')}
             </button>
             <button className="btn-primary" onClick={handleSaveTenant} disabled={savingTenant}>
               {savingTenant ? (
@@ -4991,11 +6202,11 @@ const RoomsManagement = () => {
               <div className="form-section">
                 <h4 className="section-title">
                   <i className="fas fa-user"></i>
-                  Thông tin khách thuê
+                  {t('contracts.rental.form.tenantInfoTitle', 'Thông tin khách thuê')}
                 </h4>
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Họ và tên *</label>
+                    <label className="form-label">{t('contracts.rental.form.fullName', 'Họ và tên *')}</label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-user"></i>
                       <input
@@ -5003,7 +6214,7 @@ const RoomsManagement = () => {
                         className="form-input"
                         value={tenantFormData.fullName}
                         onChange={(e) => setTenantFormData(prev => ({...prev, fullName: e.target.value}))}
-                        placeholder="Nhập họ và tên"
+                        placeholder={t('contracts.rental.form.fullNamePlaceholder', 'Nhập họ và tên')}
                       />
                     </div>
                     {tenantFormErrors.fullName && (
@@ -5011,7 +6222,7 @@ const RoomsManagement = () => {
                     )}
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Số điện thoại *</label>
+                    <label className="form-label">{t('contracts.rental.form.phone', 'Số điện thoại *')}</label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-phone"></i>
                       <input
@@ -5019,7 +6230,7 @@ const RoomsManagement = () => {
                         className="form-input"
                         value={tenantFormData.phone}
                         onChange={(e) => setTenantFormData(prev => ({...prev, phone: e.target.value}))}
-                        placeholder="Nhập số điện thoại"
+                        placeholder={t('contracts.rental.form.phonePlaceholder', 'Nhập số điện thoại')}
                       />
                     </div>
                     {tenantFormErrors.phone && (
@@ -5030,7 +6241,7 @@ const RoomsManagement = () => {
                 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Email</label>
+                    <label className="form-label">{t('contracts.rental.form.email', 'Email')}</label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-envelope"></i>
                       <input
@@ -5038,7 +6249,7 @@ const RoomsManagement = () => {
                         className="form-input"
                         value={tenantFormData.email}
                         onChange={(e) => setTenantFormData(prev => ({...prev, email: e.target.value}))}
-                        placeholder="email@example.com"
+                        placeholder={t('contracts.rental.form.emailPlaceholder', 'email@example.com')}
                       />
                     </div>
                     {tenantFormErrors.email && (
@@ -5046,7 +6257,7 @@ const RoomsManagement = () => {
                     )}
                   </div>
                   <div className="form-group">
-                    <label className="form-label">CMND/CCCD *</label>
+                    <label className="form-label">{t('contracts.rental.form.idNumber', 'CMND/CCCD *')}</label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-id-card"></i>
                       <input
@@ -5054,7 +6265,7 @@ const RoomsManagement = () => {
                         className="form-input"
                         value={tenantFormData.identificationNumber}
                         onChange={(e) => setTenantFormData(prev => ({...prev, identificationNumber: e.target.value}))}
-                        placeholder="Nhập số CMND/CCCD"
+                        placeholder={t('contracts.rental.form.idNumberPlaceholder', 'Nhập số CMND/CCCD')}
                       />
                     </div>
                     {tenantFormErrors.identificationNumber && (
@@ -5065,7 +6276,7 @@ const RoomsManagement = () => {
                 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Địa chỉ</label>
+                    <label className="form-label">{t('contracts.rental.form.address', 'Địa chỉ')}</label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-map-marker-alt"></i>
                       <input
@@ -5073,7 +6284,7 @@ const RoomsManagement = () => {
                         className="form-input"
                         value={tenantFormData.address}
                         onChange={(e) => setTenantFormData(prev => ({...prev, address: e.target.value}))}
-                        placeholder="Nhập địa chỉ (không bắt buộc)"
+                        placeholder={t('contracts.rental.form.addressPlaceholder', 'Nhập địa chỉ (không bắt buộc)')}
                       />
                     </div>
                     {tenantFormErrors.address && (
@@ -5085,7 +6296,7 @@ const RoomsManagement = () => {
                 {/* Image Upload Section */}
                 <div className="form-row">
                   <div className="form-group full-width">
-                    <label className="form-label">Ảnh căn cước/chân dung</label>
+                    <label className="form-label">{t('contracts.rental.form.idImages', 'Ảnh căn cước/chân dung')}</label>
                     <div className="image-upload-section">
                       <div className="image-upload-area">
                         <input
@@ -5394,7 +6605,7 @@ const RoomsManagement = () => {
                 
                 <div className="form-grid">
                   <div className="form-group">
-                    <label className="form-label">Biển số xe *</label>
+                    <label className="form-label">{t('vehicles.form.licensePlate', 'Biển số xe *')}</label>
                     <input
                       type="text"
                       className={`form-input ${vehicleFormErrors.licensePlate ? 'error' : ''}`}
@@ -5403,7 +6614,7 @@ const RoomsManagement = () => {
                         ...prev,
                         licensePlate: e.target.value
                       }))}
-                      placeholder="Nhập biển số xe"
+                      placeholder={t('vehicles.form.licensePlatePlaceholder', 'Nhập biển số xe')}
                     />
                     {vehicleFormErrors.licensePlate && (
                       <span className="error-message">{vehicleFormErrors.licensePlate}</span>
@@ -5421,11 +6632,11 @@ const RoomsManagement = () => {
                       }))}
                     >
                       <option value="">{t('vehicles.form.selectVehicleType')}</option>
-                      <option value="Xe máy">🏍️ Xe máy</option>
-                      <option value="Xe đạp">🚲 Xe đạp</option>
-                      <option value="Ô tô">🚗 Ô tô</option>
-                      <option value="Xe điện">⚡ Xe điện</option>
-                      <option value="Khác">🔧 Khác</option>
+                      <option value="Xe máy">🏍️ {t('vehicles.types.motorcycle', 'Xe máy')}</option>
+                      <option value="Xe đạp">🚲 {t('vehicles.types.bicycle', 'Xe đạp')}</option>
+                      <option value="Ô tô">🚗 {t('vehicles.types.car', 'Ô tô')}</option>
+                      <option value="Xe điện">⚡ {t('vehicles.types.electric', 'Xe điện')}</option>
+                      <option value="Khác">🔧 {t('vehicles.types.other', 'Khác')}</option>
                     </select>
                     {vehicleFormErrors.vehicleType && (
                       <span className="error-message">{vehicleFormErrors.vehicleType}</span>
@@ -5437,12 +6648,12 @@ const RoomsManagement = () => {
               <div className="form-section">
                 <h3 className="section-title">
                   <i className="fas fa-user"></i>
-                  Thông tin chủ xe
+                  {t('vehicles.form.ownerInfoTitle', 'Thông tin chủ xe')}
                 </h3>
                 
                 <div className="form-grid">
                   <div className="form-group">
-                    <label className="form-label">Tên chủ xe *</label>
+                    <label className="form-label">{t('vehicles.form.ownerName', 'Tên chủ xe *')}</label>
                     <input
                       type="text"
                       className={`form-input ${vehicleFormErrors.ownerName ? 'error' : ''}`}
@@ -5451,7 +6662,7 @@ const RoomsManagement = () => {
                         ...prev,
                         ownerName: e.target.value
                       }))}
-                      placeholder="Nhập tên chủ xe"
+                      placeholder={t('vehicles.form.ownerNamePlaceholder', 'Nhập tên chủ xe')}
                     />
                     {vehicleFormErrors.ownerName && (
                       <span className="error-message">{vehicleFormErrors.ownerName}</span>
@@ -5459,7 +6670,7 @@ const RoomsManagement = () => {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Số điện thoại *</label>
+                    <label className="form-label">{t('vehicles.form.ownerPhone', 'Số điện thoại *')}</label>
                     <input
                       type="tel"
                       className={`form-input ${vehicleFormErrors.ownerPhone ? 'error' : ''}`}
@@ -5468,7 +6679,7 @@ const RoomsManagement = () => {
                         ...prev,
                         ownerPhone: e.target.value
                       }))}
-                      placeholder="Nhập số điện thoại"
+                      placeholder={t('vehicles.form.ownerPhonePlaceholder', 'Nhập số điện thoại')}
                     />
                     {vehicleFormErrors.ownerPhone && (
                       <span className="error-message">{vehicleFormErrors.ownerPhone}</span>
@@ -5480,11 +6691,11 @@ const RoomsManagement = () => {
               <div className="form-section">
                 <h3 className="section-title">
                   <i className="fas fa-sticky-note"></i>
-                  Thông tin bổ sung
+                  {t('vehicles.form.additionalInfoTitle', 'Thông tin bổ sung')}
                 </h3>
                 
                 <div className="form-group">
-                  <label className="form-label">Ghi chú</label>
+                  <label className="form-label">{t('vehicles.form.notes', 'Ghi chú')}</label>
                   <textarea
                     className="form-input"
                     value={vehicleFormData.notes}
@@ -5502,7 +6713,7 @@ const RoomsManagement = () => {
 
           <div className="room-modal-footer">
             <button className="btn-secondary" onClick={closeEditVehicleModal} disabled={savingVehicle}>
-              <i className="fas fa-times"></i> Hủy
+              <i className="fas fa-times"></i> {t('common.cancel', 'Hủy')}
             </button>
             <button className="btn-primary" onClick={handleSaveVehicle} disabled={savingVehicle}>
               {savingVehicle ? (
@@ -5822,7 +7033,7 @@ const RoomsManagement = () => {
                     </h4>
                     <div className="room-form-grid" style={{gridTemplateColumns: '1fr 1fr 1fr auto'}}>
                       <div className="room-form-group">
-                        <label className="room-form-label">Chỉ số cũ</label>
+                        <label className="room-form-label">{t('invoices.form.oldReading', 'Chỉ số cũ')}</label>
                         <input
                           type="number"
                           min="0"
@@ -5835,7 +7046,7 @@ const RoomsManagement = () => {
                       </div>
 
                       <div className="room-form-group">
-                        <label className="room-form-label">Chỉ số mới *</label>
+                        <label className="room-form-label">{t('invoices.form.newReading', 'Chỉ số mới *')}</label>
                         <input
                           type="number"
                           name="electricNewReading"
@@ -5852,7 +7063,7 @@ const RoomsManagement = () => {
                       </div>
 
                       <div className="room-form-group">
-                        <label className="room-form-label">Tiêu thụ</label>
+                        <label className="room-form-label">{t('invoices.form.consumption', 'Tiêu thụ')}</label>
                         <input
                           type="number"
                           className="room-form-input"
@@ -5863,7 +7074,7 @@ const RoomsManagement = () => {
                       </div>
 
                       <div className="room-form-group">
-                        <label className="room-form-label">Thành tiền</label>
+                        <label className="room-form-label">{t('invoices.form.totalAmount', 'Thành tiền')}</label>
                         <div style={{
                           padding: '10px 12px',
                           backgroundColor: '#f0f9ff',
@@ -5874,7 +7085,7 @@ const RoomsManagement = () => {
                           textAlign: 'center',
                           minWidth: '120px'
                         }}>
-                          {(((invoiceFormData.electricNewReading || 0) - (invoiceFormData.electricOldReading || 0)) * (invoiceFormData.electricRate || 0)).toLocaleString('vi-VN')} VNĐ
+                          {(((invoiceFormData.electricNewReading || 0) - (invoiceFormData.electricOldReading || 0)) * (invoiceFormData.electricRate || 0)).toLocaleString('vi-VN')} {t('common.currency', 'VNĐ')}
                         </div>
                       </div>
                     </div>
@@ -5890,7 +7101,7 @@ const RoomsManagement = () => {
                         </h4>
                         <div className="room-form-grid" style={{gridTemplateColumns: '1fr 1fr 1fr auto'}}>
                           <div className="room-form-group">
-                            <label className="room-form-label">Chỉ số cũ</label>
+                            <label className="room-form-label">{t('invoices.form.oldReading', 'Chỉ số cũ')}</label>
                             <input
                               type="number"
                               min="0"
@@ -5903,7 +7114,7 @@ const RoomsManagement = () => {
                           </div>
 
                           <div className="room-form-group">
-                            <label className="room-form-label">Chỉ số mới *</label>
+                            <label className="room-form-label">{t('invoices.form.newReading', 'Chỉ số mới *')}</label>
                             <input
                               type="number"
                               name="waterNewReading"
@@ -5920,7 +7131,7 @@ const RoomsManagement = () => {
                           </div>
 
                           <div className="room-form-group">
-                            <label className="room-form-label">Tiêu thụ</label>
+                            <label className="room-form-label">{t('invoices.form.consumption', 'Tiêu thụ')}</label>
                             <input
                               type="number"
                               className="room-form-input"
@@ -5931,7 +7142,7 @@ const RoomsManagement = () => {
                           </div>
 
                           <div className="room-form-group">
-                            <label className="room-form-label">Thành tiền</label>
+                            <label className="room-form-label">{t('invoices.form.totalAmount', 'Thành tiền')}</label>
                             <div style={{
                               padding: '10px 12px',
                               backgroundColor: '#f0fdfa',
@@ -5942,7 +7153,7 @@ const RoomsManagement = () => {
                               textAlign: 'center',
                               minWidth: '120px'
                             }}>
-                              {(((invoiceFormData.waterNewReading || 0) - (invoiceFormData.waterOldReading || 0)) * (invoiceFormData.waterRate || 0)).toLocaleString('vi-VN')} VNĐ
+                              {(((invoiceFormData.waterNewReading || 0) - (invoiceFormData.waterOldReading || 0)) * (invoiceFormData.waterRate || 0)).toLocaleString('vi-VN')} {t('common.currency', 'VNĐ')}
                             </div>
                           </div>
                         </div>
@@ -5955,7 +7166,7 @@ const RoomsManagement = () => {
                         </h4>
                         <div className="room-form-grid" style={{gridTemplateColumns: '1fr auto'}}>
                           <div className="room-form-group">
-                            <label className="room-form-label">Số người thuê</label>
+                            <label className="room-form-label">{t('invoices.form.numberOfTenants', 'Số người thuê')}</label>
                             <input
                               type="number"
                               className="room-form-input"
@@ -5966,7 +7177,7 @@ const RoomsManagement = () => {
                           </div>
 
                           <div className="room-form-group">
-                            <label className="room-form-label">Thành tiền</label>
+                            <label className="room-form-label">{t('invoices.form.totalAmount', 'Thành tiền')}</label>
                             <div style={{
                               padding: '10px 12px',
                               backgroundColor: '#f0fdfa',
@@ -5977,7 +7188,7 @@ const RoomsManagement = () => {
                               textAlign: 'center',
                               minWidth: '120px'
                             }}>
-                              {((contractInfo?.tenants?.length || 1) * (invoiceFormData.waterPricePerPerson || 0)).toLocaleString('vi-VN')} VNĐ
+                              {((contractInfo?.tenants?.length || 1) * (invoiceFormData.waterPricePerPerson || 0)).toLocaleString('vi-VN')} {t('common.currency', 'VNĐ')}
                             </div>
                           </div>
                         </div>
@@ -6176,29 +7387,12 @@ const RoomsManagement = () => {
           </div>
 
           <div className="room-modal-footer">
-            <div style={{display: 'flex', alignItems: 'center', flex: 1}}>
-              <label style={{display: 'flex', alignItems: 'center', gap: '8px', color: '#374151', fontSize: '14px', cursor: 'pointer'}}>
-                <input
-                  type="checkbox"
-                  checked={sendZaloInvoice}
-                  onChange={(e) => setSendZaloInvoice(e.target.checked)}
-                  style={{
-                    width: '18px',
-                    height: '18px',
-                    accentColor: '#3b82f6'
-                  }}
-                />
-                <i className="fab fa-telegram" style={{color: '#0088cc', fontSize: '16px'}}></i>
-                <span>Gửi hóa đơn Zalo cho khách thuê</span>
-              </label>
-            </div>
-            <div style={{display: 'flex', gap: '12px'}}>
+            <div style={{display: 'flex', gap: '12px', width: '100%', justifyContent: 'flex-end'}}>
               <button 
                 className="btn-secondary" 
                 disabled={savingInvoice}
                 onClick={() => {
                   setShowInvoiceModal(false);
-                  setSendZaloInvoice(true); // Reset to default
                   setInvoiceFormErrors({}); // Reset errors
                 }}
               >
@@ -6217,6 +7411,592 @@ const RoomsManagement = () => {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Mark as Expiring Confirmation Modal */}
+    {showExpiringConfirmModal && selectedRoomForExpiring && (
+      <div className="room-modal-overlay" onClick={cancelMarkAsExpiring}>
+        <div className="room-confirm-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="room-confirm-header">
+            <i className="fas fa-exclamation-circle room-confirm-icon"></i>
+            <h3>Xác nhận đánh dấu sắp kết thúc</h3>
+          </div>
+          <div className="room-confirm-body">
+            <p>Bạn có chắc chắn muốn đánh dấu phòng <strong>{selectedRoomForExpiring.roomNumber}</strong> sắp kết thúc?</p>
+            <div className="room-confirm-info">
+              <i className="fas fa-info-circle"></i>
+              <div>
+                <p><strong>Hành động này sẽ:</strong></p>
+                <ul>
+                  <li>Chuyển trạng thái phòng sang "Sắp kết thúc"</li>
+                  <li>Cập nhật trạng thái các hợp đồng đang hoạt động sang "Sắp kết thúc"</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div className="room-confirm-footer">
+            <button className="room-confirm-btn-cancel" onClick={cancelMarkAsExpiring}>
+              <i className="fas fa-times"></i>
+              Hủy
+            </button>
+            <button className="room-confirm-btn-confirm" onClick={confirmMarkAsExpiring}>
+              <i className="fas fa-check"></i>
+              Xác nhận
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Cancel Expiring Confirmation Modal */}
+    {showCancelExpiringModal && selectedRoomForCancelExpiring && (
+      <div className="room-modal-overlay" onClick={cancelCancelExpiring}>
+        <div className="room-confirm-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="room-confirm-header">
+            <i className="fas fa-undo room-confirm-icon"></i>
+            <h3>Xác nhận hủy báo kết thúc</h3>
+          </div>
+          <div className="room-confirm-body">
+            <p>Bạn có chắc chắn muốn hủy báo kết thúc phòng <strong>{selectedRoomForCancelExpiring.roomNumber}</strong>?</p>
+            <div className="room-confirm-info">
+              <i className="fas fa-info-circle"></i>
+              <div>
+                <p><strong>Hành động này sẽ:</strong></p>
+                <ul>
+                  <li>Chuyển trạng thái phòng về "Đã thuê"</li>
+                  <li>Cập nhật trạng thái các hợp đồng về "Đang hoạt động"</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div className="room-confirm-footer">
+            <button className="room-confirm-btn-cancel" onClick={cancelCancelExpiring}>
+              <i className="fas fa-times"></i>
+              Hủy
+            </button>
+            <button className="room-confirm-btn-confirm" onClick={confirmCancelExpiring}>
+              <i className="fas fa-check"></i>
+              Xác nhận
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Terminate Contract Confirmation Modal */}
+    {showTerminateContractModal && selectedRoomForTerminate && (
+      <div className="room-modal-overlay" onClick={cancelTerminateContract}>
+        <div className="room-confirm-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="room-confirm-header">
+            <i className="fas fa-ban room-confirm-icon" style={{color: '#dc2626'}}></i>
+            <h3>Xác nhận kết thúc hợp đồng</h3>
+          </div>
+          <div className="room-confirm-body">
+            <p>Bạn có chắc chắn muốn kết thúc hợp đồng phòng <strong>{selectedRoomForTerminate.roomNumber}</strong>?</p>
+            
+            <div className="room-confirm-checkbox">
+              <label style={{display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '12px', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bfdbfe'}}>
+                <input
+                  type="checkbox"
+                  checked={createFinalInvoice}
+                  onChange={(e) => setCreateFinalInvoice(e.target.checked)}
+                  style={{
+                    width: '18px',
+                    height: '18px',
+                    accentColor: '#3b82f6',
+                    cursor: 'pointer'
+                  }}
+                />
+                <span style={{fontSize: '14px', color: '#1e40af', fontWeight: '500'}}>
+                  <i className="fas fa-file-invoice" style={{marginRight: '6px'}}></i>
+                  Tạo hóa đơn tháng cuối trước khi kết thúc
+                </span>
+              </label>
+            </div>
+            
+            <div className="room-confirm-info" style={{marginTop: '16px'}}>
+              <i className="fas fa-exclamation-triangle" style={{color: '#dc2626'}}></i>
+              <div>
+                <p><strong>Hành động này sẽ:</strong></p>
+                <ul>
+                  <li>Chuyển trạng thái hợp đồng sang "Đã kết thúc"</li>
+                  <li>Xóa tất cả khách thuê khỏi phòng</li>
+                  <li>Chuyển trạng thái phòng về "Trống"</li>
+                  {createFinalInvoice && <li style={{color: '#2563eb', fontWeight: '500'}}>Mở form tạo hóa đơn thanh toán tháng cuối</li>}
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div className="room-confirm-footer">
+            <button className="room-confirm-btn-cancel" onClick={cancelTerminateContract}>
+              <i className="fas fa-times"></i>
+              Hủy
+            </button>
+            <button 
+              className="room-confirm-btn-confirm" 
+              onClick={confirmTerminateContract}
+              style={{background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'}}
+              disabled={terminatingContract}
+            >
+              <i className="fas fa-ban"></i>
+              {terminatingContract ? 'Đang xử lý...' : 'Kết thúc hợp đồng'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Import Excel Modal */}
+    {showImportModal && (
+      <div className="modal-overlay" onClick={() => {
+        if (!importLoading) {
+          setShowImportModal(false);
+          setImportFile(null);
+          setImportData([]);
+        }
+      }}>
+        <div className="import-modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <h3>
+              <i className="fas fa-file-import"></i> {t('rooms.importExcel', 'Import Excel')}
+            </h3>
+            <button 
+              className="modal-close-btn" 
+              onClick={() => {
+                if (!importLoading) {
+                  setShowImportModal(false);
+                  setImportFile(null);
+                  setImportData([]);
+                }
+              }}
+              disabled={importLoading}
+            >
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+
+          <div className="modal-body">
+            {/* Top Section with Template Button */}
+            <div className="import-top-section">
+              <div className="template-download-area">
+                <button className="template-download-btn" onClick={handleDownloadTemplate}>
+                  <i className="fas fa-download"></i>
+                  {t('rooms.downloadTemplate', 'Tải file mẫu')}
+                </button>
+              </div>
+              <p className="import-hint">
+                <i className="fas fa-info-circle"></i>
+                {t('rooms.templateHint', 'Tải file mẫu để xem định dạng dữ liệu cần import')}
+              </p>
+            </div>
+
+            {/* File Upload */}
+            <div className="import-section">
+              <label className="file-upload-label">
+                <i className="fas fa-file-excel"></i>
+                {t('rooms.selectFile', 'Chọn file Excel')}
+              </label>
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleFileSelect}
+                className="file-input"
+                id="excel-file-input"
+                disabled={importLoading}
+              />
+              <label htmlFor="excel-file-input" className="file-input-btn">
+                <i className="fas fa-upload"></i>
+                {importFile ? importFile.name : t('rooms.chooseFile', 'Chọn file...')}
+              </label>
+            </div>
+
+            {/* Data Preview Grid */}
+            {importData.length > 0 && (
+              <div className="import-section">
+                <h4 className="preview-title">
+                  <i className="fas fa-table"></i>
+                  {t('rooms.dataPreview', 'Xem trước dữ liệu')} ({importData.length} phòng)
+                </h4>
+                <div className="import-data-grid">
+                  <table className="import-table">
+                    <thead>
+                      <tr>
+                        <th>STT</th>
+                        <th>Tên phòng</th>
+                        <th>Trạng thái</th>
+                        <th>Giá thuê</th>
+                        <th>Giá cọc</th>
+                        <th>Diện tích</th>
+                        <th>Sức chứa</th>
+                        <th>Hợp lệ</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importData.map((room, index) => (
+                        <tr key={room.id} className={!room.isValid ? 'invalid-row' : ''}>
+                          <td>{index + 1}</td>
+                          <td>
+                            <input
+                              type="text"
+                              className="editable-cell"
+                              value={room.roomNumber}
+                              onChange={(e) => handleEditImportRow(index, 'roomNumber', e.target.value)}
+                              placeholder="Tên phòng"
+                            />
+                          </td>
+                          <td>
+                            <select
+                              className="editable-select"
+                              value={room.status}
+                              onChange={(e) => handleEditImportRow(index, 'status', e.target.value)}
+                            >
+                              <option value="available">Trống</option>
+                              <option value="rented">Đã thuê</option>
+                              <option value="reserved">Đã đặt cọc</option>
+                            </select>
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="editable-cell"
+                              value={room.price}
+                              onChange={(e) => handleEditImportRow(index, 'price', parseFloat(e.target.value) || 0)}
+                              placeholder="Giá thuê"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="editable-cell"
+                              value={room.deposit}
+                              onChange={(e) => handleEditImportRow(index, 'deposit', parseFloat(e.target.value) || 0)}
+                              placeholder="Giá cọc"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="editable-cell"
+                              value={room.area}
+                              onChange={(e) => handleEditImportRow(index, 'area', parseFloat(e.target.value) || 0)}
+                              placeholder="Diện tích"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="editable-cell"
+                              value={room.capacity}
+                              onChange={(e) => handleEditImportRow(index, 'capacity', parseInt(e.target.value) || 0)}
+                              placeholder="Sức chứa"
+                            />
+                          </td>
+                          <td>
+                            {room.isValid ? (
+                              <span className="valid-icon"><i className="fas fa-check-circle"></i></span>
+                            ) : (
+                              <span className="invalid-icon" title={room.errors.join(', ')}>
+                                <i className="fas fa-exclamation-circle"></i>
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* Summary Stats */}
+                <div className="import-summary">
+                  <div className="summary-item summary-total">
+                    <i className="fas fa-list"></i>
+                    <span>Tổng: <strong>{importData.length}</strong> phòng</span>
+                  </div>
+                  <div className="summary-item summary-valid">
+                    <i className="fas fa-check-circle"></i>
+                    <span>Hợp lệ: <strong>{importData.filter(r => r.isValid).length}</strong> phòng</span>
+                  </div>
+                  <div className="summary-item summary-invalid">
+                    <i className="fas fa-exclamation-circle"></i>
+                    <span>Lỗi: <strong>{importData.filter(r => !r.isValid).length}</strong> phòng</span>
+                  </div>
+                </div>
+
+                {importData.some(r => !r.isValid) && (
+                  <p className="import-warning">
+                    <i className="fas fa-exclamation-triangle"></i>
+                    {t('rooms.invalidRowsWarning', 'Có một số dòng không hợp lệ. Hãy sửa dữ liệu trực tiếp trên bảng để có thể import.')}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="modal-footer">
+            <button
+              className="btn-cancel"
+              onClick={() => {
+                setShowImportModal(false);
+                setImportFile(null);
+                setImportData([]);
+              }}
+              disabled={importLoading}
+            >
+              <i className="fas fa-times"></i>
+              {t('common.cancel', 'Hủy')}
+            </button>
+            <button
+              className="btn-import"
+              onClick={handleImport}
+              disabled={importLoading || importData.length === 0 || !importData.some(r => r.isValid)}
+            >
+              <i className={importLoading ? "fas fa-spinner fa-spin" : "fas fa-file-import"}></i>
+              {importLoading ? t('rooms.importing', 'Đang import...') : t('rooms.import', 'Import')}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Billing Excel Modal */}
+    {showBillingModal && (
+      <div className="modal-overlay" onClick={() => {
+        if (!billingLoading) {
+          setShowBillingModal(false);
+          setBillingFile(null);
+          setBillingData([]);
+        }
+      }}>
+        <div className="import-modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <h3>
+              <i className="fas fa-file-invoice-dollar"></i> {t('rooms.billingExcel', 'Tính tiền bằng Excel')}
+            </h3>
+            <button
+              className="modal-close-btn"
+              onClick={() => {
+                setShowBillingModal(false);
+                setBillingFile(null);
+                setBillingData([]);
+              }}
+              disabled={billingLoading}
+            >
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+
+          <div className="modal-body">
+            {/* Top Section with Template Button */}
+            <div className="import-top-section">
+              <div className="template-download-area">
+                <button className="template-download-btn" onClick={handleGenerateBillingTemplate} disabled={billingLoading}>
+                  <i className={billingLoading ? "fas fa-spinner fa-spin" : "fas fa-download"}></i>
+                  {billingLoading ? t('rooms.generating', 'Đang tạo...') : t('rooms.generateTemplate', 'Tải file mẫu')}
+                </button>
+              </div>
+              <p className="import-hint">
+                <i className="fas fa-info-circle"></i>
+                {t('rooms.billingTemplateHint', 'File sẽ chứa danh sách phòng đang thuê và chỉ số điện nước cũ. Bạn chỉ cần điền chỉ số mới.')}
+              </p>
+            </div>
+
+            {/* File Upload */}
+            <div className="import-section">
+              <label className="file-upload-label">
+                <i className="fas fa-file-excel"></i>
+                {t('rooms.selectBillingFile', 'Chọn file Excel')}
+              </label>
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleBillingFileSelect}
+                className="file-input"
+                id="billing-file-input"
+                disabled={billingLoading}
+              />
+              <label htmlFor="billing-file-input" className="file-input-btn">
+                <i className="fas fa-upload"></i>
+                {billingFile ? billingFile.name : t('rooms.chooseFile', 'Chọn file...')}
+              </label>
+            </div>
+
+            {/* Data Preview Grid */}
+            {billingData.length > 0 && (
+              <div className="import-section">
+                <h4 className="preview-title">
+                  <i className="fas fa-table"></i>
+                  {t('rooms.billingDataPreview', 'Xem trước hóa đơn')} ({billingData.length} phòng)
+                </h4>
+                <div className="import-data-grid">
+                  <table className="billing-table">
+                    <thead>
+                      <tr>
+                        <th>STT</th>
+                        <th>Phòng</th>
+                        <th>Khách</th>
+                        <th>Kỳ (Từ - Đến)</th>
+                        <th>Tiền phòng</th>
+                        <th>Loại nước</th>
+                        <th>Điện cũ</th>
+                        <th>Điện mới</th>
+                        <th>Tiêu thụ</th>
+                        <th>Tiền điện</th>
+                        <th>Nước cũ</th>
+                        <th>Nước mới</th>
+                        <th>Tiêu thụ/SL</th>
+                        <th>Tiền nước</th>
+                        <th>Phí DV</th>
+                        <th>Tổng tiền</th>
+                        <th>Hợp lệ</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {billingData.map((record, index) => {
+                        const isWaterPerPerson = record.waterBillingType === 'perPerson';
+                        return (
+                        <tr key={index} className={!record.isValid ? 'invalid-row' : ''}>
+                          <td>{record.stt}</td>
+                          <td>{record.roomNumber}</td>
+                          <td>{record.tenantName}</td>
+                          <td style={{fontSize: '11px', whiteSpace: 'nowrap'}}>{record.billingPeriod}</td>
+                          <td style={{fontWeight: '600', color: '#f59e0b'}}>{(record.monthlyRent || 0).toLocaleString('vi-VN')}đ</td>
+                          <td>
+                            <span className="badge-water-type">
+                              {isWaterPerPerson ? '👥 Theo người' : '📊 Theo số'}
+                            </span>
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="editable-cell"
+                              value={record.electricOld}
+                              onChange={(e) => handleEditBillingRow(index, 'electricOld', e.target.value)}
+                              disabled={billingLoading}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="editable-cell"
+                              value={record.electricNew}
+                              onChange={(e) => handleEditBillingRow(index, 'electricNew', e.target.value)}
+                              disabled={billingLoading}
+                            />
+                          </td>
+                          <td>{(record.electricNew - record.electricOld).toFixed(0)}</td>
+                          <td>{record.electricAmount.toLocaleString('vi-VN')} đ</td>
+                          <td>
+                            {isWaterPerPerson ? (
+                              <span className="text-muted">-</span>
+                            ) : (
+                              <input
+                                type="number"
+                                className="editable-cell"
+                                value={record.waterOld}
+                                onChange={(e) => handleEditBillingRow(index, 'waterOld', e.target.value)}
+                                disabled={billingLoading}
+                              />
+                            )}
+                          </td>
+                          <td>
+                            {isWaterPerPerson ? (
+                              <span className="text-muted">-</span>
+                            ) : (
+                              <input
+                                type="number"
+                                className="editable-cell"
+                                value={record.waterNew}
+                                onChange={(e) => handleEditBillingRow(index, 'waterNew', e.target.value)}
+                                disabled={billingLoading}
+                              />
+                            )}
+                          </td>
+                          <td>
+                            {isWaterPerPerson ? (
+                              <span>{record.tenantCount} người</span>
+                            ) : (
+                              <span>{(record.waterNew - record.waterOld).toFixed(0)}</span>
+                            )}
+                          </td>
+                          <td>{record.waterAmount.toLocaleString('vi-VN')} đ</td>
+                          <td>
+                            <input
+                              type="number"
+                              className="editable-cell"
+                              value={record.servicePrice}
+                              onChange={(e) => handleEditBillingRow(index, 'servicePrice', e.target.value)}
+                              disabled={billingLoading}
+                            />
+                          </td>
+                          <td className="total-cell">{record.totalAmount.toLocaleString('vi-VN')} đ</td>
+                          <td>
+                            {record.isValid ? (
+                              <span className="valid-icon" title="Hợp lệ">
+                                <i className="fas fa-check-circle"></i>
+                              </span>
+                            ) : (
+                              <span className="invalid-icon" title={record.errors.join(', ')}>
+                                <i className="fas fa-exclamation-triangle"></i>
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* Summary Stats */}
+                <div className="import-summary">
+                  <div className="summary-item summary-total">
+                    <i className="fas fa-list"></i>
+                    <span>Tổng: <strong>{billingData.length}</strong> phòng</span>
+                  </div>
+                  <div className="summary-item summary-valid">
+                    <i className="fas fa-check-circle"></i>
+                    <span>Hợp lệ: <strong>{billingData.filter(r => r.isValid).length}</strong> phòng</span>
+                  </div>
+                  <div className="summary-item summary-invalid">
+                    <i className="fas fa-exclamation-circle"></i>
+                    <span>Lỗi: <strong>{billingData.filter(r => !r.isValid).length}</strong> phòng</span>
+                  </div>
+                </div>
+
+                {billingData.some(r => !r.isValid) && (
+                  <p className="import-warning">
+                    <i className="fas fa-exclamation-triangle"></i>
+                    {t('rooms.invalidBillingWarning', 'Có một số bản ghi không hợp lệ. Hãy sửa dữ liệu trực tiếp trên bảng để có thể tạo hóa đơn.')}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="modal-footer">
+            <button
+              className="btn-cancel"
+              onClick={() => {
+                setShowBillingModal(false);
+                setBillingFile(null);
+                setBillingData([]);
+              }}
+              disabled={billingLoading}
+            >
+              <i className="fas fa-times"></i>
+              {t('common.cancel', 'Hủy')}
+            </button>
+            <button
+              className="btn-import"
+              onClick={handleCreateInvoices}
+              disabled={billingLoading || billingData.length === 0 || !billingData.some(r => r.isValid)}
+            >
+              <i className={billingLoading ? "fas fa-spinner fa-spin" : "fas fa-file-invoice"}></i>
+              {billingLoading ? t('rooms.creatingInvoices', 'Đang tạo...') : t('rooms.createInvoices', 'Tạo hóa đơn')}
+            </button>
           </div>
         </div>
       </div>

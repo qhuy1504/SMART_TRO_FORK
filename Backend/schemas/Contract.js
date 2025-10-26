@@ -79,7 +79,7 @@ const contractSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['active', 'expired', 'terminated'],
+        enum: ['active', 'expiring', 'expired', 'terminated'],
         default: 'active'
     },
     signedDate: {
