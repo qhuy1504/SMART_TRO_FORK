@@ -350,6 +350,49 @@
   margin-top: 32px;
 }
 
+.activity-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 0;
+}
+
+.summary-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.summary-item:hover {
+  background: #f1f5f9;
+  transform: translateX(4px);
+}
+
+.summary-item i {
+  font-size: 32px;
+  color: #3b82f6;
+  min-width: 40px;
+  text-align: center;
+}
+
+.summary-number {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a202c;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.summary-label {
+  font-size: 14px;
+  color: #718096;
+  font-weight: 500;
+}
+
 .actions-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

@@ -162,11 +162,11 @@ const TenantsManagement = () => {
   const handleExportExcel = async () => {
     try {
       if (!window.XLSX) {
-        showToast('error', 'Thư viện Excel chưa được tải');
+        showToast('error', t('common.messages.excelLibraryNotLoaded'));
         return;
       }
 
-      showToast('info', 'Đang chuẩn bị dữ liệu xuất Excel...');
+      showToast('info', t('common.messages.preparingExportData'));
 
       // Fetch all rooms with tenants
       const roomsRes = await roomsAPI.getAllRooms({
@@ -175,7 +175,7 @@ const TenantsManagement = () => {
       });
 
       if (!roomsRes.success || !roomsRes.data.rooms) {
-        showToast('error', 'Không thể lấy dữ liệu phòng');
+        showToast('error', t('common.messages.cannotLoadRoomData'));
         return;
       }
 
@@ -205,7 +205,7 @@ const TenantsManagement = () => {
       }
 
       if (allTenants.length === 0) {
-        showToast('error', 'Không có khách thuê nào để xuất');
+        showToast('error', t('common.messages.noTenantsToExport'));
         return;
       }
 
@@ -278,17 +278,17 @@ const TenantsManagement = () => {
   const handleDownloadTemplate = async () => {
     try {
       if (!window.XLSX) {
-        showToast('error', 'Thư viện Excel chưa được tải');
+        showToast('error', t('common.messages.excelLibraryNotLoaded'));
         return;
       }
 
-      showToast('info', 'Đang tạo file template...');
+      showToast('info', t('common.messages.creatingTemplate'));
 
       // Fetch rooms that are rented/expiring with available slots
       const roomsRes = await roomsAPI.getAllRooms({ page: 1, limit: 1000 });
       
       if (!roomsRes.success || !roomsRes.data.rooms) {
-        showToast('error', 'Không thể lấy danh sách phòng');
+        showToast('error', t('common.messages.cannotLoadRoomList'));
         return;
       }
 
@@ -321,7 +321,7 @@ const TenantsManagement = () => {
       }
 
       if (roomsWithSlots.length === 0) {
-        showToast('warning', 'Không có phòng nào còn slot trống để thêm khách thuê');
+        showToast('warning', t('common.messages.noRoomsWithSlotsAvailable'));
         return;
       }
 
@@ -385,10 +385,10 @@ const TenantsManagement = () => {
       const dateStr = `${today.getDate()}-${today.getMonth() + 1}-${today.getFullYear()}`;
       window.XLSX.writeFile(wb, `Mau_Import_Khach_Thue_${dateStr}.xlsx`);
       
-      showToast('success', 'Tải file mẫu thành công!');
+      showToast('success', t('common.messages.downloadTemplateSuccess'));
     } catch (error) {
       console.error('Error downloading template:', error);
-      showToast('error', 'Lỗi khi tải file mẫu: ' + error.message);
+      showToast('error', t('common.messages.downloadTemplateError'));
     }
   };
 
@@ -398,7 +398,7 @@ const TenantsManagement = () => {
 
     const validTypes = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'];
     if (!validTypes.includes(file.type)) {
-      showToast('error', 'Vui lòng chọn file Excel (.xlsx, .xls)');
+      showToast('error', t('common.messages.selectExcelFile'));
       return;
     }
 
@@ -518,16 +518,16 @@ const TenantsManagement = () => {
         });
 
         setImportData(transformedData);
-        showToast('success', `Đọc được ${transformedData.length} khách thuê từ file Excel`);
+        showToast('success', t('common.messages.readSuccess', { count: transformedData.length }));
       } catch (error) {
         console.error('Error reading Excel file:', error);
-        showToast('error', 'Lỗi khi đọc file Excel: ' + error.message);
+        showToast('error', t('common.messages.readFileError'));
         setImportData([]);
       }
     };
 
     reader.onerror = () => {
-      showToast('error', 'Lỗi khi đọc file');
+      showToast('error', t('common.messages.readFileGeneralError'));
       setImportData([]);
     };
 
@@ -571,12 +571,12 @@ const TenantsManagement = () => {
       const validTenants = importData.filter(t => t.isValid);
       
       if (validTenants.length === 0) {
-        showToast('error', 'Không có khách thuê hợp lệ để import');
+        showToast('error', t('common.messages.noValidData'));
         return;
       }
 
       if (importData.some(t => !t.isValid)) {
-        showToast('warning', t('rooms.invalidRowsWarning', 'Có một số dòng không hợp lệ. Hãy sửa dữ liệu trực tiếp trên bảng để có thể import.'));
+        showToast('warning', t('common.messages.invalidRowsWarning'));
         return;
       }
 
@@ -628,7 +628,7 @@ const TenantsManagement = () => {
 
       // Show results
       if (successCount > 0) {
-        showToast('success', `Import thành công ${successCount} khách thuê!`);
+        showToast('success', t('common.messages.importSuccess', { count: successCount }));
         fetchRoomsWithTenants();
         setShowImportModal(false);
         setImportFile(null);
@@ -636,10 +636,10 @@ const TenantsManagement = () => {
       }
       
       if (failCount > 0) {
-        showToast('error', `Có ${failCount} khách thuê không thể import.`);
+        showToast('error', t('common.messages.importPartialSuccess', { count: failCount }));
       }
     } catch (error) {
-      showToast('error', 'Lỗi khi import khách thuê: ' + error.message);
+      showToast('error', t('common.messages.importError'));
     } finally {
       setImportLoading(false);
     }
@@ -769,15 +769,15 @@ const TenantsManagement = () => {
           }
         }
         
-        showToast('success', t('tenants.messages.addSuccess', 'Tạo khách thuê thành công!'));
+        showToast('success', t('common.messages.addSuccess'));
         closeCreate();
         fetchRoomsWithTenants();
       } else {
-        showToast('error', res.message || 'Lỗi khi tạo khách thuê');
+        showToast('error', res.message || t('common.messages.addError'));
       }
     } catch(e){ 
       console.error(e);
-      showToast('error', 'Lỗi khi tạo khách thuê');
+      showToast('error', t('common.messages.addError'));
     }
     finally { setSaving(false); }
   };
@@ -811,35 +811,35 @@ const TenantsManagement = () => {
           try {
             const uploadRes = await tenantsAPI.uploadTenantImages(editingId, newImages.map(img => img.file));
             if (!uploadRes.success) {
-              showToast('warning', 'Cập nhật khách thuê thành công nhưng upload ảnh thất bại');
+              showToast('warning', t('common.messages.updateSuccessButImagesFailed'));
             }
           } catch (uploadErr) {
             console.error('Error uploading images:', uploadErr);
-            showToast('warning', 'Cập nhật khách thuê thành công nhưng upload ảnh thất bại');
+            showToast('warning', t('common.messages.updateSuccessButImagesFailed'));
           }
         }
         
-        showToast('success', 'Cập nhật khách thuê thành công!');
+        showToast('success', t('common.messages.updateSuccess'));
         closeEdit();
         fetchRoomsWithTenants();
       } else {
-        showToast('error', res.message || 'Lỗi khi cập nhật khách thuê');
+        showToast('error', res.message || t('common.messages.updateError'));
       }
     } catch(e){ 
       console.error(e);
-      showToast('error', 'Lỗi khi cập nhật khách thuê');
+      showToast('error', t('common.messages.updateError'));
     }
     finally { setUpdating(false); }
   };
 
   const handleDeleteTenant = async () => {
     if (!editForm._id) {
-      showToast('error', 'Không tìm thấy thông tin khách thuê');
+      showToast('error', t('common.messages.tenantNotFound'));
       return;
     }
     
     if (!editForm.room) {
-      showToast('error', 'Không tìm thấy thông tin phòng');
+      showToast('error', t('common.messages.roomNotFound'));
       return;
     }
     
@@ -852,7 +852,7 @@ const TenantsManagement = () => {
       const activeTenants = tenantsRes.success ? (Array.isArray(tenantsRes.data) ? tenantsRes.data : []) : [];
       
       if (activeTenants.length <= 1) {
-        showToast('error', 'Không thể xóa! Phòng phải có ít nhất 1 khách thuê. Nếu muốn xóa, vui lòng kết thúc hợp đồng.');
+        showToast('error', t('common.messages.cannotDelete'));
         setUpdating(false);
         return;
       }
@@ -862,7 +862,7 @@ const TenantsManagement = () => {
       setUpdating(false);
     } catch (e) {
       console.error('Error in handleDeleteTenant:', e);
-      showToast('error', 'Lỗi khi kiểm tra thông tin phòng');
+      showToast('error', t('common.messages.checkRoomInfoError'));
       setUpdating(false);
     }
   };
@@ -874,15 +874,15 @@ const TenantsManagement = () => {
     try {
       const res = await tenantsAPI.deleteTenant(editForm._id);
       if (res.success) {
-        showToast('success', 'Xóa khách thuê thành công!');
+        showToast('success', t('common.messages.deleteSuccess'));
         closeEdit();
         fetchRoomsWithTenants();
       } else {
-        showToast('error', res.message || 'Lỗi khi xóa khách thuê');
+        showToast('error', res.message || t('common.messages.deleteError'));
       }
     } catch (e) {
       console.error(e);
-      showToast('error', 'Lỗi khi xóa khách thuê');
+      showToast('error', t('common.messages.deleteError'));
     } finally {
       setUpdating(false);
     }

@@ -470,7 +470,11 @@ const ContractsManagement = () => {
           new Paragraph({
             children: [
               new TextRun({ text: "1.3. ", bold: true }),
-              new TextRun(`Trang thiết bị kèm theo: ${contract.room?.amenities?.join(', ') || '[Danh sách trang thiết bị]'}`)
+              new TextRun(`Trang thiết bị kèm theo: ${
+                (contract.room?.amenities && Array.isArray(contract.room.amenities))
+                  ? contract.room.amenities.map(a => a.name || a).join(', ')
+                  : '[Danh sách trang thiết bị]'
+              }`)
             ],
             spacing: { after: 100 }
           }),
