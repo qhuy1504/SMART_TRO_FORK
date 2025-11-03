@@ -30,9 +30,15 @@ const Dashboard = () => {
     revenueByMonth: []
   });
 
+  // State cho chọn tháng/năm
+  const currentDate = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1); // 1-12
+  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMonth, selectedYear]);
 
   const fetchDashboardData = async () => {
     try {
@@ -77,14 +83,15 @@ const Dashboard = () => {
       const invoicesResponse = await invoicesAPI.getInvoices({ limit: 10000 });
       const invoices = invoicesResponse?.data?.items || invoicesResponse?.data?.invoices || [];
       
-      // Get current month's revenue from paid invoices
-      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      // Get selected month's revenue from paid invoices
+      const selectedMonthStart = new Date(selectedYear, selectedMonth - 1, 1);
+      const selectedMonthEnd = new Date(selectedYear, selectedMonth, 1);
       const monthlyRevenue = invoices
         .filter(inv => {
           const isPaid = inv.status === 'paid';
           const paidDate = inv.paidDate ? new Date(inv.paidDate) : null;
-          const isCurrentMonth = paidDate && paidDate >= currentMonthStart;
-          return isPaid && isCurrentMonth;
+          const isSelectedMonth = paidDate && paidDate >= selectedMonthStart && paidDate < selectedMonthEnd;
+          return isPaid && isSelectedMonth;
         })
         .reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
 
@@ -175,8 +182,48 @@ const Dashboard = () => {
       <div className="dashboard-content">
         {/* Header */}
         <div className="dashboard-header">
-          <h1 className="dashboard-title">{t('dashboard.title')}</h1>
-          <p className="dashboard-subtitle">{t('dashboard.subtitle')}</p>
+          <div>
+            <h1 className="dashboard-title">{t('dashboard.title')}</h1>
+            <p className="dashboard-subtitle">{t('dashboard.subtitle')}</p>
+          </div>
+          
+          {/* Month/Year Selector */}
+          <div className="date-selector-container">
+            <div className="date-selector-group">
+              <label className="date-selector-label">
+                <i className="fas fa-calendar-alt"></i> Chọn tháng/năm
+              </label>
+              <div className="date-selector-inputs">
+                <select 
+                  className="date-selector-select"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                >
+                  <option value={1}>Tháng 1</option>
+                  <option value={2}>Tháng 2</option>
+                  <option value={3}>Tháng 3</option>
+                  <option value={4}>Tháng 4</option>
+                  <option value={5}>Tháng 5</option>
+                  <option value={6}>Tháng 6</option>
+                  <option value={7}>Tháng 7</option>
+                  <option value={8}>Tháng 8</option>
+                  <option value={9}>Tháng 9</option>
+                  <option value={10}>Tháng 10</option>
+                  <option value={11}>Tháng 11</option>
+                  <option value={12}>Tháng 12</option>
+                </select>
+                <select 
+                  className="date-selector-select"
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                >
+                  {Array.from({ length: 5 }, (_, i) => currentDate.getFullYear() - i).map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Main Stats Cards - New Modern Style */}

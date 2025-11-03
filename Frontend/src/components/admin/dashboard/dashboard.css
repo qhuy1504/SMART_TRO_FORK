@@ -30,9 +30,85 @@
 
 .dashboard-header {
   margin-bottom: 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
 }
 
 .dashboard-title { font-size:30px; font-weight:700; letter-spacing:.5px; background:linear-gradient(90deg,#1e3a8a,#9333ea); -webkit-background-clip:text; background-clip:text; color:transparent; }
+
+/* Date Selector Styles */
+.date-selector-container {
+  display: flex;
+  align-items: center;
+}
+
+.date-selector-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.date-selector-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.date-selector-label i {
+  font-size: 14px;
+  color: #3b82f6;
+}
+
+.date-selector-inputs {
+  display: flex;
+  gap: 10px;
+}
+
+.date-selector-select {
+  padding: 10px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1e293b;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  min-width: 120px;
+}
+
+.date-selector-select:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+}
+
+.date-selector-select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+@media (max-width: 768px) {
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .date-selector-inputs {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .date-selector-select {
+    width: 100%;
+  }
+}
 
 .dashboard-subtitle {
   color: var(--text-secondary, #718096);
