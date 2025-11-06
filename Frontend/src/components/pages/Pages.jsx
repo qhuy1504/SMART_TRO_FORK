@@ -34,6 +34,7 @@ import PropertyDetail from "../properties/PropertyDetail"
 import ReportProperties from "../admin/report-properties/ReportManagement"
 import PropertiesPackagesManagement from "../admin/properties-packages/PropertiesPackagesManagement"
 import PackagePlanManagement from "../admin/package-plan/PackagePlanManagement"
+import UsersManagement from "../admin/users/UsersManagement"
 import PropertiesPackage from "../profile/properties-package/PropertiesPackage.jsx"
 import Payment from "../profile/payment/Payment.jsx"
 import PageTitleWrapper from "../common/PageTitleWrapper"
@@ -174,6 +175,7 @@ const Pages = () => {
           <Route path='/admin/dashboard' element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path='/admin/properties' element={<AdminProtectedRoute><PropertyManagement /></AdminProtectedRoute>} />
           <Route path='/admin/report-properties' element={<AdminProtectedRoute><ReportProperties /></AdminProtectedRoute>} />
+          <Route path='/admin/users' element={<AdminProtectedRoute><UsersManagement /></AdminProtectedRoute>} />
           <Route path='/admin/rooms' element={<ProtectedRoute><RoomsManagement /></ProtectedRoute>} />
           <Route path='/admin/amenities' element={<ProtectedRoute><AmenitiesManagement /></ProtectedRoute>} />
           <Route path='/admin/properties-packages' element={<AdminProtectedRoute><PropertiesPackagesManagement /></AdminProtectedRoute>} />

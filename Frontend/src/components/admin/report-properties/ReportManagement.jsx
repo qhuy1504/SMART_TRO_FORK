@@ -253,9 +253,70 @@ const ReportManagement = () => {
             <SideBar />
             <div className="dashboard-content">
                 <div className="report-management">
-                    <div className="page-header-admin">
-                        <h2>Quản lý báo cáo bài đăng</h2>
-                        <p>Xử lý các báo cáo về bài đăng từ người dùng</p>
+                    {/* Header Section */}
+                    <div className="rooms-header">
+                        <h1 className="rooms-title">Quản lý báo cáo bài đăng</h1>
+                        <div className="header-search">
+                            <div className="search-box">
+                                <i className="fas fa-search search-icon"></i>
+                                <input
+                                    type="text"
+                                    className="search-input"
+                                    placeholder="Tìm kiếm theo lý do báo cáo, tên bài đăng..."
+                                    value={searchTerm}
+                                    onChange={handleSearchChange}
+                                    onKeyPress={(e) => {
+                                        if (e.key === 'Enter') {
+                                            handleSearch(e);
+                                        }
+                                    }}
+                                />
+                                {searchTerm && (
+                                    <button
+                                        className="clear-search-btn"
+                                        onClick={() => {
+                                            setSearchTerm('');
+                                            setCurrentPage(1);
+                                            loadReports(1, filter, '');
+                                        }}
+                                    >
+                                        <i className="fas fa-times"></i>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Status Tabs */}
+                    <div className="status-tabs">
+                        <button
+                            className={`status-tab ${filter === 'all' ? 'active' : ''}`}
+                            onClick={() => handleFilterChange('all')}
+                        >
+                            <i className="fas fa-list"></i>
+                            Tất cả ({stats.total})
+                        </button>
+                        <button
+                            className={`status-tab ${filter === 'pending' ? 'active' : ''}`}
+                            onClick={() => handleFilterChange('pending')}
+                        >
+                            <i className="fas fa-clock"></i>
+                            Chờ xử lý ({stats.pending})
+                        </button>
+                        <button
+                            className={`status-tab ${filter === 'resolved' ? 'active' : ''}`}
+                            onClick={() => handleFilterChange('resolved')}
+                        >
+                            <i className="fas fa-check-circle"></i>
+                            Đã xử lý ({stats.resolved})
+                        </button>
+                        <button
+                            className={`status-tab ${filter === 'dismissed' ? 'active' : ''}`}
+                            onClick={() => handleFilterChange('dismissed')}
+                        >
+                            <i className="fas fa-times-circle"></i>
+                            Đã bỏ qua ({stats.dismissed})
+                        </button>
                     </div>
 
                     {/* Statistics */}
@@ -295,76 +356,6 @@ const ReportManagement = () => {
                                 <h3>{stats.dismissed}</h3>
                                 <p>Đã bỏ qua</p>
                             </div>
-                        </div>
-                    </div>
-
-                    {/* Search and Filter */}
-                    <div className="controls-section">
-                        <form onSubmit={handleSearch} className="search-form">
-                            <div className="search-input-group">
-                                <i className="fa fa-search" style={{ left: '12px' }}></i>
-                                <input
-                                    type="text"
-                                    placeholder="Tìm kiếm theo lý do báo cáo, tên bài đăng..."
-                                    value={searchTerm}
-                                    onChange={handleSearchChange}
-                                    className={`search-input ${searchTerm ? 'has-clear' : ''}`}
-                                />
-                                <div className="search-buttons">
-                                    {searchTerm && (
-                                        <button
-                                            type="button"
-                                            className="clear-search-btn-report"
-                                            onClick={() => {
-                                                setSearchTerm('');
-                                                setCurrentPage(1);
-                                                loadReports(1, filter, '');
-                                            }}
-                                            title="Xóa tìm kiếm"
-                                        >
-                                            <i className="fa fa-times"></i>
-                                        </button>
-                                    )}
-                                    <button
-                                        type="submit"
-                                        className="search-btn-report"
-                                        title="Tìm kiếm"
-                                    >
-                                        <i className="fa fa-search"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-
-                        <div className="filter-tabs">
-                            <button
-                                className={`tab-btn ${filter === 'pending' ? 'active' : ''}`}
-                                onClick={() => handleFilterChange('pending')}
-                            >
-                                <i className="fa fa-clock-o"></i>
-                                Chờ xử lý ({stats.pending})
-                            </button>
-                            <button
-                                className={`tab-btn ${filter === 'resolved' ? 'active' : ''}`}
-                                onClick={() => handleFilterChange('resolved')}
-                            >
-                                <i className="fa fa-check-circle"></i>
-                                Đã xử lý ({stats.resolved})
-                            </button>
-                            <button
-                                className={`tab-btn ${filter === 'dismissed' ? 'active' : ''}`}
-                                onClick={() => handleFilterChange('dismissed')}
-                            >
-                                <i className="fa fa-times-circle"></i>
-                                Đã bỏ qua ({stats.dismissed})
-                            </button>
-                            <button
-                                className={`tab-btn ${filter === 'all' ? 'active' : ''}`}
-                                onClick={() => handleFilterChange('all')}
-                            >
-                                <i className="fa fa-list"></i>
-                                Tất cả ({stats.total})
-                            </button>
                         </div>
                     </div>
 

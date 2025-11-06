@@ -379,21 +379,12 @@ const PropertiesPackagesManagement = () => {
       <SideBar />
       <div className="dashboard-content">
         <div className="packages-management-container">
-          {/* Header */}
-          <div className="page-header-admin">
-            <h2>
-              <i className="fa fa-package"></i>
-              Quản lý loại tin
-            </h2>
-            <p>Quản lý các loại tin đăng, thiết lập quyền lợi hiển thị cho từng loại</p>
-          </div>
-
-          {/* Search and Action buttons */}
-          <div className="search-action-header">
-            {/* Search Box */}
-            <div className="search-box-container">
-              <div className="search-input-wrapper">
-                <i className="fa fa-search search-icon"></i>
+          {/* Header Section */}
+          <div className="rooms-header">
+            <h1 className="rooms-title">Quản lý loại tin</h1>
+            <div className="header-search">
+              <div className="search-box">
+                <i className="fas fa-search search-icon"></i>
                 <input
                   type="text"
                   className="search-input"
@@ -403,69 +394,73 @@ const PropertiesPackagesManagement = () => {
                   onKeyPress={handleSearchKeyPress}
                 />
                 {searchTerm && (
-                  <button className="clear-search-btn" onClick={handleClearSearch} title="Xóa tìm kiếm">
-                    <i className="fa fa-times"></i>
+                  <button
+                    className="clear-search-btn"
+                    onClick={handleClearSearch}
+                  >
+                    <i className="fas fa-times"></i>
                   </button>
                 )}
               </div>
-              <button className="search-btn" onClick={handleSearch} title="Tìm kiếm">
-                <i className="fa fa-search"></i>
-                Tìm kiếm
-              </button>
             </div>
+          </div>
 
-            {/* Action buttons */}
-            <div className="action-buttons-group">
-              <button className="btn-properties-packages btn-primary" onClick={handleCreate}>
-                <i className="fa fa-plus"></i>
-                Thêm loại tin mới
-              </button>
-               {packages.length === 0 && (
+          {/* Status Tabs */}
+          <div className="status-tabs">
+            <button
+              className={`status-tab ${statusFilter === 'all' ? 'active' : ''}`}
+              onClick={() => handleStatusFilterChange({ target: { value: 'all' } })}
+            >
+              <i className="fas fa-list"></i>
+              Tất cả
+            </button>
+            <button
+              className={`status-tab ${statusFilter === 'active' ? 'active' : ''}`}
+              onClick={() => handleStatusFilterChange({ target: { value: 'active' } })}
+            >
+              <i className="fas fa-check-circle"></i>
+              Đang hoạt động
+            </button>
+            <button
+              className={`status-tab ${statusFilter === 'inactive' ? 'active' : ''}`}
+              onClick={() => handleStatusFilterChange({ target: { value: 'inactive' } })}
+            >
+              <i className="fas fa-times-circle"></i>
+              Tạm dừng
+            </button>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="package-actions-bar">
+            <button className="btn-add-package" onClick={handleCreate}>
+              <i className="fas fa-plus"></i>
+              Thêm loại tin mới
+            </button>
+            {packages.length === 0 && (
               <button 
-                className={`btn-properties-packages ${packages.length > 0 ? 'btn-disabled' : 'btn-secondary'}`}
+                className="btn-initialize-default"
                 onClick={handleInitializePackages}
                 disabled={packages.length > 0}
-                title={packages.length > 0 ? 'Đã có loại tin đăng. Vui lòng xóa hết để khởi tạo lại.' : 'Khởi tạo 5 loại tin đăng mặc định'}
+                title="Khởi tạo 6 loại tin đăng mặc định"
               >
                 <i className="fa fa-refresh"></i>
                 Khởi tạo loại mặc định
-                {packages.length > 0 && <span className="package-count">({packages.length})</span>}
               </button>
-              )}
-            </div>
+            )}
           </div>
 
-          {/* Filters */}
-          <div className="filters-container">
-            <div className="filter-group">
-              <label htmlFor="statusFilter">
-                <i className="fa fa-filter"></i>
-                Lọc theo trạng thái:
-              </label>
-              <select 
-                id="statusFilter"
-                className="status-filter-select"
-                value={statusFilter}
-                onChange={handleStatusFilterChange}
-              >
-                <option value="all">Tất cả trạng thái</option>
-                <option value="active">Đang hoạt động</option>
-                <option value="inactive">Tạm dừng</option>
-              </select>
+          {/* Results Info */}
+          {!loading && packages.length > 0 && (
+            <div className="admin-results-info">
+              <span>
+                <i className="fa fa-list"></i>
+                Hiển thị {currentPackages.length} / {filteredPackages.length} loại tin đăng
+                {filteredPackages.length !== packages.length && (
+                  <span> (đã lọc từ {packages.length} loại)</span>
+                )}
+              </span>
             </div>
-
-            <div className="results-info">
-              {!loading && packages.length > 0 && (
-                <span className="total-results">
-                  <i className="fa fa-list"></i>
-                  Hiển thị {currentPackages.length} / {filteredPackages.length} loại tin đăng
-                  {filteredPackages.length !== packages.length && (
-                    <span className="filtered-note"> (đã lọc từ {packages.length} loại)</span>
-                  )}
-                </span>
-              )}
-            </div>
-          </div>
+          )}
 
           {/* Search Results Info */}
           {isSearched && searchTerm && !loading && packages.length > 0 && (

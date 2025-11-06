@@ -56,6 +56,7 @@ const SideBar = () => {
     { text: t('sidebar.tenants'), icon: <People />, path: "/admin/tenants", roles: ['landlord'] },
     { text: t('sidebar.contracts'), icon: <EditDocument />, path: "/admin/contracts", roles: ['landlord'] },
     { text: t('sidebar.payments'), icon: <Payment />, path: "/admin/payments", roles: ['landlord'] },
+    { text: t('sidebar.users'), icon: <People />, path: "/admin/users", roles: ['admin'] },
     { text: t('sidebar.properties'), icon: <EditDocument />, path: "/admin/properties", roles: ['admin'] },
     { text: t('sidebar.report-properties'), icon: <Report />, path: "/admin/report-properties", roles: ['admin'] },
     { text: t('sidebar.properties-packages'), icon: <WorkspacePremium />, path: "/admin/properties-packages", roles: ['admin'] },

@@ -533,19 +533,65 @@ const PackagePlanManagement = () => {
             <SideBar />
             <div className="dashboard-content">
                 <div className="packages-management-container">
-                    <div className="page-header-package-plan">
-                        <h2>
-                            <i className="fa fa-package"></i>
-                            Quản lý gói tin đăng
-                        </h2>
-
-                        <p className="admin-subtitle">
-                            Quản lý các gói tin đăng cho người dùng
-                        </p>
+                    {/* Header Section */}
+                    <div className="rooms-header">
+                        <h1 className="rooms-title">Quản lý gói tin đăng</h1>
+                        <div className="header-search">
+                            <div className="search-box">
+                                <i className="fas fa-search search-icon"></i>
+                                <input
+                                    type="text"
+                                    className="search-input"
+                                    placeholder="Tìm kiếm theo tên gói, mô tả..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onKeyPress={handleKeyPress}
+                                />
+                                {searchTerm && (
+                                    <button
+                                        className="clear-search-btn"
+                                        onClick={() => {
+                                            setSearchTerm('');
+                                            setIsSearched(false);
+                                            filterPackagePlans();
+                                        }}
+                                    >
+                                        <i className="fas fa-times"></i>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
                     </div>
-                    <div className="button-add-packagke-plan">
+
+                    {/* Status Tabs */}
+                    <div className="status-tabs">
                         <button
-                            className="btn-add-package btn-primary admin-add-btn"
+                            className={`status-tab ${statusFilter === 'all' ? 'active' : ''}`}
+                            onClick={() => setStatusFilter('all')}
+                        >
+                            <i className="fas fa-list"></i>
+                            Tất cả
+                        </button>
+                        <button
+                            className={`status-tab ${statusFilter === 'active' ? 'active' : ''}`}
+                            onClick={() => setStatusFilter('active')}
+                        >
+                            <i className="fas fa-check-circle"></i>
+                            Đang hoạt động
+                        </button>
+                        <button
+                            className={`status-tab ${statusFilter === 'inactive' ? 'active' : ''}`}
+                            onClick={() => setStatusFilter('inactive')}
+                        >
+                            <i className="fas fa-times-circle"></i>
+                            Ngừng hoạt động
+                        </button>
+                    </div>
+
+                    {/* Action Buttons and Type Filter */}
+                    <div className="package-actions-bar">
+                        <button
+                            className="btn-add-package btn-primary"
                             onClick={() => openModal('create')}
                         >
                             <i className="fas fa-plus"></i>
@@ -554,53 +600,14 @@ const PackagePlanManagement = () => {
 
                         {packagePlans.length === 0 && (
                             <button
-                                className="btn-initialize-default btn-success admin-add-btn"
+                                className="btn-initialize-default btn-success"
                                 onClick={handleInitializeDefault}
                                 disabled={loading}
-                                style={{ marginLeft: '10px' }}
                             >
                                 <i className="fa fa-refresh"></i>
                                 {loading ? 'Đang khởi tạo...' : 'Khởi tạo gói tin mặc định'}
                             </button>
                         )}
-                    </div>
-
-                </div>
-
-                {/* Search and Filter Section */}
-                <div className="search-box-container-package-plan">
-
-                    <form onSubmit={handleSearch} className="search-input-wrapper-package-plan">
-                        <i className="fa fa-search search-icon-package-plan-front"></i>
-                        <input
-                            type="text"
-                            placeholder="Tìm kiếm theo tên gói, mô tả..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            onKeyPress={handleKeyPress}
-                            className="search-input-package-plan"
-                        />
-                        <button
-                            type="submit"
-                            className="search-btn-package-plan"
-                            title="Tìm kiếm"
-                        >
-                            <i className="fa fa-search search-icon-package-plan"></i>
-                            Tìm kiếm
-                        </button>
-
-                    </form>
-
-                    <div className="admin-filter-group">
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="form-select"
-                        >
-                            <option value="all">Tất cả trạng thái</option>
-                            <option value="active">Đang hoạt động</option>
-                            <option value="inactive">Ngừng hoạt động</option>
-                        </select>
 
                         <select
                             value={typeFilter}
@@ -618,21 +625,22 @@ const PackagePlanManagement = () => {
                         {(isSearched || statusFilter !== 'all' || typeFilter !== 'all') && (
                             <button
                                 onClick={clearSearch}
-                                className="btn-clear-package-plan btn-outline-secondary"
+                                className="btn-clear-package-plan"
                             >
                                 <i className="fas fa-times"></i>
                                 Xóa bộ lọc
                             </button>
                         )}
                     </div>
-                </div>
 
-                {/* Results Info */}
-                <div className="admin-results-info">
-                    <span>
-                        Hiển thị {currentItems.length} trong tổng số {filteredPackagePlans.length} gói tin
-                        {isSearched && ` (từ khóa: "${searchTerm}")`}
-                    </span>
+                    {/* Results Info */}
+                    <div className="admin-results-info">
+                        <span>
+                            Hiển thị {currentItems.length} trong tổng số {filteredPackagePlans.length} gói tin
+                            {isSearched && ` (từ khóa: "${searchTerm}")`}
+                        </span>
+                    </div>
+
                 </div>
 
                 {/* Loading */}

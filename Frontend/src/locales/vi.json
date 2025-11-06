@@ -8,7 +8,7 @@
     "rooms": "Quản lý phòng trọ",
     "amenities": "Quản lý tiện ích",
     "users": "Quản lý người dùng",
-    "tenants": "Quản lý khách thuê",
+    "tenants": "Quản lý người ở",
     "contracts": "Quản lý hợp đồng",
     "payments": "Quản lý thanh toán",
     "posts": "Quản lý bài đăng",
@@ -42,7 +42,7 @@
     "activity": {
       "recentActivity": "Hoạt động gần đây",
       "systemInfo": "Thông tin hệ thống",
-      "totalTenants": "Tổng khách thuê",
+      "totalTenants": "Tổng người ở",
       "activeContracts": "Hợp đồng đang hoạt động",
       "occupiedRooms": "Phòng đã thuê",
       "occupancyRate": "Tỷ lệ lấp đầy",
@@ -70,8 +70,8 @@
         "desc": "Tạo phòng trọ mới trong hệ thống"
       },
       "addTenant": {
-        "title": "Thêm khách thuê",
-        "desc": "Đăng ký khách thuê mới"
+        "title": "Thêm người ở",
+        "desc": "Đăng ký người ở mới"
       },
       "createInvoice": {
         "title": "Tạo hóa đơn",
@@ -152,7 +152,7 @@
       "delete": "Xóa",
       "createContract": "Tạo hợp đồng",
       "viewContract": "Xem hợp đồng trọ",
-      "viewTenants": "Danh sách khách thuê",
+      "viewTenants": "Danh sách người ở",
       "viewVehicles": "Danh sách xe",
       "createInvoice": "Lập hóa đơn",
       "roomTransfer": "Chuyển đổi phòng",
@@ -165,7 +165,7 @@
     "messages": {
       "developmentFeature": "Chức năng đang phát triển",
       "viewContractDev": "Xem hợp đồng - Chức năng đang phát triển",
-      "viewTenantsDev": "Danh sách khách thuê - Chức năng đang phát triển",
+      "viewTenantsDev": "Danh sách người ở - Chức năng đang phát triển",
       "viewVehiclesDev": "Danh sách xe - Chức năng đang phát triển",
       "createInvoiceDev": "Lập hóa đơn - Chức năng đang phát triển",
       "roomTransferDev": "Chuyển đổi phòng - Chức năng đang phát triển",
@@ -190,7 +190,7 @@
     },
     "loadingList": "Đang tải danh sách phòng...",
     "modal": {
-      "sendInvoiceZalo": "Gửi hóa đơn Zalo cho khách thuê",
+      "sendInvoiceZalo": "Gửi hóa đơn Zalo cho người ở",
       "confirmExpiring": "Xác nhận đánh dấu sắp kết thúc",
       "confirmExpiringMessage": "Bạn có chắc chắn muốn đánh dấu phòng sắp kết thúc?",
       "autoCalculateDueDate": "Tự động tính 5 ngày sau ngày kết thúc chu kỳ"
@@ -286,7 +286,7 @@
     },
     "transfer": {
       "modalTitle": "Chuyển phòng",
-      "description": "Chọn phòng trống để chuyển khách thuê từ phòng hiện tại:",
+      "description": "Chọn phòng trống để chuyển người ở từ phòng hiện tại:",
       "currentRoomInfo": "Thông tin phòng hiện tại:",
       "availableRooms": "Danh sách phòng trống:",
       "loading": "Đang tải danh sách phòng trống...",
@@ -373,7 +373,7 @@
       "consumption": "Tiêu thụ",
       "totalAmount": "Thành tiền",
       "numberOfTenants": "Số người thuê",
-      "sendZaloToTenant": "Gửi hóa đơn Zalo cho khách thuê"
+      "sendZaloToTenant": "Gửi hóa đơn Zalo cho người ở"
     }
   },
   "common": {
@@ -425,29 +425,29 @@
       "noDataToExport": "Không có dữ liệu để xuất",
       "cannotLoadRoomData": "Không thể lấy dữ liệu phòng",
       "cannotLoadRoomList": "Không thể lấy danh sách phòng",
-      "noTenantsToExport": "Không có khách thuê nào để xuất",
-      "noRoomsWithSlotsAvailable": "Không có phòng nào còn slot trống để thêm khách thuê",
+      "noTenantsToExport": "Không có người ở nào để xuất",
+      "noRoomsWithSlotsAvailable": "Không có phòng nào còn slot trống để thêm người ở",
       "downloadTemplateSuccess": "Tải file mẫu thành công!",
       "downloadTemplateError": "Lỗi khi tải file mẫu",
       "creatingTemplate": "Đang tạo file template...",
       "selectExcelFile": "Vui lòng chọn file Excel (.xlsx, .xls)",
-      "readSuccess": "Đọc được {{count}} khách thuê từ file Excel",
+      "readSuccess": "Đọc được {{count}} người ở từ file Excel",
       "readFileError": "Lỗi khi đọc file Excel",
       "readFileGeneralError": "Lỗi khi đọc file",
-      "noValidData": "Không có khách thuê hợp lệ để import",
-      "importSuccess": "Import thành công {{count}} khách thuê!",
-      "importPartialSuccess": "Có {{count}} khách thuê không thể import.",
-      "importError": "Lỗi khi import khách thuê",
-      "addSuccess": "Tạo khách thuê thành công!",
-      "addSuccessButImagesFailed": "Tạo khách thuê thành công nhưng upload ảnh thất bại",
-      "addError": "Lỗi khi tạo khách thuê",
-      "updateSuccess": "Cập nhật khách thuê thành công!",
-      "updateSuccessButImagesFailed": "Cập nhật khách thuê thành công nhưng upload ảnh thất bại",
-      "updateError": "Lỗi khi cập nhật khách thuê",
-      "deleteSuccess": "Xóa khách thuê thành công!",
-      "deleteError": "Lỗi khi xóa khách thuê",
-      "cannotDelete": "Không thể xóa! Phòng phải có ít nhất 1 khách thuê. Nếu muốn xóa, vui lòng kết thúc hợp đồng.",
-      "tenantNotFound": "Không tìm thấy thông tin khách thuê",
+      "noValidData": "Không có người ở hợp lệ để import",
+      "importSuccess": "Import thành công {{count}} người ở!",
+      "importPartialSuccess": "Có {{count}} người ở không thể import.",
+      "importError": "Lỗi khi import người ở",
+      "addSuccess": "Tạo người ở thành công!",
+      "addSuccessButImagesFailed": "Tạo người ở thành công nhưng upload ảnh thất bại",
+      "addError": "Lỗi khi tạo người ở",
+      "updateSuccess": "Cập nhật người ở thành công!",
+      "updateSuccessButImagesFailed": "Cập nhật người ở thành công nhưng upload ảnh thất bại",
+      "updateError": "Lỗi khi cập nhật người ở",
+      "deleteSuccess": "Xóa người ở thành công!",
+      "deleteError": "Lỗi khi xóa người ở",
+      "cannotDelete": "Không thể xóa! Phòng phải có ít nhất 1 người ở. Nếu muốn xóa, vui lòng kết thúc hợp đồng.",
+      "tenantNotFound": "Không tìm thấy thông tin người ở",
       "roomNotFound": "Không tìm thấy thông tin phòng",
       "checkRoomInfoError": "Lỗi khi kiểm tra thông tin phòng"
     },
@@ -514,8 +514,8 @@
   }
   ,
   "tenants": {
-    "title": "Quản lý khách thuê",
-    "addNew": "Thêm khách thuê",
+    "title": "Quản lý người ở",
+    "addNew": "Thêm người ở",
     "importExcel": "Import Excel",
     "exportExcel": "Xuất Excel",
     "exportSuccess": "Xuất Excel thành công!",
@@ -532,10 +532,10 @@
     "invalidRecords": "Không hợp lệ",
     "invalidWarning": "Có một số bản ghi không hợp lệ. Hãy sửa dữ liệu trực tiếp trên bảng để có thể import.",
     "searchPlaceholder": "Tên, email, điện thoại...",
-    "noTenants": "Không có khách thuê",
-    "noTenantsDescription": "Hãy thay đổi bộ lọc hoặc thêm khách thuê mới.",
-    "createTitle": "Thêm khách thuê",
-    "editTitle": "Sửa khách thuê",
+    "noTenants": "Không có người ở",
+    "noTenantsDescription": "Hãy thay đổi bộ lọc hoặc thêm người ở mới.",
+    "createTitle": "Thêm người ở",
+    "editTitle": "Sửa người ở",
     "status": {
       "active": "đang thuê",
       "ended": "đã kết thúc"
@@ -544,28 +544,28 @@
       "saving": "Đang lưu...",
       "updating": "Đang cập nhật...",
       "update": "Cập nhật",
-      "add": "Thêm khách thuê",
+      "add": "Thêm người ở",
       "selectRoom": "Vui lòng chọn phòng"
     },
     "messages": {
       "deletedButContractUpdateFailed": "Đã xóa tenant nhưng không thể cập nhật hợp đồng",
       "addedButContractUpdateFailed": "Đã thêm tenant nhưng không thể cập nhật hợp đồng",
-      "saveFailed": "Có lỗi khi lưu thông tin khách thuê",
+      "saveFailed": "Có lỗi khi lưu thông tin người ở",
       "loadTenantInfoFailed": "Không thể tải thông tin tenant",
-      "tenantNotFoundPleaseAdd": "Không tìm thấy khách thuê với thông tin này. Vui lòng thêm khách thuê trước.",
+      "tenantNotFoundPleaseAdd": "Không tìm thấy người ở với thông tin này. Vui lòng thêm người ở trước.",
       "loadTenantsFailed": "Không thể tải danh sách tenant",
-      "updateSuccess": "Đã cập nhật thông tin khách thuê",
-      "addSuccess": "Tạo khách thuê thành công!",
-      "addSuccessButImagesFailed": "Tạo khách thuê thành công nhưng upload ảnh thất bại"
+      "updateSuccess": "Đã cập nhật thông tin người ở",
+      "addSuccess": "Tạo người ở thành công!",
+      "addSuccessButImagesFailed": "Tạo người ở thành công nhưng upload ảnh thất bại"
     },
     "confirm": {
-      "deleteTenant": "Bạn có chắc muốn xóa khách thuê \"{{tenantName}}\"?"
+      "deleteTenant": "Bạn có chắc muốn xóa người ở \"{{tenantName}}\"?"
     }
   },
   "contracts": {
     "title": "Quản lý hợp đồng",
     "addNew": "Tạo hợp đồng",
-    "searchPlaceholder": "Phòng, khách thuê...",
+    "searchPlaceholder": "Phòng, người ở...",
     "empty": "Chưa có hợp đồng",
     "emptyDescription": "Tạo hợp đồng mới để bắt đầu.",
     "createTitle": "Tạo hợp đồng",
@@ -587,7 +587,7 @@
       "roomPrice": "Giá phòng"
     },
     "room": "Phòng",
-    "tenant": "Khách thuê",
+    "tenant": "người ở",
     "startDate": "Ngày bắt đầu",
     "endDate": "Ngày kết thúc",
     "monthlyRent": "Tiền thuê hàng tháng",
@@ -746,12 +746,12 @@
         "deleteVehicle": "Xóa xe"
       },
       "tenantsSection": {
-        "loading": "Đang tải danh sách khách thuê...",
-        "noTenants": "Chưa có khách thuê",
-        "noTenantsDesc": "Phòng này chưa có khách thuê nào."
+        "loading": "Đang tải danh sách người ở...",
+        "noTenants": "Chưa có người ở",
+        "noTenantsDesc": "Phòng này chưa có người ở nào."
       },
       "form": {
-        "tenantInfoTitle": "Thông tin khách thuê",
+        "tenantInfoTitle": "Thông tin người ở",
         "fullName": "Họ và tên *",
         "fullNamePlaceholder": "Nhập họ và tên",
         "phone": "Số điện thoại *",
@@ -786,7 +786,7 @@
           "message": "Bạn có chắc chắn muốn kết thúc hợp đồng phòng?",
           "actionTitle": "Hành động này sẽ:",
           "action1": "Chuyển trạng thái hợp đồng sang \"Đã kết thúc\"",
-          "action2": "Xóa tất cả khách thuê khỏi phòng",
+          "action2": "Xóa tất cả người ở khỏi phòng",
           "action3": "Chuyển trạng thái phòng về \"Trống\"",
           "action4": "Mở form tạo hóa đơn thanh toán tháng cuối"
         }
@@ -819,7 +819,7 @@
     }
   },
   "roles": {
-    "tenant": "Khách thuê",
+    "tenant": "người ở",
     "landlord": "Chủ trọ",
     "admin": "Quản trị viên"
   },
@@ -1167,7 +1167,7 @@
   },
   "payments": {
     "title": "Quản lý thanh toán",
-    "searchPlaceholder": "Tìm theo phòng, khách thuê...",
+    "searchPlaceholder": "Tìm theo phòng, người ở...",
     "month": "Tháng",
     "year": "Năm",
     "noInvoices": "Không có hóa đơn nào",
@@ -1183,7 +1183,7 @@
     "generalInfo": "Thông tin chung",
     "paymentDetail": "Chi tiết thanh toán",
     "room": "Phòng",
-    "tenant": "Khách thuê",
+    "tenant": "người ở",
     "status": {
       "label": "Trạng thái",
       "all": "Tất cả",
