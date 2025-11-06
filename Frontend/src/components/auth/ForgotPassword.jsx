@@ -113,7 +113,7 @@ const ForgotPassword = () => {
     return (
         <section className="auth">
             <div className="container">
-                <div className="form-box modern-card">
+                <div className="form-box modern-card-forget-password">
                     <h2>Khôi phục mật khẩu</h2>
                     
                     {step === 1 ? (

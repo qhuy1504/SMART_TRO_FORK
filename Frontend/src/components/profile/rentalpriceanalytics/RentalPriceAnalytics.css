@@ -739,6 +739,7 @@
 .control-group-button {
   display: flex;
   justify-content: center;
+  margin-bottom: 20px;
 }
 
 /* Responsive Design */

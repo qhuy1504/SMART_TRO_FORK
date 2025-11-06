@@ -122,7 +122,7 @@ const Login = () => {
     return (
         <section className="auth">
             <div className="container">
-                <div className="form-box modern-card">
+                <div className="form-box modern-card-login">
                     <h2>Đăng nhập</h2>
                     <form onSubmit={handleSubmit}>
                         <input

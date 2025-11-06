@@ -672,7 +672,7 @@ const RentalPriceAnalytics = () => {
 
   return (
     <div className="rental-analytics-dashboard">
-      <div className="dashboard-header">
+      <div className="dashboard-header-rental-analytics">
         <div className="dashboard-item">
           <h2>
             <i className="fa fa-chart-line"></i>
