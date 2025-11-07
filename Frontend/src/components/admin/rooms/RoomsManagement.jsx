@@ -7908,8 +7908,10 @@ const RoomsManagement = () => {
                               type="number"
                               className="editable-cell"
                               value={record.electricOld}
-                              onChange={(e) => handleEditBillingRow(index, 'electricOld', e.target.value)}
-                              disabled={billingLoading}
+                              readOnly
+                              disabled
+                              style={{backgroundColor: '#f3f4f6', cursor: 'not-allowed'}}
+                              title="Chỉ số cũ không được chỉnh sửa"
                             />
                           </td>
                           <td>
@@ -7931,8 +7933,10 @@ const RoomsManagement = () => {
                                 type="number"
                                 className="editable-cell"
                                 value={record.waterOld}
-                                onChange={(e) => handleEditBillingRow(index, 'waterOld', e.target.value)}
-                                disabled={billingLoading}
+                                readOnly
+                                disabled
+                                style={{backgroundColor: '#f3f4f6', cursor: 'not-allowed'}}
+                                title="Chỉ số cũ không được chỉnh sửa"
                               />
                             )}
                           </td>
