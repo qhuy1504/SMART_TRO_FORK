@@ -15,6 +15,22 @@ const packagePlanSchema = new mongoose.Schema({
     default: 'custom' // Nếu admin tạo thêm thì mặc định là tùy chỉnh
   },
 
+  // Loại gói dành cho ai (chủ trọ hoặc khách thuê)
+  packageFor: {
+    type: String,
+    enum: ['landlord', 'tenant', 'both'], // 'both' cho gói có thể dùng cho cả hai
+    required: true,
+    default: 'both'
+  },
+
+  // Phân loại gói (quản lý trọ hoặc đăng tin)
+  category: {
+    type: String,
+    enum: ['management', 'posting', 'mixed'], // management: quản lý trọ, posting: đăng tin, mixed: cả hai
+    required: true,
+    default: 'posting'
+  },
+
   displayName: {
     type: String,
     required: true
@@ -24,11 +40,40 @@ const packagePlanSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-    // Số lượt đẩy tin miễn phí theo gói
+  // Số lượt đẩy tin miễn phí theo gói
   freePushCount: {
     type: Number,
     required: true,
     min: 0
+  },
+
+  // Tính năng quản lý cho chủ trọ (chỉ áp dụng khi category = 'management' hoặc 'mixed')
+  managementFeatures: {
+    maxProperties: {
+      type: Number, // Số phòng trọ tối đa có thể quản lý (-1 = không giới hạn)
+      default: -1
+    },
+    enableAutoBilling: {
+      type: Boolean, // Tự động tính tiền điện nước
+      default: false
+    },
+    enableNotifications: {
+      type: Boolean, // Thông báo qua email/SMS
+      default: false
+    },
+    enableReports: {
+      type: Boolean, // Báo cáo thống kê
+      default: false
+    },
+    enableExport: {
+      type: Boolean, // Xuất báo cáo Excel/PDF
+      default: false
+    },
+    supportLevel: {
+      type: String, // Mức độ hỗ trợ
+      enum: ['basic', 'priority', '24/7'],
+      default: 'basic'
+    }
   },
 
 

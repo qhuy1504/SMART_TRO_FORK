@@ -404,7 +404,7 @@ const UsersManagement = () => {
             {showViewModal && selectedUser && (
                 <div className="modal-overlay" onClick={() => setShowViewModal(false)}>
                     <div className="modal-content user-detail-modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
+                        <div className="modal-header-user-management">
                             <h2>
                                 <i className="fas fa-user-circle"></i> Thông tin người dùng
                             </h2>
@@ -550,7 +550,7 @@ const UsersManagement = () => {
                         </div>
 
                         <div className="modal-footer">
-                            <button className="btn-secondary" onClick={() => setShowViewModal(false)}>
+                            <button className="btn-secondary-user-management" onClick={() => setShowViewModal(false)}>
                                 <i className="fas fa-times"></i> Đóng
                             </button>
                         </div>

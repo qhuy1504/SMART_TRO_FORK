@@ -351,7 +351,7 @@
 }
 
 /* Action Buttons */
-.btn-action {
+/* .btn-action {
     padding: 10px 20px;
     border-radius: 10px;
     font-size: 13px;
@@ -372,7 +372,7 @@
 
 .btn-action:active {
     transform: scale(0.95);
-}
+} */
 
 .btn-block {
     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
@@ -734,7 +734,7 @@
     }
 }
 
-.modal-header {
+.modal-header-user-management {
     padding: 24px 28px;
     border-bottom: 2px solid #e2e8f0;
     display: flex;
@@ -745,7 +745,7 @@
     flex-shrink: 0;
 }
 
-.modal-header h2 {
+.modal-header-user-management h2 {
     font-size: 20px;
     font-weight: 700;
     margin: 0;
@@ -756,7 +756,7 @@
     min-width: 0;
 }
 
-.modal-header h2 i {
+.modal-header-user-management h2 i {
     flex-shrink: 0;
 }
 
@@ -982,7 +982,7 @@
     background: #f8fafc;
 }
 
-.btn-secondary {
+.btn-secondary-user-management {
     padding: 12px 24px;
     border: 2px solid #e2e8f0;
     background: white;
@@ -997,7 +997,7 @@
     gap: 8px;
 }
 
-.btn-secondary:hover {
+.btn-secondary-user-management:hover {
     background: #f8fafc;
     border-color: #cbd5e1;
     color: #374151;

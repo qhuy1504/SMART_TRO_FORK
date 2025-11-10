@@ -96,6 +96,57 @@ class NotificationService {
     }
   }
 
+  // Send notification when property is hidden by admin
+  static async notifyPropertyHidden(userId, propertyId, status, type, adminNote, relatedPropertyId = null) {
+    try {
+      console.log(`[${new Date().toISOString()}] NotificationService.notifyPropertyHidden called:`);
+      console.log(`userId: ${userId}`);
+      console.log(`propertyId: ${propertyId}`);
+      console.log(`status: ${status}`);
+      console.log(`type: ${type}`);
+      console.log(`adminNote: ${adminNote}`);
+
+      // Create notification in database
+      console.log(`Creating property hidden notification in database...`);
+      const notification = new Notification({
+        userId,
+        type: 'property',
+        title: 'Tin đăng bị ẩn',
+        content: adminNote || 'Tin đăng của bạn đã bị ẩn bởi quản trị viên',
+        relatedId: relatedPropertyId || propertyId,
+        metadata: {
+          propertyId: propertyId,
+          propertyStatus: status,
+          adminNote: adminNote,
+          hiddenAt: new Date()
+        }
+      });
+
+      await notification.save();
+      console.log(`Property hidden notification created in DB:`, notification._id);
+
+      // Send real-time notification via WebSocket
+      console.log(`Sending real-time property hidden notification via WebSocket...`);
+      const wsResult = notificationWSServer.sendNotificationToUser(userId, {
+        _id: notification._id,
+        type: notification.type,
+        title: notification.title,
+        content: notification.content,
+        relatedId: notification.relatedId,
+        isRead: false,
+        createdAt: notification.createdAt,
+        metadata: notification.metadata
+      });
+      console.log(`WebSocket send result: ${wsResult ? 'SUCCESS' : 'FAILED'}`);
+
+      console.log(`Property hidden notification process completed for user ${userId}`);
+      return notification;
+    } catch (error) {
+      console.error('Error sending property hidden notification:', error);
+      throw error;
+    }
+  }
+
   // Create custom notification
   static async createCustomNotification(userId, type, title, content, relatedId, metadata = {}) {
     try {

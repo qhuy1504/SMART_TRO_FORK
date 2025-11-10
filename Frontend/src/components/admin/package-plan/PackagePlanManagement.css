@@ -133,6 +133,15 @@
     margin-bottom: 24px;
     flex-wrap: wrap;
     align-items: center;
+    justify-content: space-between;
+
+}
+
+.package-plan-select {
+    display: flex;
+    justify-content: space-around;
+    gap: 15px;
+
 }
 
 .btn-add-package,
@@ -349,8 +358,6 @@
 }
 
 
-
-
 .package-plan-header {
     display: flex;
     justify-content: space-between;
@@ -359,19 +366,36 @@
     background: #007bff;
     border-bottom: 1px solid #000000;
     position: relative;
+    min-height: 120px;
+    /* đặt chiều cao tối thiểu */
+    box-sizing: border-box;
+    /* đảm bảo padding không phá layout */
 }
 
 .package-type-badge {
+    margin-bottom: 5px;
+
+}
+
+.package-type-badge-span {
     background: #007bff;
     color: white;
     padding: 6px 14px;
-    border-radius: 20px;
+    border-radius: 10px;
     font-size: 12px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     border: 2px solid rgba(255, 255, 255, 0.2);
+    background-color: black;
+}
+
+
+.package-plan-button-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 /* Package Header Colors for different types */
@@ -1492,18 +1516,46 @@
     justify-content: space-between;
 }
 
+
+
+.row-package-plan-item-row-1 {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+    /* Khoảng cách giữa 2 ô */
+}
+
+.row-package-plan-item-row-1 .col-md-3 {
+    flex: 0 0 50%;
+    /* Mỗi ô chiếm 45% chiều rộng */
+    max-width: 50%;
+}
+
+.row-package-plan-item-row-1 .col-md-3 input,
+.row-package-plan-item-row-1 .col-md-3 select {
+    width: 100%;
+}
+
+
+
 .row-package-plan-item-row-2 {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    gap: 20px;
+    width: 100%;
     /* Khoảng cách giữa 2 ô */
 }
 
 .row-package-plan-item-row-2 .col-md-3 {
-    flex: 0 0 42%;
+    flex: 0 0 50%;
     /* Mỗi ô chiếm 45% chiều rộng */
-    max-width: 42%;
+    max-width: 50%;
+}
+
+.row-package-plan-item-row-2 .col-md-3 input,
+.row-package-plan-item-row-2 .col-md-3 select {
+    width: 100%;
 }
 
 .row-package-plan-item-description {
@@ -1692,4 +1744,254 @@
 
 .trial-duration-notice i {
     font-size: 16px;
+}
+
+/* Package header improvements */
+.package-header-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.package-badges {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+   
+   
+}
+
+.package-for-badge,
+.package-category-badge {
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 12px;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.package-for-badge {
+    background-color: #3f3f3f;
+}
+
+.package-category-badge {
+    background-color: #3f3f3f;
+    /* hồng cam ấm */
+}
+
+/* Management features styling */
+.management-features {
+    margin-top: 12px;
+    padding: 12px;
+    background: rgba(249, 250, 251, 0.8);
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+}
+
+.management-features h6 {
+    color: #374151;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.management-feature-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.feature-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+}
+
+.feature-label {
+    color: #6b7280;
+    font-weight: 500;
+    font-size: 13px;
+}
+
+.feature-value {
+    color: #374151;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.feature-toggles {
+    display: flex;
+    /* Dễ căn và kiểm soát layout */
+    flex-wrap: wrap;
+    /* Tự xuống dòng khi quá dài */
+    gap: 6px;
+    /* Khoảng cách giữa các badge */
+
+}
+
+.feature-toggle {
+    display: inline-flex;
+    /* Giúp canh giữa nội dung trong badge */
+    align-items: center;
+    justify-content: center;
+    padding: 4px 10px;
+    /* Nền bao vừa chữ */
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    line-height: 1.2;
+    background: rgba(0, 0, 0, 0.05);
+    /* màu mặc định nhẹ */
+    color: #333;
+}
+
+.feature-toggle.active {
+    background: rgba(34, 197, 94, 0.9);
+    color: white;
+}
+
+/* Management features toggle header */
+.management-features-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.management-features-header h6 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.btn-toggle-features {
+    background: none;
+    border: none;
+    color: #3b82f6;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    display: flex;
+    flex-direction: space-around;
+    align-items: center;
+}
+
+.management-features-header i {
+    margin-left: 6px;
+
+}
+
+
+.btn-toggle-features:hover {
+    background: #f3f4f6;
+    color: #1d4ed8;
+}
+
+.management-features-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+    align-items: center;
+}
+
+.management-features-summary .features-summary-text {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 13px;
+    color: #334155;
+    /* màu chữ dễ đọc */
+}
+
+.management-features-summary .feature-item-summary {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    /* to hơn để dễ nhìn */
+    background: #e0f2fe;
+    /* nền nhạt, nhìn nhẹ nhàng */
+    border-radius: 8px;
+    font-size: 12px;
+    color: #0c4a6e;
+    /* chữ nổi bật hơn */
+    border: 1px solid #bae6fd;
+    /* viền nhạt tinh tế */
+    white-space: nowrap;
+    /* tránh xuống dòng giữa chừng */
+}
+
+.management-features-summary .feature-item-summary strong {
+    color: #035388;
+    /* chữ nổi bật phần chính */
+    margin-right: 4px;
+}
+
+.management-features-summary .separator {
+    margin: 0 6px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+
+/* Management features form styling */
+.management-features-grid {
+    display: grid;
+    gap: 16px;
+    padding: 16px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    margin-top: 12px;
+}
+
+.management-feature-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.management-feature-switches {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.management-feature-switches .form-switch-wrapper {
+    margin-bottom: 0;
+}
+
+@media (max-width: 768px) {
+    .management-feature-switches {
+        grid-template-columns: 1fr;
+    }
+
+    .package-badges {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+.form-select-package-plan {
+    padding: 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+
 }

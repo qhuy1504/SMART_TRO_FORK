@@ -1929,7 +1929,7 @@ const NewProperty = () => {
                           <p>Gói tin của bạn đã hết hạn. Vui lòng gia hạn gói để tiếp tục đăng tin.</p>
                           <button
                             type="button"
-                            className="btn btn-primary btn-upgrade"
+                            className="btn-package-new-properties btn-primary btn-upgrade"
                             onClick={handleUpgradeClick}
                           >
                             <i className="fa fa-refresh"></i>
@@ -1945,7 +1945,7 @@ const NewProperty = () => {
                           <p>Gói hiện tại của bạn đã hết số lượt đăng tin. Vui lòng nâng cấp gói để tiếp tục đăng tin.</p>
                           <button
                             type="button"
-                            className="btn btn-primary btn-upgrade"
+                            className="btn-package-new-properties btn-primary btn-upgrade"
                             onClick={handleUpgradeClick}
                           >
                             <i className="fa fa-arrow-up"></i>

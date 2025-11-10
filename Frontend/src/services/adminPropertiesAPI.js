@@ -195,6 +195,47 @@ export const bulkApproveProperties = async (propertyIds) => {
 };
 
 /**
+ * Toggle property visibility (hide/show by updating isDeleted field)
+ * @param {string} propertyId - Property ID to toggle
+ * @param {boolean} isDeleted - Set property as deleted (hidden) or not
+ * @param {string} reason - Reason for hiding (optional, only when isDeleted = true)
+ */
+export const togglePropertyVisibility = async (propertyId, isDeleted, reason = null) => {
+  try {
+    if (!propertyId) {
+      throw new Error('Property ID is required');
+    }
+
+    const body = { isDeleted: isDeleted };
+    
+    // Chỉ thêm reason khi ẩn tin đăng
+    if (isDeleted && reason) {
+      body.reason = reason;
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}/admin/properties/${propertyId}/toggle-visibility`,
+      {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(body),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Không thể thay đổi trạng thái hiển thị');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error toggling property visibility:', error);
+    throw error;
+  }
+};
+
+/**
  * Bulk reject multiple properties
  * @param {string[]} propertyIds - Array of property IDs to reject
  * @param {string} reason - Common reason for rejection
@@ -237,6 +278,7 @@ const adminPropertiesAPI = {
   rejectProperty,
   getPropertyStats,
   getPropertyDetails,
+  togglePropertyVisibility,
   bulkApproveProperties,
   bulkRejectProperties
 };

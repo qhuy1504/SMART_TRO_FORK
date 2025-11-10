@@ -10,7 +10,8 @@
     margin: auto;
     padding: 0 20px;
 }
-.container-pricing h2{
+
+.container-pricing h2 {
     text-align: center;
     font-weight: 500;
 }
@@ -38,6 +39,7 @@
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -61,6 +63,7 @@
         transform: translateY(50px);
         opacity: 0;
     }
+
     to {
         transform: translateY(0);
         opacity: 1;
@@ -272,10 +275,10 @@
     transform: translateY(-5px);
 }
 
-.popular-badge {
+.popular-badge-pricing {
     position: absolute;
-    top: 12px;
-    right: -35px;
+    top: 30px;
+    right: -40px;
     background: #8b5cf6;
     color: white;
     padding: 5px 38px;
@@ -366,7 +369,7 @@
     margin: 0 0 12px 0;
 }
 
-.feature-item,
+.feature-item-pricing,
 .limitation-item {
     display: flex;
     align-items: flex-start;
@@ -377,12 +380,12 @@
     line-height: 1.4;
 }
 
-.feature-item:last-child,
+.feature-item-pricing:last-child,
 .limitation-item:last-child {
     border-bottom: none;
 }
 
-.feature-item i {
+.feature-item-pricing i {
     font-size: 14px;
     margin-top: 2px;
     flex-shrink: 0;
@@ -445,7 +448,7 @@
         transform: translateY(-8px);
     }
 
-    .popular-badge {
+    .popular-badge-pricing {
         font-size: 11px;
         padding: 6px 40px;
     }
@@ -484,7 +487,7 @@
         font-size: 28px;
     }
 
-    .feature-item,
+    .feature-item-pricing,
     .limitation-item {
         font-size: 14px;
         padding: 10px 0;
@@ -497,92 +500,97 @@
 
 /* Lưới tổng thể */
 .price-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr); 
-  gap: 24px;
-  margin-top: 2rem;
-  margin-bottom: 20px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    margin-top: 2rem;
+    margin-bottom: 20px;
 }
 
 /* Card từng gói */
 .price-card {
-  border-radius: 12px;
-  overflow: hidden; /* để header bo tròn đẹp */
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
-  transition: transform 0.3s ease;
+    border-radius: 12px;
+    overflow: hidden;
+    /* để header bo tròn đẹp */
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease;
 }
 
 .price-card:hover {
-  transform: translateY(-5px);
+    transform: translateY(-5px);
 }
 
 .plan-header {
-  text-align: center;
-  background: #3b82f6; /* fallback */
-  color: white;
-  padding: 16px 10px;
+    text-align: center;
+    background: #3b82f6;
+    /* fallback */
+    color: white;
+    padding: 16px 10px;
 }
 
 .plan-header .plan-name {
-  font-size: 1.4rem;
-  font-weight: 600;
-  margin-bottom: 5px;
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-bottom: 5px;
 }
 
 .plan-header .plan-desc {
-  font-size: 0.95rem;
-  opacity: 0.9;
-  margin: 0;
+    font-size: 0.95rem;
+    opacity: 0.9;
+    margin: 0;
 }
 
 .plan-body {
-  padding: 20px;
-  background: #f8fafc;
+    padding: 20px;
+    background: #f8fafc;
 }
 
 .plan-price {
-  font-size: 1.4rem;
-  font-weight: 600;
-  margin: 15px 0;
-  display: flex;
-  justify-content: center;
-  align-items: baseline;
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin: 15px 0;
+    display: flex;
+    justify-content: center;
+    align-items: baseline;
 }
+
 .price-value-pricing {
     font-size: 24px;
     font-weight: 700;
     color: #28a745;
 }
-.price-duration{
+
+.price-duration {
     font-size: 1rem;
     color: #64748b;
     margin-left: 6px;
 }
+
 .plan-limits {
-  list-style: none;
-  padding: 0;
-  margin: 15px 0;
-  min-height: 150px;
+    list-style: none;
+    padding: 0;
+    margin: 15px 0;
+    min-height: 150px;
 }
 
 .plan-limits li {
-  margin-bottom: 8px;
+    margin-bottom: 8px;
 }
 
 .btn-register {
-  width: 100%;
-  padding: 12px;
-  border: none;
-  border-radius: 8px;
-  color: white;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s ease, opacity 0.2s ease;
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
 .btn-register:hover {
-  opacity: 0.9;
-  transform: scale(1.03);
+    opacity: 0.9;
+    transform: scale(1.03);
 }
 
 
@@ -714,4 +722,68 @@
         height: 45px;
         font-size: 16px;
     }
+}
+
+/* ============================================
+   MANAGEMENT FEATURES STYLES
+   ============================================ */
+
+.management-features-pricing {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+    min-height: 100px;
+}
+
+.features-subtitle {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.feature-description-pricing {
+    display: block;
+    color: #666;
+    font-size: 18px;
+    margin-top: 2px;
+
+    margin-bottom: 20px;
+}
+
+.management-features-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.management-feature-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 0;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.management-feature-item i {
+    margin-top: 2px;
+    flex-shrink: 0;
+    width: 16px;
+    text-align: center;
+}
+
+.management-feature-item span {
+    flex: 1;
+}
+
+.management-feature-item strong {
+    color: inherit;
+    font-weight: 600;
+}
+
+.management-feature-item small {
+    font-style: italic;
+    opacity: 0.8;
 }

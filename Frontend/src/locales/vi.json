@@ -807,7 +807,9 @@
     "profile": "Quản lý tài khoản",
     "properties": "Đăng tin mới",
     "settings": "Cài đặt",
-    "admin": "Quản trị",
+    "pricingAnalytics": "Phân tích giá thuê",
+    "admin": "Quản trị hệ thống",
+    "landlord": "Quản lý phòng trọ",
     "logout": "Đăng xuất",
     "nav": {
       "home": "Trang chủ",

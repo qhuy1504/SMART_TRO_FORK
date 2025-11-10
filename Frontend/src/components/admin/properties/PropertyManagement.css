@@ -833,6 +833,12 @@
     border: 2px solid rgba(239, 68, 68, 0.3);
 }
 
+.status-hidden-manager-property {
+    background: rgba(107, 114, 128, 0.1);
+    color: #6b7280;
+    border: 2px solid rgba(107, 114, 128, 0.3);
+}
+
 /* Date Cell */
 .date-cell {
     min-width: 100px;
@@ -932,6 +938,24 @@
 
 .btn-action.reject:hover:not(:disabled) {
     box-shadow: 0 2px 10px rgba(239, 68, 68, 0.4);
+}
+
+.btn-action.hide {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+}
+
+.btn-action.hide:hover:not(:disabled) {
+    box-shadow: 0 2px 10px rgba(245, 158, 11, 0.4);
+}
+
+.btn-action.show {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.btn-action.show:hover:not(:disabled) {
+    box-shadow: 0 2px 10px rgba(16, 185, 129, 0.4);
 }
 
 .btn-info {
@@ -1106,6 +1130,16 @@
 
 .btn-success:hover:not(:disabled) {
     background: #229954;
+    transform: translateY(-1px);
+}
+
+.btn-warning {
+    background: #f39c12;
+    color: white;
+}
+
+.btn-warning:hover:not(:disabled) {
+    background: #d68910;
     transform: translateY(-1px);
 }
 
@@ -2146,6 +2180,18 @@
     background: linear-gradient(135deg, #c0392b, #a93226);
     transform: translateY(-2px);
     box-shadow: 0 8px 24px rgba(231, 76, 60, 0.3);
+}
+
+.btn-management.btn-warning {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    color: white;
+    border-color: #f39c12;
+}
+
+.btn-management.btn-warning:hover {
+    background: linear-gradient(135deg, #e67e22, #d35400);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(243, 156, 18, 0.3);
 }
 
 /* Responsive Design */

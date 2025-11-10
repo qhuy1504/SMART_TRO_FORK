@@ -432,6 +432,9 @@
   color: white;
   flex-shrink: 0; /* không bị ép nhỏ */
 }
+.package-card-body {
+  min-height: 200px;
+}
 
  .package-card-body h5 {
    font-size: 1rem;

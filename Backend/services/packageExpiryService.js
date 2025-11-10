@@ -4,6 +4,7 @@
  */
 import cron from 'node-cron';
 import User from '../schemas/User.js';
+import PackagePlan from '../schemas/PackagePlan.js';
 import { Property } from '../schemas/index.js';
 
 /**
@@ -47,9 +48,44 @@ const processExpiredPackages = async () => {
                     if (currentExpiryDate < now && user.currentPackagePlan.isActive !== false) {
                         console.log(`User ${user._id}: Current package expired on ${currentExpiryDate.toISOString()}`);
                         
+                        // Lấy thông tin PackagePlan để kiểm tra category và packageFor
+                        let shouldResetRole = false;
+                        if (user.currentPackagePlan.packagePlanId) {
+                            try {
+                                const packagePlan = await PackagePlan.findById(user.currentPackagePlan.packagePlanId);
+                                if (packagePlan && 
+                                    ((packagePlan.category === 'management' && packagePlan.packageFor === 'landlord') ||
+                                     (packagePlan.category === 'mixed' && packagePlan.packageFor === 'both'))) {
+                                    
+                                    // Kiểm tra xem user có gói management/mixed khác đang active không
+                                    const hasActiveManagementPackage = user.packageHistory && user.packageHistory.some(pkg => 
+                                        pkg.packageInstanceId && 
+                                        pkg.packageInstanceId.toString() !== user.currentPackagePlan.packageInstanceId.toString() &&
+                                        pkg.isActive !== false && 
+                                        pkg.status === 'active' &&
+                                        pkg.expiryDate && new Date(pkg.expiryDate) > new Date()
+                                    );
+                                    
+                                    if (!hasActiveManagementPackage) {
+                                        shouldResetRole = true;
+                                        console.log(`Setting user role back to tenant for expired package: ${packagePlan.displayName} (category: ${packagePlan.category}, packageFor: ${packagePlan.packageFor}, instanceId: ${user.currentPackagePlan.packageInstanceId})`);
+                                    } else {
+                                        console.log(`Not resetting role - user has another active management package (instanceId: ${user.currentPackagePlan.packageInstanceId})`);
+                                    }
+                                }
+                            } catch (error) {
+                                console.error(`Error fetching PackagePlan ${user.currentPackagePlan.packagePlanId}:`, error);
+                            }
+                        }
+                        
                         // Cập nhật currentPackagePlan
                         user.currentPackagePlan.isActive = false;
                         user.currentPackagePlan.status = 'expired';
+                        
+                        // Reset role nếu cần
+                        if (shouldResetRole) {
+                            user.role = 'tenant';
+                        }
                         
                         // Cập nhật properties của gói hiện tại
                         const propertiesResult = await Property.updateMany(
@@ -88,10 +124,54 @@ const processExpiredPackages = async () => {
                             if (historyExpiryDate < now) {
                                 console.log(`User ${user._id}: History package ${historyPackage._id} expired on ${historyExpiryDate.toISOString()}`);
                                 
+                                // Lấy thông tin PackagePlan để kiểm tra category và packageFor
+                                let shouldResetRole = false;
+                                if (historyPackage.packagePlanId) {
+                                    try {
+                                        const packagePlan = await PackagePlan.findById(historyPackage.packagePlanId);
+                                        if (packagePlan && 
+                                            ((packagePlan.category === 'management' && packagePlan.packageFor === 'landlord') ||
+                                             (packagePlan.category === 'mixed' && packagePlan.packageFor === 'both'))) {
+                                            
+                                            // Kiểm tra xem user có gói management/mixed khác đang active không 
+                                            const hasActiveManagementPackage = (
+                                                // Kiểm tra currentPackagePlan
+                                                (user.currentPackagePlan && 
+                                                 user.currentPackagePlan.packageInstanceId && 
+                                                 user.currentPackagePlan.packageInstanceId.toString() !== historyPackage.packageInstanceId?.toString() &&
+                                                 user.currentPackagePlan.isActive !== false && 
+                                                 user.currentPackagePlan.expiryDate && new Date(user.currentPackagePlan.expiryDate) > new Date()) ||
+                                                // Kiểm tra packageHistory khác
+                                                (user.packageHistory && user.packageHistory.some(pkg => 
+                                                    pkg.packageInstanceId && 
+                                                    pkg.packageInstanceId.toString() !== historyPackage.packageInstanceId?.toString() &&
+                                                    pkg.isActive !== false && 
+                                                    pkg.status === 'active' &&
+                                                    pkg.expiryDate && new Date(pkg.expiryDate) > new Date()
+                                                ))
+                                            );
+                                            
+                                            if (!hasActiveManagementPackage) {
+                                                shouldResetRole = true;
+                                                console.log(`Setting user role back to tenant for expired history package: ${packagePlan.displayName} (category: ${packagePlan.category}, packageFor: ${packagePlan.packageFor}, instanceId: ${historyPackage.packageInstanceId})`);
+                                            } else {
+                                                console.log(`Not resetting role - user has another active management package (instanceId: ${historyPackage.packageInstanceId})`);
+                                            }
+                                        }
+                                    } catch (error) {
+                                        console.error(`Error fetching PackagePlan ${historyPackage.packagePlanId}:`, error);
+                                    }
+                                }
+                                
                                 // Cập nhật status trong packageHistory
                                 user.packageHistory[i].status = 'expired';
                                 user.packageHistory[i].isActive = false;
                                 user.packageHistory[i].updatedAt = new Date();
+                                
+                                // Reset role nếu cần
+                                if (shouldResetRole) {
+                                    user.role = 'tenant';
+                                }
                                 
                                 // Cập nhật properties của gói trong history
                                 if (historyPackage.packageInstanceId) {
@@ -166,6 +246,36 @@ const processExpiredPackagesForUser = async (userId) => {
             const currentExpiryDate = new Date(user.currentPackagePlan.expiryDate);
             
             if (currentExpiryDate < now && user.currentPackagePlan.isActive !== false) {
+                // Lấy thông tin PackagePlan để kiểm tra category và packageFor
+                let shouldResetRole = false;
+                if (user.currentPackagePlan.packagePlanId) {
+                    try {
+                        const packagePlan = await PackagePlan.findById(user.currentPackagePlan.packagePlanId);
+                        if (packagePlan && 
+                            ((packagePlan.category === 'management' && packagePlan.packageFor === 'landlord') ||
+                             (packagePlan.category === 'mixed' && packagePlan.packageFor === 'both'))) {
+                            
+                            // Kiểm tra xem user có gói management/mixed khác đang active không
+                            const hasActiveManagementPackage = user.packageHistory && user.packageHistory.some(pkg => 
+                                pkg.packageInstanceId && 
+                                pkg.packageInstanceId.toString() !== user.currentPackagePlan.packageInstanceId.toString() &&
+                                pkg.isActive !== false && 
+                                pkg.status === 'active' &&
+                                pkg.expiryDate && new Date(pkg.expiryDate) > new Date()
+                            );
+                            
+                            if (!hasActiveManagementPackage) {
+                                shouldResetRole = true;
+                                console.log(`Setting user role back to tenant for expired package: ${packagePlan.displayName} (category: ${packagePlan.category}, packageFor: ${packagePlan.packageFor}, instanceId: ${user.currentPackagePlan.packageInstanceId})`);
+                            } else {
+                                console.log(`Not resetting role - user has another active management package (instanceId: ${user.currentPackagePlan.packageInstanceId})`);
+                            }
+                        }
+                    } catch (error) {
+                        console.error(`Error fetching PackagePlan ${user.currentPackagePlan.packagePlanId}:`, error);
+                    }
+                }
+                
                 user.currentPackagePlan.isActive = false;
                 user.currentPackagePlan.status = 'expired';
                 user.currentPackagePlan.freePushCount = 0; // Set freePushCount = 0
@@ -175,6 +285,11 @@ const processExpiredPackagesForUser = async (userId) => {
                     user.currentPackagePlan.propertiesLimits.forEach(limit => {
                         limit.limit = 0;
                     });
+                }
+                
+                // Reset role nếu cần
+                if (shouldResetRole) {
+                    user.role = 'tenant';
                 }
                 
                 // Cập nhật properties của gói hiện tại
@@ -211,6 +326,45 @@ const processExpiredPackagesForUser = async (userId) => {
                     const historyExpiryDate = new Date(historyPackage.expiryDate);
                     
                     if (historyExpiryDate < now) {
+                        // Lấy thông tin PackagePlan để kiểm tra category và packageFor
+                        let shouldResetRole = false;
+                        if (historyPackage.packagePlanId) {
+                            try {
+                                const packagePlan = await PackagePlan.findById(historyPackage.packagePlanId);
+                                if (packagePlan && 
+                                    ((packagePlan.category === 'management' && packagePlan.packageFor === 'landlord') ||
+                                     (packagePlan.category === 'mixed' && packagePlan.packageFor === 'both'))) {
+                                    
+                                    // Kiểm tra xem user có gói management/mixed khác đang active không
+                                    const hasActiveManagementPackage = (
+                                        // Kiểm tra currentPackagePlan
+                                        (user.currentPackagePlan && 
+                                         user.currentPackagePlan.packageInstanceId && 
+                                         user.currentPackagePlan.packageInstanceId.toString() !== historyPackage.packageInstanceId?.toString() &&
+                                         user.currentPackagePlan.isActive !== false && 
+                                         user.currentPackagePlan.expiryDate && new Date(user.currentPackagePlan.expiryDate) > new Date()) ||
+                                        // Kiểm tra packageHistory khác
+                                        (user.packageHistory && user.packageHistory.some(pkg => 
+                                            pkg.packageInstanceId && 
+                                            pkg.packageInstanceId.toString() !== historyPackage.packageInstanceId?.toString() &&
+                                            pkg.isActive !== false && 
+                                            pkg.status === 'active' &&
+                                            pkg.expiryDate && new Date(pkg.expiryDate) > new Date()
+                                        ))
+                                    );
+                                    
+                                    if (!hasActiveManagementPackage) {
+                                        shouldResetRole = true;
+                                        console.log(`Setting user role back to tenant for expired history package: ${packagePlan.displayName} (category: ${packagePlan.category}, packageFor: ${packagePlan.packageFor}, instanceId: ${historyPackage.packageInstanceId})`);
+                                    } else {
+                                        console.log(`Not resetting role - user has another active management package (instanceId: ${historyPackage.packageInstanceId})`);
+                                    }
+                                }
+                            } catch (error) {
+                                console.error(`Error fetching PackagePlan ${historyPackage.packagePlanId}:`, error);
+                            }
+                        }
+                        
                         user.packageHistory[i].status = 'expired';
                         user.packageHistory[i].updatedAt = new Date();
                         user.packageHistory[i].freePushCount = 0; // Set freePushCount = 0
@@ -220,6 +374,11 @@ const processExpiredPackagesForUser = async (userId) => {
                             user.packageHistory[i].propertiesLimits.forEach(limit => {
                                 limit.limit = 0;
                             });
+                        }
+                        
+                        // Reset role nếu cần
+                        if (shouldResetRole) {
+                            user.role = 'tenant';
                         }
                         
                         if (historyPackage.packageInstanceId) {

@@ -782,7 +782,9 @@
     "profile": "Profile",
     "properties": "Add new property",
     "settings": "Settings",
+    "pricingAnalytics": "Pricing Analytics",
     "admin": "Admin",
+    "landlord": "Room Management",
     "logout": "Logout",
     "nav": {
       "home": "Home",

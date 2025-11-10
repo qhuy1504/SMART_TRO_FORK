@@ -1,12 +1,9 @@
 import TrialRequest from '../schemas/TrialRequest.js';
 import { sendEmail } from '../services/emailService.js';
-<<<<<<< HEAD
-=======
 import User from '../schemas/User.js';
 import bcrypt from 'bcryptjs';
 import PackagePlan from '../schemas/PackagePlan.js';
 import mongoose from 'mongoose';
->>>>>>> e90a8e5e40eb060dd78666cdf125f4a0925c0a99
 
 // Đăng ký gói miễn phí - Chỉ dành cho user đã đăng nhập
 export const createTrialRequest = async (req, res) => {
@@ -121,27 +118,29 @@ export const createTrialRequest = async (req, res) => {
             expiryDate,
             trialRequestId: trialRequest._id
         };
+        
+        //GÓI DÙNG THỬ ĐĂNG TIN TUI CẤP LÚC XÁC THỰC BÊN GMAIL ĐĂNG NHẬP LẦN ĐẦU RỒI, ĐỪNG ĐỂ VÔ ĐÂY NÓ LỖI LOGIC
 
-        // Nếu có gói trial trong hệ thống, gán cho user
-        if (trialPackage) {
-            user.packageType = 'trial';
-            user.currentPackagePlan = {
-                packagePlanId: trialPackage._id,
-                packageInstanceId: new mongoose.Types.ObjectId(),
-                packageName: trialPackage.name,
-                displayName: trialPackage.displayName,
-                priority: trialPackage.priority,
-                color: trialPackage.color,
-                stars: trialPackage.stars,
-                freePushCount: trialPackage.freePushCount || 0,
-                usedPushCount: 0,
-                purchaseDate: now,
-                expiryDate,
-                isActive: true,
-                status: 'active',
-                propertiesLimits: trialPackage.propertiesLimits || []
-            };
-        }
+        // // Nếu có gói trial trong hệ thống, gán cho user
+        // if (trialPackage) {
+        //     user.packageType = 'trial';
+        //     user.currentPackagePlan = {
+        //         packagePlanId: trialPackage._id,
+        //         packageInstanceId: new mongoose.Types.ObjectId(),
+        //         packageName: trialPackage.name,
+        //         displayName: trialPackage.displayName,
+        //         priority: trialPackage.priority,
+        //         color: trialPackage.color,
+        //         stars: trialPackage.stars,
+        //         freePushCount: trialPackage.freePushCount || 0,
+        //         usedPushCount: 0,
+        //         purchaseDate: now,
+        //         expiryDate,
+        //         isActive: true,
+        //         status: 'active',
+        //         propertiesLimits: trialPackage.propertiesLimits || []
+        //     };
+        // }
 
         await user.save();
 

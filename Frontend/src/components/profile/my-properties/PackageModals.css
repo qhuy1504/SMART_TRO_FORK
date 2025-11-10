@@ -994,9 +994,18 @@
   background: linear-gradient(135deg, #fff 0%, #fffbf0 100%);
 }
 
+.package-card.custom {
+  border-color: #0071db;
+  background: linear-gradient(135deg, #fff 0%, #fffbf0 100%);
+}
 .package-card.basic {
   border-color: #28a745;
   background: linear-gradient(135deg, #fff 0%, #f8fff9 100%);
+}
+.package-card.quan_ly_tro {
+  border-color: #cf8e00;
+  background: linear-gradient(135deg, #fff 0%, #f8fff9 100%);
+
 }
 
 .package-card.trial-disabled {
@@ -1130,6 +1139,22 @@
   border-radius: 0 12px 0 12px;
   font-size: 12px;
   font-weight: 600;
+}
+
+.package-popular-manager {
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  background: linear-gradient(135deg, #00742a 0%, #00742a 100%);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 0 12px 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.package-popular-manager i {
+  margin-right: 5px;
 }
 
 .upgrade-benefits {

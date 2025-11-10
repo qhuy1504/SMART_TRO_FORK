@@ -10,7 +10,33 @@ class PackagePlanController {
     // Lấy danh sách các gói tin cho user
     async getPackagePlans(req, res) {
         try {
-            const packages = await PackagePlan.find({ isActive: true })
+            const { category, packageFor, userRole } = req.query;
+            
+            // Tạo query filter
+            let filter = { isActive: true };
+            
+            // Filter theo category
+            if (category) {
+                filter.category = category;
+            }
+            
+            // Filter theo packageFor
+            if (packageFor) {
+                if (packageFor === 'both') {
+                    // Nếu tìm gói cho cả hai, lấy gói 'both' hoặc gói cụ thể cho user hiện tại
+                    filter.$or = [
+                        { packageFor: 'both' },
+                        { packageFor: userRole || 'landlord' } // Mặc định là landlord nếu không có userRole
+                    ];
+                } else {
+                    filter.$or = [
+                        { packageFor: 'both' },
+                        { packageFor: packageFor }
+                    ];
+                }
+            }
+
+            const packages = await PackagePlan.find(filter)
                 .populate('propertiesLimits.packageType', 'name displayName color priority')
                 .sort({ priority: -1, price: 1 });
 
@@ -18,12 +44,16 @@ class PackagePlanController {
             const packageOptions = packages.map(pkg => ({
                 _id: pkg._id,
                 name: pkg.name,
+                type: pkg.type || 'custom',
+                packageFor: pkg.packageFor || 'both',
+                category: pkg.category || 'posting',
                 displayName: pkg.displayName,
                 description: pkg.description,
                 price: pkg.price,
                 duration: pkg.duration,
-                durationUnit: pkg.durationUnit || 'month', // Mặc định là tháng để tương thích
+                durationUnit: pkg.durationUnit || 'month',
                 freePushCount: pkg.freePushCount,
+                managementFeatures: pkg.managementFeatures,
                 propertiesLimits: pkg.propertiesLimits
                     .map(limit => ({
                         packageType: limit.packageType,
@@ -116,7 +146,27 @@ class PackagePlanController {
     // Admin: Lấy tất cả gói tin (bao gồm inactive)
     async getAllPackagePlans(req, res) {
         try {
-            const packages = await PackagePlan.find()
+            const { category, packageFor, type } = req.query;
+            
+            // Tạo query filter
+            let filter = {};
+            
+            // Filter theo category
+            if (category && category !== 'all') {
+                filter.category = category;
+            }
+            
+            // Filter theo packageFor
+            if (packageFor && packageFor !== 'all') {
+                filter.packageFor = packageFor;
+            }
+            
+            // Filter theo type
+            if (type && type !== 'all') {
+                filter.type = type;
+            }
+
+            const packages = await PackagePlan.find(filter)
                 .populate('propertiesLimits.packageType', 'name displayName color priority description')
                 .sort({ createdAt: -1 });
 
@@ -124,13 +174,16 @@ class PackagePlanController {
             const packageOptions = packages.map(pkg => ({
                 _id: pkg._id,
                 name: pkg.name,
-                type: pkg.type || 'custom', // Thêm type field
+                type: pkg.type || 'custom',
+                packageFor: pkg.packageFor || 'both',
+                category: pkg.category || 'posting',
                 displayName: pkg.displayName,
                 description: pkg.description,
                 price: pkg.price,
-                duration: pkg.duration || pkg.durationDays || 30, // Backward compatibility
-                durationUnit: pkg.durationUnit || 'day', // Mặc định là ngày để tương thích
+                duration: pkg.duration || pkg.durationDays || 30,
+                durationUnit: pkg.durationUnit || 'day',
                 freePushCount: pkg.freePushCount,
+                managementFeatures: pkg.managementFeatures,
                 propertiesLimits: pkg.propertiesLimits
                     .map(limit => ({
                         packageType: limit.packageType,
@@ -167,6 +220,8 @@ class PackagePlanController {
             const {
                 name,
                 type,
+                packageFor,
+                category,
                 displayName,
                 description,
                 price,
@@ -175,6 +230,7 @@ class PackagePlanController {
                 durationDays, // Backward compatibility
                 freePushCount,
                 propertiesLimits,
+                managementFeatures,
                 isActive
             } = req.body;
             console.log('Creating package plan with data:', req.body);
@@ -191,6 +247,24 @@ class PackagePlanController {
                 return res.status(400).json({
                     success: false,
                     message: 'Mô tả không được rỗng'
+                });
+            }
+
+            // Validate packageFor
+            const validPackageFor = ['landlord', 'tenant', 'both'];
+            if (packageFor && !validPackageFor.includes(packageFor)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'packageFor phải là landlord, tenant hoặc both'
+                });
+            }
+
+            // Validate category
+            const validCategories = ['management', 'posting', 'mixed'];
+            if (category && !validCategories.includes(category)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'category phải là management, posting hoặc mixed'
                 });
             }
 
@@ -315,17 +389,38 @@ class PackagePlanController {
                 }
             }
 
+            // Validate managementFeatures nếu category là management hoặc mixed
+            if (managementFeatures && (category === 'management' || category === 'mixed')) {
+                const validSupportLevels = ['basic', 'priority', '24/7'];
+                if (managementFeatures.supportLevel && !validSupportLevels.includes(managementFeatures.supportLevel)) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'supportLevel phải là basic, priority hoặc 24/7'
+                    });
+                }
+            }
+
             const packagePlan = new PackagePlan({
                 name: uniqueName,
-                type: type || 'custom', // Mặc định là custom nếu không có
+                type: type || 'custom',
+                packageFor: packageFor || 'both',
+                category: category || 'posting',
                 displayName,
                 description,
                 price,
                 duration: finalDuration,
                 durationUnit: finalDurationUnit,
                 freePushCount: freePushCount || 0,
+                managementFeatures: managementFeatures || {
+                    maxProperties: -1,
+                    enableAutoBilling: false,
+                    enableNotifications: false,
+                    enableReports: false,
+                    enableExport: false,
+                    supportLevel: 'basic'
+                },
                 propertiesLimits: propertiesLimits || [],
-                isActive: isActive !== undefined ? isActive : true // Lấy từ request body, mặc định true
+                isActive: isActive !== undefined ? isActive : true
             });
 
             await packagePlan.save();
@@ -398,6 +493,44 @@ class PackagePlanController {
                         success: false,
                         message: 'Giá phải là số và lớn hơn hoặc bằng 0 (có thể là 0 cho gói miễn phí)'
                     });
+                }
+            }
+
+            // Validate packageFor nếu có trong updateData
+            if (updateData.packageFor !== undefined) {
+                const validPackageFor = ['landlord', 'tenant', 'both'];
+                if (!validPackageFor.includes(updateData.packageFor)) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'packageFor phải là landlord, tenant hoặc both'
+                    });
+                }
+            }
+
+            // Validate category nếu có trong updateData
+            if (updateData.category !== undefined) {
+                const validCategories = ['management', 'posting', 'mixed'];
+                if (!validCategories.includes(updateData.category)) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'category phải là management, posting hoặc mixed'
+                    });
+                }
+            }
+
+            // Validate managementFeatures nếu có trong updateData
+            if (updateData.managementFeatures !== undefined) {
+                const category = updateData.category || currentPackage.category;
+                if (category === 'management' || category === 'mixed') {
+                    if (updateData.managementFeatures.supportLevel) {
+                        const validSupportLevels = ['basic', 'priority', '24/7'];
+                        if (!validSupportLevels.includes(updateData.managementFeatures.supportLevel)) {
+                            return res.status(400).json({
+                                success: false,
+                                message: 'supportLevel phải là basic, priority hoặc 24/7'
+                            });
+                        }
+                    }
                 }
             }
 
@@ -696,12 +829,22 @@ class PackagePlanController {
                   {
                     name: 'trial',
                     type: 'trial',
-                    displayName: 'Gói Dùng Thử Miễn Phí',
+                    packageFor: 'both',
+                    category: 'posting',
+                    displayName: 'Gói Dùng Thử',
                     description: 'Gói dùng thử miễn phí vĩnh viễn với 2 tin thường và 1 tin VIP 1 để trải nghiệm',
                     price: 0,
                     duration: 1, 
                     durationUnit: 'month', 
                     freePushCount: 0,
+                    managementFeatures: {
+                        maxProperties: -1,
+                        enableAutoBilling: false,
+                        enableNotifications: false,
+                        enableReports: false,
+                        enableExport: false,
+                        supportLevel: 'basic'
+                    },
                     propertiesLimits: [
                         ...(tinThuong ? [{ packageType: tinThuong._id, limit: 2 }] : []),
                         ...(tinVip1 ? [{ packageType: tinVip1._id, limit: 1 }] : []),
@@ -711,12 +854,22 @@ class PackagePlanController {
                 {
                     name: 'basic',
                     type: 'basic',
+                    packageFor: 'both',
+                    category: 'posting',
                     displayName: 'Gói Cơ Bản',
                     description: 'Gói cơ bản dành cho người dùng mới bắt đầu',
                     price: 50000,
                     duration: 1,
                     durationUnit: 'month',
                     freePushCount: 5,
+                    managementFeatures: {
+                        maxProperties: 5,
+                        enableAutoBilling: false,
+                        enableNotifications: true,
+                        enableReports: false,
+                        enableExport: false,
+                        supportLevel: 'basic'
+                    },
                     propertiesLimits: [
                         ...(tinThuong ? [{ packageType: tinThuong._id, limit: 5 }] : []),
                         ...(tinVip1 ? [{ packageType: tinVip1._id, limit: 5 }] : []),
@@ -728,12 +881,22 @@ class PackagePlanController {
                 {
                     name: 'vip',
                     type: 'vip',
+                    packageFor: 'both',
+                    category: 'mixed',
                     displayName: 'Gói VIP',
-                    description: 'Gói VIP với nhiều tính năng nâng cao',
+                    description: 'Gói VIP với nhiều tính năng nâng cao cho cả đăng tin và quản lý trọ',
                     price: 200000,
                     duration: 1,
                     durationUnit: 'month',
                     freePushCount: 15,
+                     managementFeatures: {
+                        maxProperties: -1,
+                        enableAutoBilling: true,
+                        enableNotifications: true,
+                        enableReports: true,
+                        enableExport: true,
+                        supportLevel: '24/7'
+                    },
                     propertiesLimits: [
                         ...(tinThuong ? [{ packageType: tinThuong._id, limit: 10 }] : []),
                         ...(tinVip1 ? [{ packageType: tinVip1._id, limit: 10 }] : []),
@@ -746,12 +909,22 @@ class PackagePlanController {
                 {
                     name: 'premium',
                     type: 'premium',
+                    packageFor: 'both',
+                    category: 'mixed',
                     displayName: 'Gói Premium',
-                    description: 'Gói cao cấp nhất với đầy đủ tính năng',
+                    description: 'Gói cao cấp nhất với đầy đủ tính năng quản lý và đăng tin',
                     price: 500000,
                     duration: 1,
-                    durationUnit: 'month',
+                    durationUnit: 'year',
                     freePushCount: 20,
+                    managementFeatures: {
+                        maxProperties: -1,
+                        enableAutoBilling: true,
+                        enableNotifications: true,
+                        enableReports: true,
+                        enableExport: true,
+                        supportLevel: '24/7'
+                    },
                     propertiesLimits: [
                         ...(tinThuong ? [{ packageType: tinThuong._id, limit: 20 }] : []),
                         ...(tinVip1 ? [{ packageType: tinVip1._id, limit: 20 }] : []),
@@ -759,6 +932,27 @@ class PackagePlanController {
                         ...(tinVipNoiBat ? [{ packageType: tinVipNoiBat._id, limit: 10 }] : []),
                         ...(tinVipDacBiet ? [{ packageType: tinVipDacBiet._id, limit: 10 }] : [])
                     ],
+                    isActive: true
+                },
+                 {
+                    name: 'custom',
+                    type: 'custom',
+                    packageFor: 'landlord',
+                    category: 'management',
+                    displayName: 'Quản lý trọ',
+                    description: 'Gói quản lý trọ với đầy đủ tính năng quản lý',
+                    price: 199000,
+                    duration: 1,
+                    durationUnit: 'year',
+                    freePushCount: 0,
+                    managementFeatures: {
+                        maxProperties: -1,
+                        enableAutoBilling: true,
+                        enableNotifications: true,
+                        enableReports: true,
+                        enableExport: true,
+                        supportLevel: '24/7'
+                    },
                     isActive: true
                 }
             ];

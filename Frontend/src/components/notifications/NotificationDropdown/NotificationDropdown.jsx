@@ -269,7 +269,7 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
          
           <div className="pagination-buttons">
             <button 
-              className="pagination-btn prev"
+              className="pagination-btn-notification-dropdown prev"
               disabled={currentPage === 1}
               onClick={(e) => {
                 e.stopPropagation();
@@ -292,7 +292,7 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
                     pages.push(
                       <button
                         key={i}
-                        className={`page-btn ${currentPage === i ? 'active' : ''}`}
+                        className={`page-btn-notification-dropdown ${currentPage === i ? 'active' : ''}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           handlePageChange(i);
@@ -310,7 +310,7 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
                       pages.push(
                         <button
                           key={i}
-                          className={`page-btn ${currentPage === i ? 'active' : ''}`}
+                          className={`page-btn-notification-dropdown ${currentPage === i ? 'active' : ''}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             handlePageChange(i);
@@ -330,7 +330,7 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
                       pages.push(
                         <button
                           key={i}
-                          className={`page-btn ${currentPage === i ? 'active' : ''}`}
+                          className={`page-btn-notification-dropdown ${currentPage === i ? 'active' : ''}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             handlePageChange(i);
@@ -347,7 +347,7 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
                       pages.push(
                         <button
                           key={i}
-                          className={`page-btn ${currentPage === i ? 'active' : ''}`}
+                          className={`page-btn-notification-dropdown ${currentPage === i ? 'active' : ''}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             handlePageChange(i);
@@ -366,7 +366,7 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
             </div>
 
             <button 
-              className="pagination-btn next"
+              className="pagination-btn-notification-dropdown next"
               disabled={currentPage === totalPages}
               onClick={(e) => {
                 e.stopPropagation();

@@ -21,4 +21,7 @@ router.post('/properties/:propertyId/approve', authMiddleware, adminPropertyCont
 // POST /api/admin/properties/:propertyId/reject - Từ chối property
 router.post('/properties/:propertyId/reject', authMiddleware, adminPropertyController.rejectProperty);
 
+// PATCH /api/admin/properties/:propertyId/toggle-visibility - Ẩn/hiện tin đăng
+router.patch('/properties/:propertyId/toggle-visibility', authMiddleware, adminPropertyController.togglePropertyVisibility);
+
 export default router;

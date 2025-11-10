@@ -110,12 +110,29 @@ const MyProperties = () => {
     loadUserPackageInfo(); // Load thông tin gói user
   }, []);
 
+  // Kiểm tra query parameters để tự động mở upgrade modal
+  useEffect(() => {
+    const openUpgradeModal = searchParams.get('openUpgradeModal');
+    const selectedPlan = searchParams.get('selectedPlan');
+
+    if (openUpgradeModal === 'true') {
+      // Delay để đảm bảo component đã render xong
+      setTimeout(() => {
+        handleShowUpgradeModal(); // Sử dụng hàm này để load packages và mở modal
+        // Xóa query params sau khi đã xử lý
+        searchParams.delete('openUpgradeModal');
+        searchParams.delete('selectedPlan');
+        setSearchParams(searchParams);
+      }, 1000);
+    }
+  }, [searchParams, setSearchParams]);
+
   // Lắng nghe thông báo cập nhật property status real-time
   useEffect(() => {
     const handlePropertyStatusChange = async (event) => {
       const { propertyId, notification } = event.detail;
       console.log('🔄 Property status change event received:', propertyId, notification);
-      
+
       // Cập nhật property cụ thể thay vì reload toàn bộ danh sách
       await updateSingleProperty(propertyId, notification);
     };
@@ -133,11 +150,11 @@ const MyProperties = () => {
   const updateSingleProperty = async (propertyId, notification) => {
     try {
       console.log('🔍 Updating single property:', propertyId);
-      
+
       // Gọi API để lấy thông tin mới nhất của property này
       const response = await myPropertiesAPI.getProperty(propertyId);
       const updatedProperty = response.data;
-      
+
       // Cập nhật property trong danh sách hiện tại
       setProperties(prevProperties => {
         return prevProperties.map(property => {
@@ -160,7 +177,7 @@ const MyProperties = () => {
       });
 
       console.log('🎉 Property updated successfully without full reload');
-      
+
     } catch (error) {
       console.error('❌ Error updating single property:', error);
       // Fallback: reload properties nếu cập nhật đơn lẻ thất bại
@@ -183,6 +200,24 @@ const MyProperties = () => {
       setTimeout(() => {
         handleShowUpgradeModal();
       }, 500);
+    }
+  }, [searchParams, setSearchParams]);
+
+  // Kiểm tra URL parameter để tự động mở upgrade modal từ component Pricing
+  useEffect(() => {
+    const autoUpgrade = searchParams.get('autoUpgrade');
+    if (autoUpgrade === 'true') {
+      // Xóa parameter khỏi URL
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        newParams.delete('autoUpgrade');
+        return newParams;
+      });
+
+      // Mở modal sau một chút để đảm bảo component đã render xong
+      setTimeout(() => {
+        handleShowUpgradeModal();
+      }, 800);
     }
   }, [searchParams, setSearchParams]);
 
@@ -1576,7 +1611,7 @@ const MyProperties = () => {
                         {/* Edit Button */}
                         {(() => {
                           const packageCheck = canPropertyPerformActions(property);
-                          
+
                           // Nếu bài đăng bị từ chối, luôn cho phép sửa
                           if (property.approvalStatus === 'rejected') {
                             return (
@@ -1590,7 +1625,7 @@ const MyProperties = () => {
                               </button>
                             );
                           }
-                          
+
                           // Với các trạng thái khác, kiểm tra gói như cũ
                           return packageCheck.canEdit ? (
                             <button
@@ -1864,11 +1899,9 @@ const MyProperties = () => {
                   <div className="package-features-current">
                     <h4>
                       <i className="fa fa-star"></i>
-                      Quyền lợi gói tin
+                      Quyền lợi gói
                     </h4>
                     <ul className="features-list-my-properties">
-                      <li><i className="fa fa-check"></i> Tin được ưu tiên hiển thị</li>
-                      <li><i className="fa fa-check"></i> Đánh dấu tin VIP với màu nổi bật</li>
                       <li><i className="fa fa-check"></i> Hỗ trợ khách hàng ưu tiên</li>
                     </ul>
 
@@ -1883,7 +1916,7 @@ const MyProperties = () => {
               {currentPackageInfo.packageType === 'trial' ||
                 (currentPackageInfo.expiryDate && getDaysRemaining(currentPackageInfo.expiryDate).includes('hết hạn')) ? (
                 <button
-                  className="btn btn-upgrade-primary"
+                  className="btn-upgrade-my-properties btn-upgrade-primary"
                   onClick={() => {
                     setShowCurrentPackageModal(false);
                     handleShowUpgradeModal();
@@ -1912,7 +1945,7 @@ const MyProperties = () => {
                 </button>
               ) : (
                 <button
-                  className="btn btn-secondary"
+                  className="btn-package btn-secondary"
                   onClick={() => setShowCurrentPackageModal(false)}
                 >
                   <i className="fa fa-check"></i>
@@ -2157,7 +2190,7 @@ const MyProperties = () => {
                       <div className="package-features">
                         <h5>
                           <i className="fa fa-list"></i>
-                          Quyền lợi gói tin
+                          Quyền lợi gói
                         </h5>
                         <ul>
                           {packagePlan.propertiesLimits && packagePlan.propertiesLimits.map((limit, index) => (
@@ -2166,23 +2199,33 @@ const MyProperties = () => {
                               {limit.limit} tin {limit.packageType.displayName}
                             </li>
                           ))}
-                          <li>
-                            <i className="fa fa-arrow-up"></i>
-                            {packagePlan.freePushCount} lượt đẩy tin miễn phí
-                          </li>
 
-                          {packagePlan.name !== 'trial' && (
-                            <>
+
+                          {(packagePlan.name !== 'trial' &&
+                            !(packagePlan.type === 'custom' && packagePlan.packageFor === 'landlord' && packagePlan.category === 'management')) && (
+                              <>
+                                <li>
+                                  <i className="fa fa-arrow-up"></i>
+                                  {packagePlan.freePushCount} lượt đẩy tin miễn phí
+                                </li>
+                                <li>
+                                  <i className="fa fa-star"></i>
+                                  Tin được ưu tiên hiển thị
+                                </li>
+                              </>
+                            )}
+                          {(
+                            (packagePlan.packageFor === 'both' && packagePlan.category === 'mixed') ||
+                            (packagePlan.packageFor === 'landlord' && packagePlan.category === 'management')
+                          ) && (
                               <li>
-                                <i className="fa fa-headset"></i>
-                                Hỗ trợ khách hàng ưu tiên
+                                <i className="fa-building"></i>
+                                Quản lý phòng trọ thông minh
+
                               </li>
-                              <li>
-                                <i className="fa fa-star"></i>
-                                Tin được ưu tiên hiển thị
-                              </li>
-                            </>
-                          )}
+                            )}
+
+
 
                         </ul>
                       </div>
@@ -2252,6 +2295,18 @@ const MyProperties = () => {
                           </span>
                         </div>
                       )}
+                      {(
+                        (packagePlan.packageFor === 'both' && packagePlan.category === 'mixed') ||
+                        (packagePlan.packageFor === 'landlord' && packagePlan.category === 'management')
+                      ) && (
+                          <div className="package-popular-manager">
+                            <span>
+                              <i className="fa fa-headset"></i>
+                              Hỗ trợ quản lý phòng trọ
+                            </span>
+                          </div>
+                        )}
+
                     </div>
                   );
                 })}
@@ -2590,7 +2645,7 @@ const MyProperties = () => {
                         <div className="history-item-header">
                           <div className="package-info">
                             <div className="package-badge-history">
-                              
+
                               <span className='package-history-name'>
                                 <i className="fa fa-star"></i>
                                 {historyItem.displayName}</span>
@@ -2795,7 +2850,7 @@ const MyProperties = () => {
                   {/* Action Buttons */}
                   <div className="modal-footer-current-package">
                     <button
-                      className="btn btn-secondary-package-history"
+                      className="btn-modal-package-my-properties btn-secondary-package-history"
                       onClick={handleClosePackageHistoryModal}
                     >
                       <i className="fa fa-times"></i>

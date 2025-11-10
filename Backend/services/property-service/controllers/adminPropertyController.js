@@ -225,6 +225,86 @@ class AdminPropertyController {
       });
     }
   }
+
+  // Toggle property visibility (ẩn/hiện tin đăng)
+  async togglePropertyVisibility(req, res) {
+    try {
+      const { propertyId } = req.params;
+      const { isDeleted, reason } = req.body;
+
+      // Validate input
+      if (typeof isDeleted !== 'boolean') {
+        return res.status(400).json({
+          success: false,
+          message: 'Trạng thái isDeleted phải là boolean'
+        });
+      }
+
+      // Kiểm tra lý do khi ẩn tin đăng
+      if (isDeleted && !reason?.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Vui lòng nhập lý do ẩn tin đăng'
+        });
+      }
+
+      // Kiểm tra property tồn tại
+      const property = await adminPropertyRepository.getPropertyById(propertyId);
+      if (!property) {
+        return res.status(404).json({
+          success: false,
+          message: 'Không tìm thấy bài đăng'
+        });
+      }
+
+      // Chỉ cho phép ẩn/hiện những tin đăng đã được duyệt
+      if (property.approvalStatus !== 'approved') {
+        return res.status(400).json({
+          success: false,
+          message: 'Chỉ có thể ẩn/hiện những tin đăng đã được duyệt'
+        });
+      }
+
+      // Cập nhật isDeleted
+      const updatedProperty = await adminPropertyRepository.updateProperty(propertyId, {
+        isDeleted: isDeleted
+      });
+
+      // Nếu đang ẩn tin đăng, gửi thông báo cho chủ sở hữu
+      if (isDeleted && reason?.trim()) {
+        try {
+          await NotificationService.notifyPropertyHidden(
+            property.owner,                                   // userId (chủ sở hữu)
+            propertyId,                                       // propertyId
+            'hidden',                                         // status
+            'tin đăng',                                       // type
+            `Tin đăng "${property.title}" đã bị ẩn do vi phạm: ${reason.trim()}`, // adminNote
+            null                                              // propertyId - đặt null vì tin đăng đã bị ẩn
+          );
+          console.log(`Đã gửi thông báo ẩn tin đăng cho user ${property.owner}`);
+        } catch (notificationError) {
+          console.error('Lỗi khi gửi thông báo ẩn tin đăng:', notificationError);
+          // Không throw error ở đây để không ảnh hưởng đến việc ẩn tin đăng
+        }
+      }
+
+      const action = isDeleted ? 'ẩn' : 'hiển thị';
+
+      res.status(200).json({
+        success: true,
+        message: `Đã ${action} tin đăng thành công`,
+        data: updatedProperty
+      });
+
+    } catch (error) {
+      console.error('Error toggling property visibility:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Lỗi server khi thay đổi trạng thái tin đăng',
+        error: error.message
+      });
+    }
+  }
 }
 
 export default new AdminPropertyController();

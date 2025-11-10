@@ -347,7 +347,7 @@
   gap: 4px;
 }
 
-.pagination-btn {
+.pagination-btn-notification-dropdown {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -362,13 +362,13 @@
   color: #64748b;
 }
 
-.pagination-btn:hover:not(:disabled) {
+.pagination-btn-notification-dropdown:hover:not(:disabled) {
   background: #f1f5f9;
   border-color: #cbd5e1;
   color: #475569;
 }
 
-.pagination-btn:disabled {
+.pagination-btn-notification-dropdown:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   background: #f8fafc;
@@ -381,7 +381,7 @@
   margin: 0 4px;
 }
 
-.page-btn {
+.page-btn-notification-dropdown {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -397,13 +397,13 @@
   font-weight: 500;
 }
 
-.page-btn:hover {
+.page-btn-notification-dropdown:hover {
   background: #f1f5f9;
   border-color: #cbd5e1;
   color: #475569;
 }
 
-.page-btn.active {
+.page-btn-notification-dropdown.active {
   background: #3b82f6;
   border-color: #3b82f6;
   color: white;
@@ -438,13 +438,13 @@
     padding: 8px 16px;
   }
 
-  .pagination-btn {
+  .pagination-btn-notification-dropdown {
     width: 24px;
     height: 24px;
     font-size: 10px;
   }
 
-  .page-btn {
+  .page-btn-notification-dropdown {
     width: 20px;
     height: 20px;
     font-size: 9px;
@@ -641,7 +641,13 @@
   background: #dc2626;
   border-color: #b91c1c;
 }
+.pagination-btn-notification-dropdown.prev {
+  border: 1px solid #3b82f6;
+}
 
+.pagination-btn-notification-dropdown.next {
+  border: 1px solid #3b82f6;
+}
 /* Responsive for Delete Modal Dropdown */
 @media (max-width: 480px) {
   .delete-dropdown-modal {

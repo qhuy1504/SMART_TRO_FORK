@@ -13,6 +13,9 @@ const PackagePlanManagement = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'inactive'
     const [typeFilter, setTypeFilter] = useState('all'); // 'all', 'basic', 'vip', 'premium'
+    const [categoryFilter, setCategoryFilter] = useState('all'); // 'all', 'posting', 'management', 'mixed'
+    const [packageForFilter, setPackageForFilter] = useState('all'); // 'all', 'landlord', 'tenant', 'both'
+    const [expandedManagementFeatures, setExpandedManagementFeatures] = useState(null); // ID của gói đang mở rộng
     const [isSearched, setIsSearched] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(12);
@@ -22,6 +25,8 @@ const PackagePlanManagement = () => {
     const [selectedPackagePlan, setSelectedPackagePlan] = useState(null);
     const [formData, setFormData] = useState({
         type: 'custom', // Loại gói: basic, vip, premium, custom
+        packageFor: 'both', // Gói dành cho ai: landlord, tenant, both
+        category: 'posting', // Phân loại gói: management, posting, mixed
         displayName: '',
         description: '',
         price: '0',
@@ -29,6 +34,14 @@ const PackagePlanManagement = () => {
         durationUnit: 'month',
         freePushCount: 0,
         propertiesLimits: [], // Array of {packageType: ObjectId, limit: Number}
+        managementFeatures: {
+            maxProperties: -1,
+            enableAutoBilling: false,
+            enableNotifications: false,
+            enableReports: false,
+            enableExport: false,
+            supportLevel: 'basic'
+        },
         isActive: true
     });
 
@@ -39,6 +52,27 @@ const PackagePlanManagement = () => {
         { value: 'premium', label: 'GÓI PREMIUM', color: '#dc3545' },
         { value: 'custom', label: 'TÙY CHỈNH', color: '#4385ffff' },
         { value: 'trial', label: 'GÓI DÙNG THỬ', color: '#141414ff' }
+    ];
+
+    // Package For options (gói dành cho ai)
+    const packageForOptions = [
+        { value: 'both', label: 'Cả Hai (Chủ trọ & Khách thuê)' },
+        { value: 'landlord', label: 'Chủ Trọ' },
+        { value: 'tenant', label: 'Khách Thuê' }
+    ];
+
+    // Category options (phân loại gói)
+    const categoryOptions = [
+        { value: 'posting', label: 'Đăng Tin' },
+        { value: 'management', label: 'Quản Lý Trọ' },
+        { value: 'mixed', label: 'Kết Hợp' }
+    ];
+
+    // Support level options
+    const supportLevelOptions = [
+        { value: 'basic', label: 'Cơ bản' },
+        { value: 'priority', label: 'Ưu tiên' },
+        { value: '24/7', label: '24/7' }
     ];
 
     // Duration unit options
@@ -72,7 +106,7 @@ const PackagePlanManagement = () => {
     // Filter data when filters change (not search term)
     useEffect(() => {
         filterPackagePlans();
-    }, [statusFilter, typeFilter, packagePlans]);
+    }, [statusFilter, typeFilter, categoryFilter, packageForFilter, packagePlans]);
 
     // Fetch all package plans
     const fetchPackagePlans = async () => {
@@ -107,7 +141,7 @@ const PackagePlanManagement = () => {
     const fetchPropertiesPackages = async () => {
         try {
             const response = await adminPackagePlanAPI.getPropertiesPackages();
-           
+
             if (response.success) {
                 setPropertiesPackages(response.data || []);
             }
@@ -126,13 +160,15 @@ const PackagePlanManagement = () => {
     };
 
     // Filter package plans based on search term and filters
-    const filterPackagePlans = (customSearchTerm = null, customStatusFilter = null, customTypeFilter = null) => {
+    const filterPackagePlans = (customSearchTerm = null, customStatusFilter = null, customTypeFilter = null, customCategoryFilter = null, customPackageForFilter = null) => {
         let filtered = [...packagePlans];
 
         // Use custom parameters or current state
         const currentSearchTerm = customSearchTerm !== null ? customSearchTerm : searchTerm;
         const currentStatusFilter = customStatusFilter !== null ? customStatusFilter : statusFilter;
         const currentTypeFilter = customTypeFilter !== null ? customTypeFilter : typeFilter;
+        const currentCategoryFilter = customCategoryFilter !== null ? customCategoryFilter : categoryFilter;
+        const currentPackageForFilter = customPackageForFilter !== null ? customPackageForFilter : packageForFilter;
 
         // Search filter
         if (currentSearchTerm) {
@@ -158,6 +194,16 @@ const PackagePlanManagement = () => {
             filtered = filtered.filter(plan => plan.type === currentTypeFilter);
         }
 
+        // Category filter
+        if (currentCategoryFilter !== 'all') {
+            filtered = filtered.filter(plan => plan.category === currentCategoryFilter);
+        }
+
+        // Package For filter
+        if (currentPackageForFilter !== 'all') {
+            filtered = filtered.filter(plan => plan.packageFor === currentPackageForFilter);
+        }
+
         setFilteredPackagePlans(filtered);
         setCurrentPage(1); // Reset to first page when filtering
     };
@@ -181,8 +227,10 @@ const PackagePlanManagement = () => {
         setSearchTerm('');
         setStatusFilter('all');
         setTypeFilter('all');
+        setCategoryFilter('all');
+        setPackageForFilter('all');
         // Gọi filterPackagePlans với các giá trị clear để cập nhật ngay lập tức
-        filterPackagePlans('', 'all', 'all');
+        filterPackagePlans('', 'all', 'all', 'all', 'all');
     };
 
     // Pagination
@@ -238,6 +286,18 @@ const PackagePlanManagement = () => {
             setFormData(prev => ({
                 ...prev,
                 [name]: value
+            }));
+        } else if (name.startsWith('managementFeatures.')) {
+            // Xử lý management features
+            const featureName = name.split('.')[1];
+            setFormData(prev => ({
+                ...prev,
+                managementFeatures: {
+                    ...prev.managementFeatures,
+                    [featureName]: type === 'checkbox' ? checked :
+                        type === 'number' ? (value === '' ? 0 : parseInt(value)) :
+                            value
+                }
             }));
         } else {
             setFormData(prev => ({
@@ -311,6 +371,8 @@ const PackagePlanManagement = () => {
 
             setFormData({
                 type: packagePlan.type || 'custom',
+                packageFor: packagePlan.packageFor || 'both',
+                category: packagePlan.category || 'posting',
                 displayName: packagePlan.displayName || '',
                 description: packagePlan.description || '',
                 price: packagePlan.price !== undefined && packagePlan.price !== null ? packagePlan.price : '',
@@ -318,11 +380,21 @@ const PackagePlanManagement = () => {
                 durationUnit: packagePlan.durationUnit || (packagePlan.durationDays ? 'day' : 'month'),
                 freePushCount: packagePlan.freePushCount || 0,
                 propertiesLimits: convertedPropertiesLimits,
+                managementFeatures: {
+                    maxProperties: packagePlan.managementFeatures?.maxProperties ?? -1,
+                    enableAutoBilling: packagePlan.managementFeatures?.enableAutoBilling || false,
+                    enableNotifications: packagePlan.managementFeatures?.enableNotifications || false,
+                    enableReports: packagePlan.managementFeatures?.enableReports || false,
+                    enableExport: packagePlan.managementFeatures?.enableExport || false,
+                    supportLevel: packagePlan.managementFeatures?.supportLevel || 'basic'
+                },
                 isActive: packagePlan.isActive !== false
             });
         } else if (type === 'create') {
             setFormData({
                 type: 'custom',
+                packageFor: 'both',
+                category: 'posting',
                 displayName: '',
                 description: '',
                 price: '0',
@@ -330,6 +402,14 @@ const PackagePlanManagement = () => {
                 durationUnit: 'month',
                 freePushCount: 0,
                 propertiesLimits: [],
+                managementFeatures: {
+                    maxProperties: -1,
+                    enableAutoBilling: false,
+                    enableNotifications: false,
+                    enableReports: false,
+                    enableExport: false,
+                    supportLevel: 'basic'
+                },
                 isActive: true
             });
         }
@@ -526,6 +606,13 @@ const PackagePlanManagement = () => {
         return 'tin-thuong'; // default
     };
 
+    // Toggle management features visibility
+    const toggleManagementFeatures = (packageId) => {
+        setExpandedManagementFeatures(prev =>
+            prev === packageId ? null : packageId
+        );
+    };
+
 
 
     return (
@@ -590,47 +677,78 @@ const PackagePlanManagement = () => {
 
                     {/* Action Buttons and Type Filter */}
                     <div className="package-actions-bar">
-                        <button
-                            className="btn-add-package btn-primary"
-                            onClick={() => openModal('create')}
-                        >
-                            <i className="fas fa-plus"></i>
-                            Thêm gói tin mới
-                        </button>
-
-                        {packagePlans.length === 0 && (
+                        <div className="package-plan-button-container">
                             <button
-                                className="btn-initialize-default btn-success"
-                                onClick={handleInitializeDefault}
-                                disabled={loading}
+                                className="btn-add-package btn-primary"
+                                onClick={() => openModal('create')}
                             >
-                                <i className="fa fa-refresh"></i>
-                                {loading ? 'Đang khởi tạo...' : 'Khởi tạo gói tin mặc định'}
+                                <i className="fas fa-plus"></i>
+                                Thêm gói tin mới
                             </button>
-                        )}
 
-                        <select
-                            value={typeFilter}
-                            onChange={(e) => setTypeFilter(e.target.value)}
-                            className="form-select"
-                        >
-                            <option value="all">Tất cả loại gói</option>
-                            {packageTypeOptions.map(option => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
+                            {packagePlans.length === 0 && (
+                                <button
+                                    className="btn-initialize-default btn-success"
+                                    onClick={handleInitializeDefault}
+                                    disabled={loading}
+                                >
+                                    <i className="fa fa-refresh"></i>
+                                    {loading ? 'Đang khởi tạo...' : 'Khởi tạo gói tin mặc định'}
+                                </button>
+                            )}
 
-                        {(isSearched || statusFilter !== 'all' || typeFilter !== 'all') && (
-                            <button
-                                onClick={clearSearch}
-                                className="btn-clear-package-plan"
+                        </div>
+                        <div className="package-plan-select">
+                            <select
+                                value={typeFilter}
+                                onChange={(e) => setTypeFilter(e.target.value)}
+                                className="form-select-package-plan"
                             >
-                                <i className="fas fa-times"></i>
-                                Xóa bộ lọc
-                            </button>
-                        )}
+                                <option value="all">Tất cả loại gói</option>
+                                {packageTypeOptions.map(option => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+
+                            <select
+                                value={categoryFilter}
+                                onChange={(e) => setCategoryFilter(e.target.value)}
+                                className="form-select-package-plan"
+                            >
+                                <option value="all">Tất cả phân loại</option>
+                                {categoryOptions.map(option => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+
+                            <select
+                                value={packageForFilter}
+                                onChange={(e) => setPackageForFilter(e.target.value)}
+                                className="form-select-package-plan"
+                            >
+                                <option value="all">Tất cả đối tượng</option>
+                                {packageForOptions.map(option => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+
+                            {(isSearched || statusFilter !== 'all' || typeFilter !== 'all' || categoryFilter !== 'all' || packageForFilter !== 'all') && (
+                                <button
+                                    onClick={clearSearch}
+                                    className="btn-clear-package-plan"
+                                >
+                                    <i className="fas fa-times"></i>
+                                    Xóa bộ lọc
+                                </button>
+                            )}
+                        </div>
+
                     </div>
 
                     {/* Results Info */}
@@ -666,9 +784,28 @@ const PackagePlanManagement = () => {
                                     }}
                                 >
                                     <div className={`package-plan-header ${packagePlan.type || 'custom'}`}>
-                                        <div className="package-type-badge"
-                                            style={{ backgroundColor: getPackageTypeInfo(packagePlan.type || 'custom').color }}>
-                                            {packagePlan.displayName}
+                                        <div className="package-header-info">
+                                            <div className="package-type-badge">
+                                                <span className="package-type-badge-span" style={{ backgroundColor: getPackageTypeInfo(packagePlan.type || 'custom').color }}>{packagePlan.displayName}</span>
+                                            </div>
+                                            <div className="package-badges">
+                                                <span
+                                                    className="package-for-badge"
+                                                    style={{ backgroundColor: getPackageTypeInfo(packagePlan.type || 'custom').color }}
+                                                >
+                                                    <i className="fa fa-users" style={{ marginRight: '4px' }}></i> {/* icon gợi ý cho packageFor */}
+                                                    {packageForOptions.find(opt => opt.value === packagePlan.packageFor)?.label || 'Cả Hai'}
+                                                </span>
+
+                                                <span
+                                                    className="package-category-badge"
+                                                    style={{ backgroundColor: getPackageTypeInfo(packagePlan.type || 'custom').color }}
+                                                >
+                                                    <i className="fa-briefcase" style={{ marginRight: '4px' }}></i> {/* icon gợi ý cho category */}
+                                                    {categoryOptions.find(opt => opt.value === packagePlan.category)?.label || 'Đăng Tin'}
+                                                </span>
+                                            </div>
+
                                         </div>
                                         <div className="package-actions-plan">
                                             <>
@@ -701,46 +838,119 @@ const PackagePlanManagement = () => {
 
                                         </div>
 
-                                        <div className="package-info">
-                                            <div className="info-item">
-                                                <span className="info-label">Lượt đẩy tin miễn phí:</span>
-                                                <span className="info-value">{packagePlan.freePushCount}</span>
+                                        {/* Free Push Count - Chỉ hiển thị khi category là 'posting' hoặc 'mixed' */}
+                                        {(packagePlan.category === 'posting' || packagePlan.category === 'mixed') && (
+                                            <div className="package-info">
+                                                <div className="info-item">
+                                                    <span className="info-label">Lượt đẩy tin miễn phí:</span>
+                                                    <span className="info-value">{packagePlan.freePushCount}</span>
+                                                </div>
                                             </div>
-                                        </div>
+                                        )}
 
-                                        <div className="post-limits">
-                                            <h6>Giới hạn đăng tin:</h6>
-                                            {packagePlan.propertiesLimits && packagePlan.propertiesLimits.length > 0 ? (
-                                                packagePlan.propertiesLimits.map((limit, index) => (
-                                                    <div key={index} className="post-limit-item">
-                                                        <span 
-                                                            className="post-type-name"
-                                                            style={{
-                                                                backgroundColor: limit.packageType?.color || '#6c757d',
-                                                                color: '#fff',
-                                                                padding: '2px 6px',
-                                                                borderRadius: '3px',
-                                                                fontSize: '12px'
-                                                            }}
-                                                        >
-                                                            {limit.packageType?.displayName || 'Loại tin'}:
-                                                        </span>
-                                                        <span className="limit-number">{limit.limit}</span>
+                                        {(packagePlan.category === 'posting' || packagePlan.category === 'mixed') && (
+                                            <div className="post-limits">
+                                                <h6>Giới hạn đăng tin:</h6>
+                                                {packagePlan.propertiesLimits && packagePlan.propertiesLimits.length > 0 ? (
+                                                    packagePlan.propertiesLimits.map((limit, index) => (
+                                                        <div key={index} className="post-limit-item">
+                                                            <span
+                                                                className="post-type-name"
+                                                                style={{
+                                                                    backgroundColor: limit.packageType?.color || '#6c757d',
+                                                                    color: '#fff',
+                                                                    padding: '2px 6px',
+                                                                    borderRadius: '3px',
+                                                                    fontSize: '12px'
+                                                                }}
+                                                            >
+                                                                {limit.packageType?.displayName || 'Loại tin'}:
+                                                            </span>
+                                                            <span className="limit-number">{limit.limit}</span>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <p className="no-limits">Chưa có giới hạn tin</p>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Management Features - Chỉ hiển thị khi category là 'management' hoặc 'mixed' */}
+                                        {(packagePlan.category === 'management' || packagePlan.category === 'mixed') && packagePlan.managementFeatures && (
+                                            <div className="management-features">
+                                                <div className="management-features-header">
+                                                    <h6>Tính năng quản lý:</h6>
+                                                    <button
+                                                        type="button"
+                                                        className="btn-toggle-features"
+                                                        onClick={() => toggleManagementFeatures(packagePlan._id)}
+                                                    >
+                                                        {expandedManagementFeatures === packagePlan._id ? (
+                                                            <>
+                                                                <span>Thu gọn</span>
+                                                                <i className="fas fa-chevron-up"></i>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <span>Xem thêm</span>
+                                                                <i className="fas fa-chevron-down"></i>
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                </div>
+
+                                                {expandedManagementFeatures === packagePlan._id ? (
+                                                    <div className="management-feature-list">
+                                                        <div className="feature-item">
+                                                            <span className="feature-label">Số phòng tối đa:</span>
+                                                            <span className="feature-value">
+                                                                {packagePlan.managementFeatures.maxProperties === -1 ? 'Không giới hạn' : packagePlan.managementFeatures.maxProperties}
+                                                            </span>
+                                                        </div>
+                                                        <div className="feature-item">
+                                                            <span className="feature-label">Hỗ trợ:</span>
+                                                            <span className="feature-value">
+                                                                {supportLevelOptions.find(opt => opt.value === packagePlan.managementFeatures.supportLevel)?.label || 'Cơ bản'}
+                                                            </span>
+                                                        </div>
+                                                        <div className="feature-toggles">
+                                                            {packagePlan.managementFeatures.enableAutoBilling && (
+                                                                <span className="feature-toggle active">Tự động tính tiền</span>
+                                                            )}
+                                                            {packagePlan.managementFeatures.enableNotifications && (
+                                                                <span className="feature-toggle active">Thông báo</span>
+                                                            )}
+                                                            {packagePlan.managementFeatures.enableReports && (
+                                                                <span className="feature-toggle active">Báo cáo</span>
+                                                            )}
+                                                            {packagePlan.managementFeatures.enableExport && (
+                                                                <span className="feature-toggle active">Xuất file báo cáo Excel/PDF</span>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                ))
-                                            ) : (
-                                                <p className="no-limits">Chưa có giới hạn tin</p>
-                                            )}
-                                        </div>
+                                                ) : (
+                                                    <div className="management-features-summary">
+                                                        <span className="features-summary-text">
+                                                            {packagePlan.managementFeatures.maxProperties === -1 ? 'Không giới hạn phòng' : `${packagePlan.managementFeatures.maxProperties} phòng`}
+                                                            {' • '}
+                                                            Hỗ trợ {supportLevelOptions.find(opt => opt.value === packagePlan.managementFeatures.supportLevel)?.label || 'Cơ bản'}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="package-plan-footer">
                                         <span className={`status-badge ${packagePlan.isActive ? 'active' : 'inactive'}`}>
                                             {packagePlan.isActive ? 'Hoạt động' : 'Tạm ngừng'}
                                         </span>
-                                        <div className="package-total-posts">
-                                            Tổng tin: {packagePlan.totalPosts || 0}
-                                        </div>
+                                        {(packagePlan.category === 'posting' || packagePlan.category === 'mixed') && (
+                                            <div className="package-total-posts">
+                                                Tổng tin: {packagePlan.totalPosts || 0}
+                                            </div>
+                                        )}
+
                                     </div>
                                 </div>
                             ))
@@ -801,7 +1011,7 @@ const PackagePlanManagement = () => {
                                         className="btn-close-package-plan"
                                         onClick={closeModal}
                                     >
-                                        <i class="fa fa-times"></i>
+                                        <i className="fa fa-times"></i>
                                     </button>
                                 </div>
 
@@ -858,10 +1068,50 @@ const PackagePlanManagement = () => {
                                                         ))}
                                                     </select>
                                                 </div>
+
+                                                {/* Package For */}
+                                                <div className="col-md-6 mb-3">
+                                                    <label className="form-label">
+                                                        Dành cho
+                                                    </label>
+                                                    <select
+                                                        name="packageFor"
+                                                        value={formData.packageFor}
+                                                        onChange={handleInputChange}
+                                                        className="form-select"
+                                                    >
+                                                        {packageForOptions.map(option => (
+                                                            <option key={option.value} value={option.value}>
+                                                                {option.label}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div className="row-package-plan">
+                                                {/* Category */}
+                                                <div className="col-md-6 mb-3">
+                                                    <label className="form-label">
+                                                        Phân loại gói
+                                                    </label>
+                                                    <select
+                                                        name="category"
+                                                        value={formData.category}
+                                                        onChange={handleInputChange}
+                                                        className="form-select"
+                                                    >
+                                                        {categoryOptions.map(option => (
+                                                            <option key={option.value} value={option.value}>
+                                                                {option.label}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
                                                 {/* Row 1: Tên hiển thị & Giá */}
                                                 {/* Display Name */}
-                                                <div className="row-package-plan-item">
-                                                    <div className="col-md-6 mb-3">
+                                                <div className="row-package-plan-item-row-1">
+                                                    <div className="col-md-3 mb-3">
                                                         <label className="form-label required">Tên hiển thị <span className="text-danger">*</span></label>
                                                         <input
                                                             type="text"
@@ -875,7 +1125,7 @@ const PackagePlanManagement = () => {
                                                     </div>
 
                                                     {/* Price */}
-                                                    <div className="col-md-6 mb-3">
+                                                    <div className="col-md-3 mb-3">
                                                         <label className="form-label required">Giá (VNĐ) <span className="text-danger">*</span></label>
                                                         <input
                                                             type="text"
@@ -931,20 +1181,21 @@ const PackagePlanManagement = () => {
                                                 </div>
 
                                                 {/* Free Push Count */}
-                                                <div className="row-package-plan-item">
-                                                    <div className="col-md-6 mb-3">
-                                                        <label className="form-label">Lượt đẩy tin miễn phí</label>
-                                                        <input
-                                                            type="number"
-                                                            name="freePushCount"
-                                                            value={formData.freePushCount}
-                                                            onChange={handleInputChange}
-                                                            className="form-control"
-                                                            min="0"
-                                                        />
+                                                {(formData.category === 'posting' || formData.category === 'mixed') && (
+                                                    <div className="row-package-plan-item">
+                                                        <div className="col-md-6 mb-3">
+                                                            <label className="form-label">Lượt đẩy tin miễn phí</label>
+                                                            <input
+                                                                type="number"
+                                                                name="freePushCount"
+                                                                value={formData.freePushCount}
+                                                                onChange={handleInputChange}
+                                                                className="form-control"
+                                                                min="0"
+                                                            />
+                                                        </div>
                                                     </div>
-                                                </div>
-
+                                                )}
 
 
                                                 <div className="row-package-plan-item-description">
@@ -961,36 +1212,139 @@ const PackagePlanManagement = () => {
                                                         ></textarea>
                                                     </div>
                                                 </div>
-                                                {/* Properties Limits */}
-                                                <div className="col-12 mb-3">
-                                                    <label className="form-label">Giới hạn đăng tin theo loại</label>
-                                                    <div className="post-limits-grid">
-                                                        {propertiesPackages.map((packageType) => {
-                                                            const currentLimit = formData.propertiesLimits.find(
-                                                                item => item.packageType === packageType._id
-                                                            )?.limit || 0;
+                                                {/* Properties Limits - Chỉ hiển thị khi category là 'posting' hoặc 'mixed' */}
+                                                {(formData.category === 'posting' || formData.category === 'mixed') && (
+                                                    <div className="col-12 mb-3">
+                                                        <label className="form-label">Giới hạn đăng tin theo loại</label>
+                                                        <div className="post-limits-grid">
+                                                            {propertiesPackages.map((packageType) => {
+                                                                const currentLimit = formData.propertiesLimits.find(
+                                                                    item => item.packageType === packageType._id
+                                                                )?.limit || 0;
 
-                                                            return (
-                                                                <div key={packageType._id} className="post-limit-input">
-                                                                    <label className="form-label">{packageType.displayName}</label>
-                                                                    <input
-                                                                        type="number"
-                                                                        value={currentLimit}
-                                                                        onChange={(e) => handlePropertiesLimitChange(
-                                                                            packageType._id,
-                                                                            parseInt(e.target.value) || 0
-                                                                        )}
-                                                                        className="form-control"
-                                                                        min="0"
-                                                                        placeholder="0"
-                                                                    />
-                                                                </div>
-                                                            );
-                                                        })}
+                                                                return (
+                                                                    <div key={packageType._id} className="post-limit-input">
+                                                                        <label className="form-label">{packageType.displayName}</label>
+                                                                        <input
+                                                                            type="number"
+                                                                            value={currentLimit}
+                                                                            onChange={(e) => handlePropertiesLimitChange(
+                                                                                packageType._id,
+                                                                                parseInt(e.target.value) || 0
+                                                                            )}
+                                                                            className="form-control"
+                                                                            min="0"
+                                                                            placeholder="0"
+                                                                        />
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
                                                     </div>
-                                                </div>
+                                                )}
 
+                                                {/* Management Features - Chỉ hiển thị khi category là 'management' hoặc 'mixed' */}
+                                                {(formData.category === 'management' || formData.category === 'mixed') && (
+                                                    <div className="col-12 mb-3">
+                                                        <label className="form-label">Tính năng quản lý</label>
+                                                        <div className="management-features-grid">
+                                                            {/* Max Properties */}
+                                                            <div className="management-feature-item">
+                                                                <label className="form-label">Số phòng tối đa</label>
+                                                                <input
+                                                                    type="number"
+                                                                    name="managementFeatures.maxProperties"
+                                                                    value={formData.managementFeatures.maxProperties === -1 ? '' : formData.managementFeatures.maxProperties}
+                                                                    onChange={handleInputChange}
+                                                                    className="form-control"
+                                                                    placeholder="Không giới hạn"
+                                                                    min="-1"
+                                                                />
+                                                                <small className="text-muted">Để trống hoặc -1 cho không giới hạn</small>
+                                                            </div>
 
+                                                            {/* Support Level */}
+                                                            <div className="management-feature-item">
+                                                                <label className="form-label">Mức độ hỗ trợ</label>
+                                                                <select
+                                                                    name="managementFeatures.supportLevel"
+                                                                    value={formData.managementFeatures.supportLevel}
+                                                                    onChange={handleInputChange}
+                                                                    className="form-select"
+                                                                >
+                                                                    {supportLevelOptions.map(option => (
+                                                                        <option key={option.value} value={option.value}>
+                                                                            {option.label}
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
+
+                                                            {/* Feature Switches */}
+                                                            <div className="management-feature-switches">
+                                                                <div className="form-switch-wrapper">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        name="managementFeatures.enableAutoBilling"
+                                                                        checked={formData.managementFeatures.enableAutoBilling}
+                                                                        onChange={handleInputChange}
+                                                                        className="form-switch-input"
+                                                                        id="autoBillingSwitch"
+                                                                    />
+                                                                    <label className="form-switch-label" htmlFor="autoBillingSwitch">
+                                                                        <span className="form-switch-button"></span>
+                                                                        <span className="form-switch-text">Tự động tính tiền điện nước</span>
+                                                                    </label>
+                                                                </div>
+
+                                                                <div className="form-switch-wrapper">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        name="managementFeatures.enableNotifications"
+                                                                        checked={formData.managementFeatures.enableNotifications}
+                                                                        onChange={handleInputChange}
+                                                                        className="form-switch-input"
+                                                                        id="notificationsSwitch"
+                                                                    />
+                                                                    <label className="form-switch-label" htmlFor="notificationsSwitch">
+                                                                        <span className="form-switch-button"></span>
+                                                                        <span className="form-switch-text">Thông báo qua email & SMS</span>
+                                                                    </label>
+                                                                </div>
+
+                                                                <div className="form-switch-wrapper">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        name="managementFeatures.enableReports"
+                                                                        checked={formData.managementFeatures.enableReports}
+                                                                        onChange={handleInputChange}
+                                                                        className="form-switch-input"
+                                                                        id="reportsSwitch"
+                                                                    />
+                                                                    <label className="form-switch-label" htmlFor="reportsSwitch">
+                                                                        <span className="form-switch-button"></span>
+                                                                        <span className="form-switch-text">Báo cáo thống kê</span>
+                                                                    </label>
+                                                                </div>
+
+                                                                <div className="form-switch-wrapper">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        name="managementFeatures.enableExport"
+                                                                        checked={formData.managementFeatures.enableExport}
+                                                                        onChange={handleInputChange}
+                                                                        className="form-switch-input"
+                                                                        id="exportSwitch"
+                                                                    />
+                                                                    <label className="form-switch-label" htmlFor="exportSwitch">
+                                                                        <span className="form-switch-button"></span>
+                                                                        <span className="form-switch-text">Xuất báo cáo Excel/PDF</span>
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
 
                                                 {/* Active Status */}
                                                 <div className="col-12 mb-3">

@@ -251,6 +251,7 @@ const updateUserPackage = async (order, migrationData = null) => {
                 const historyEntry = {
                     ...currentPackageBeforeUpgrade,
                     status: historyStatus,
+                    isActive: false, // Set false vì gói cũ đã được thay thế bởi gói mới
                     upgradedAt: new Date(),
                     renewedAt: isOldPackageRenewal ? new Date() : undefined
                 };
@@ -291,8 +292,15 @@ const updateUserPackage = async (order, migrationData = null) => {
                 }))
             };
 
-            // 3. CẬP NHẬT PACKAGETYPE
+            // 3. CẬP NHẬT PACKAGETYPE VÀ ROLE
             user.packageType = packagePlan.type || 'basic';
+
+            // Set role to 'landlord' for management or mixed packages
+            if ((packagePlan.category === 'management' && packagePlan.packageFor === 'landlord') ||
+                (packagePlan.category === 'mixed' && packagePlan.packageFor === 'both')) {
+                console.log(`Setting user role to landlord for package: ${packagePlan.displayName} (category: ${packagePlan.category}, packageFor: ${packagePlan.packageFor})`);
+                user.role = 'landlord';
+            }
 
             await user.save();
 
@@ -482,6 +490,7 @@ const reactivateExpiredPackage = async (order) => {
                 purchaseDate: oldPackage.purchaseDate,
                 expiryDate: oldPackage.expiryDate,
                 status: 'renewed',
+                isActive: false, // Set false vì gói đã hết hạn và được gia hạn
                 propertiesLimits: oldPackage.propertiesLimits || [],
                 renewedAt: new Date()
             };
@@ -535,6 +544,13 @@ const reactivateExpiredPackage = async (order) => {
                 };
             })
         };
+
+        // Set role to 'landlord' for management or mixed packages  
+        if ((packagePlan.category === 'management' && packagePlan.packageFor === 'landlord') ||
+            (packagePlan.category === 'mixed' && packagePlan.packageFor === 'both')) {
+            console.log(`Setting user role to landlord for renewal package: ${packagePlan.displayName} (category: ${packagePlan.category}, packageFor: ${packagePlan.packageFor})`);
+            user.role = 'landlord';
+        }
 
         await user.save();
 

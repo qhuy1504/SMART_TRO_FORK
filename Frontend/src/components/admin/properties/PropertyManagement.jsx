@@ -26,6 +26,11 @@ const PropertyManagement = () => {
     });
     const [addressCache, setAddressCache] = useState(new Map());
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    
+    // Hide property confirmation modal
+    const [showHideConfirmModal, setShowHideConfirmModal] = useState(false);
+    const [hidingProperty, setHidingProperty] = useState(null);
+    const [hideReason, setHideReason] = useState('');
 
     // Load properties from API
     const loadProperties = async (page = 1, status = filter, search = searchTerm) => {
@@ -167,6 +172,74 @@ const PropertyManagement = () => {
         }
     };
 
+    // Toggle property visibility (hide/show)
+    const handleTogglePropertyVisibility = async (propertyId, isCurrentlyDeleted) => {
+        if (processingPropertyId) return;
+
+        // Nếu đang muốn ẩn tin đăng (isCurrentlyDeleted = false), hiện modal xác nhận
+        if (!isCurrentlyDeleted) {
+            const property = properties.find(p => p._id === propertyId);
+            setHidingProperty(property);
+            setShowHideConfirmModal(true);
+            return;
+        }
+
+        // Nếu đang hiện lại tin đăng (isCurrentlyDeleted = true), thực hiện trực tiếp
+        try {
+            setProcessingPropertyId(propertyId);
+
+            const data = await adminPropertiesAPI.togglePropertyVisibility(propertyId, false);
+
+            if (data.success) {
+                toast.success('Đã hiện tin đăng thành công!');
+                // Refresh properties list và stats
+                loadProperties(currentPage, filter);
+                loadStats();
+                // Close detail modal if open
+                if (showDetailModal) {
+                    setShowDetailModal(false);
+                }
+            } else {
+                toast.error(data.message || 'Không thể hiện tin đăng');
+            }
+        } catch (error) {
+            console.error('Error showing property:', error);
+            toast.error(error.message || 'Lỗi khi hiện tin đăng');
+        } finally {
+            setProcessingPropertyId(null);
+        }
+    };
+
+    // Confirm hide property
+    const handleConfirmHideProperty = async () => {
+        if (!hidingProperty || !hideReason.trim() || processingPropertyId) return;
+
+        try {
+            setProcessingPropertyId(hidingProperty._id);
+
+            const data = await adminPropertiesAPI.togglePropertyVisibility(hidingProperty._id, true, hideReason.trim());
+
+            if (data.success) {
+                toast.success('Đã ẩn tin đăng thành công!');
+                // Refresh properties list và stats
+                loadProperties(currentPage, filter);
+                loadStats();
+                // Close modals
+                setShowHideConfirmModal(false);
+                setShowDetailModal(false);
+                setHideReason('');
+                setHidingProperty(null);
+            } else {
+                toast.error(data.message || 'Không thể ẩn tin đăng');
+            }
+        } catch (error) {
+            console.error('Error hiding property:', error);
+            toast.error(error.message || 'Lỗi khi ẩn tin đăng');
+        } finally {
+            setProcessingPropertyId(null);
+        }
+    };
+
     // Handle filter change
     const handleFilterChange = (newFilter) => {
         setFilter(newFilter);
@@ -207,10 +280,13 @@ const PropertyManagement = () => {
     };
 
     // Get status badge
-    const getStatusBadge = (status) => {
+    const getStatusBadge = (status, isDeleted = false) => {
         const statusConfig = {
             pending: { label: 'Chờ duyệt', className: 'status-pending-manager-property' },
-            approved: { label: 'Đã duyệt', className: 'status-approved-manager-property' },
+            approved: { 
+                label: isDeleted ? 'Đã ẩn' : 'Đã duyệt', 
+                className: isDeleted ? 'status-hidden-manager-property' : 'status-approved-manager-property' 
+            },
             rejected: { label: 'Bị từ chối', className: 'status-rejected-manager-property' },
         };
 
@@ -520,7 +596,7 @@ const PropertyManagement = () => {
                                                     </td>
                                                     <td className="status-date-cell">
                                                         <div className="status-section">
-                                                            {getStatusBadge(property.approvalStatus)}
+                                                            {getStatusBadge(property.approvalStatus, property.isDeleted)}
                                                         </div>
                                                         <div className="date-section">
                                                             <span>{formatDate(property.createdAt)}</span>
@@ -576,6 +652,17 @@ const PropertyManagement = () => {
                                                                         <i className="fa fa-times"></i>
                                                                     </button>
                                                                 </>
+                                                            )}
+
+                                                            {property.approvalStatus === 'approved' && (
+                                                                <button
+                                                                    className={`btn-action ${property.isDeleted ? 'show' : 'hide'}`}
+                                                                    onClick={() => handleTogglePropertyVisibility(property._id, property.isDeleted)}
+                                                                    disabled={processingPropertyId === property._id}
+                                                                    title={property.isDeleted ? 'Hiện tin đăng' : 'Ẩn tin đăng'}
+                                                                >
+                                                                    <i className={`fa ${property.isDeleted ? 'fa-eye' : 'fa-eye-slash'}`}></i>
+                                                                </button>
                                                             )}
                                                         </div>
                                                     </td>
@@ -662,7 +749,7 @@ const PropertyManagement = () => {
                                         <div className="property-details-content">
                                             <div className="detail-header">
                                                 <h4>{selectedProperty.title}</h4>
-                                                {getStatusBadge(selectedProperty.approvalStatus)}
+                                                {getStatusBadge(selectedProperty.approvalStatus, selectedProperty.isDeleted)}
                                             </div>
 
                                           
@@ -871,7 +958,31 @@ const PropertyManagement = () => {
                                                 <i className="fa fa-check"></i>
                                                 {processingPropertyId === selectedProperty._id ? 'Đang duyệt...' : 'Duyệt bài đăng'}
                                             </button>
+                                        </div>
+                                    )}
 
+                                    {selectedProperty.approvalStatus === 'approved' && (
+                                        <div className="modal-actions-management">
+                                            <button
+                                                className={`btn-management ${selectedProperty.isDeleted ? 'btn-success' : 'btn-warning'}`}
+                                                onClick={() => {
+                                                    if (!selectedProperty.isDeleted) {
+                                                        // Nếu đang muốn ẩn tin đăng, hiện modal xác nhận
+                                                        setHidingProperty(selectedProperty);
+                                                        setShowHideConfirmModal(true);
+                                                    } else {
+                                                        // Nếu đang hiện lại tin đăng, thực hiện trực tiếp
+                                                        handleTogglePropertyVisibility(selectedProperty._id, selectedProperty.isDeleted);
+                                                    }
+                                                }}
+                                                disabled={processingPropertyId === selectedProperty._id}
+                                            >
+                                                <i className={`fa ${selectedProperty.isDeleted ? 'fa-eye' : 'fa-eye-slash'}`}></i>
+                                                {processingPropertyId === selectedProperty._id 
+                                                    ? 'Đang xử lý...' 
+                                                    : (selectedProperty.isDeleted ? 'Hiện tin đăng' : 'Ẩn tin đăng')
+                                                }
+                                            </button>
                                         </div>
                                     )}
                                 </div>
@@ -922,6 +1033,58 @@ const PropertyManagement = () => {
                                         >
                                             <i className="fa fa-times"></i>
                                             {processingPropertyId ? 'Đang xử lý...' : 'Từ chối'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Hide Confirmation Modal */}
+                    {showHideConfirmModal && (
+                        <div className="modal-overlay-reject" onClick={() => setShowHideConfirmModal(false)}>
+                            <div className="reject-modal" onClick={(e) => e.stopPropagation()}>
+                                <div className="modal-header-reject">
+                                    <h3>Xác nhận ẩn tin đăng</h3>
+                                    <button
+                                        className="close-btn"
+                                        onClick={() => setShowHideConfirmModal(false)}
+                                    >
+                                        <i className="fa fa-times"></i>
+                                    </button>
+                                </div>
+
+                                <div className="modal-content-reject-property-management">
+                                    <p><strong>Bài đăng:</strong> {hidingProperty?.title}</p>
+                                    <p>Bạn có chắc chắn muốn ẩn tin đăng này không?</p>
+                                    <p>Vui lòng nhập lý do ẩn tin đăng:</p>
+
+                                    <textarea
+                                        className="reject-reason-input"
+                                        value={hideReason}
+                                        onChange={(e) => setHideReason(e.target.value)}
+                                        placeholder="Nhập lý do ẩn tin đăng (vi phạm chính sách, nội dung không phù hợp...)..."
+                                        rows="4"
+                                    />
+
+                                    <div className="modal-actions">
+                                        <button
+                                            className="btn btn-secondary"
+                                            onClick={() => {
+                                                setShowHideConfirmModal(false);
+                                                setHideReason('');
+                                                setHidingProperty(null);
+                                            }}
+                                        >
+                                            Hủy
+                                        </button>
+                                        <button
+                                            className="btn btn-warning"
+                                            onClick={handleConfirmHideProperty}
+                                            disabled={!hideReason.trim() || processingPropertyId}
+                                        >
+                                            <i className="fa fa-eye-slash"></i>
+                                            {processingPropertyId ? 'Đang xử lý...' : 'Xác nhận ẩn'}
                                         </button>
                                     </div>
                                 </div>

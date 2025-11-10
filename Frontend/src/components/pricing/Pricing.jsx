@@ -87,6 +87,28 @@ const Pricing = () => {
     }));
   };
 
+  // Xử lý click nút đăng ký (cho cả gói tin đăng và gói quản lý)
+const handleRegisterClick = (planName) => {
+  // Kiểm tra đăng nhập
+  if (!userInfo) {
+    toast.info('Vui lòng đăng nhập để đăng ký gói');
+    navigate('/login');
+    return;
+  }
+
+  // Tạo params cho mọi gói
+  const params = new URLSearchParams({
+    autoUpgrade: 'true',
+    packageType: planName,
+    category: 'posting', // hoặc có thể set động nếu cần
+  });
+
+  // Điều hướng đến trang phù hợp (ví dụ giữ nguyên /profile/my-posts)
+  navigate(`/profile/my-posts?${params.toString()}`);
+};
+
+
+
   // Xử lý submit form đăng ký dùng thử
   const handleTrialSubmit = async (e) => {
     e.preventDefault();
@@ -208,7 +230,7 @@ const Pricing = () => {
     {
       name: "vip",
       displayName: "Gói VIP",
-      description: "Gói VIP với nhiều tính năng nâng cao và hiển thị ưu tiên.",
+      description: "Gói VIP với đầy đủ tính năng đăng tin và quản lý trọ, ưu tiên hiển thị tối đa.",
       price: 200000,
       duration: "1 tháng",
       color: "#f59e0b", // vàng cam
@@ -219,11 +241,19 @@ const Pricing = () => {
         { type: "Tin VIP Nổi Bật", count: 5, color: "#dc3545" },
         { type: "Tin VIP Đặc Biệt", count: 5, color: "#8b0000" },
       ],
+      managementFeatures: [
+        { 
+          type: "Quản lý trọ thông minh", 
+          icon: "fa fa-briefcase",
+          color: "#f59e0b",
+          description: "Hệ thống quản lý không giới hạn phòng trọ, tự động tính điện nước, thông báo tức thì, báo cáo thu chi và hỗ trợ 24/7."
+        }
+      ],
     },
     {
       name: "premium",
       displayName: "Gói Premium",
-      description: "Gói cao cấp nhất, đầy đủ tính năng và ưu tiên hiển thị tối đa.",
+      description: "Gói cao cấp, đầy đủ tính năng đăng tin và quản lý trọ, ưu tiên hiển thị tối đa.",
       price: 500000,
       duration: "1 tháng",
       color: "#8b5cf6", // tím sang trọng
@@ -233,6 +263,14 @@ const Pricing = () => {
         { type: "Tin VIP 2", count: 15, color: "#fd7e14" },
         { type: "Tin VIP Nổi Bật", count: 10, color: "#dc3545" },
         { type: "Tin VIP Đặc Biệt", count: 10, color: "#8b0000" },
+      ],
+      managementFeatures: [
+        { 
+          type: "Quản lý trọ thông minh", 
+          icon: "fa fa-briefcase",
+          color: "#8b5cf6",
+          description: "Hệ thống quản lý không giới hạn phòng trọ, tự động tính điện nước, thông báo tức thì, báo cáo thu chi và hỗ trợ 24/7."
+        }
       ],
     },
   ];
@@ -336,7 +374,7 @@ const Pricing = () => {
               style={{ borderColor: plan.color }}
             >
               {plan.popular && (
-                <div className="popular-badge" style={{ backgroundColor: plan.color }}>
+                <div className="popular-badge-pricing" style={{ backgroundColor: plan.color }}>
                   {plan.badge}
                 </div>
               )}
@@ -363,7 +401,7 @@ const Pricing = () => {
                 <h4 className="features-title">Tính năng chính:</h4>
                 <ul className="features-list">
                   {plan.features.map((feature, idx) => (
-                    <li key={idx} className="feature-item">
+                    <li key={idx} className="feature-item-pricing">
                       <i className="fas fa-check-circle" style={{ color: plan.color }}></i>
                       <span>{feature}</span>
                     </li>
@@ -392,7 +430,13 @@ const Pricing = () => {
                       backgroundColor: plan.color,
                       boxShadow: `0 4px 12px ${plan.color}40`
                     }}
-                    onClick={() => handleOpenTrialModal(plan.name)}
+                    onClick={() => {
+                      if (plan.name === 'free') {
+                        handleOpenTrialModal(plan.name);
+                      } else if (plan.name === 'premium') {
+                        handleRegisterClick(plan.name);
+                      }
+                    }}
                   >
                     {plan.price === 0 ? 'Bắt Đầu Miễn Phí' : 'Đăng Ký Ngay'}
                   </button>
@@ -556,14 +600,38 @@ const Pricing = () => {
                   ))}
                 </ul>
 
+                {plan.managementFeatures && (
+                  <div className="management-features-pricing">
+                    <h4 className="features-subtitle" style={{ color: plan.color, marginTop: '16px', marginBottom: '8px' }}>
+                      Tính năng quản lý trọ đi kèm
+                    </h4>
+                    <ul className="management-features-list">
+                      {plan.managementFeatures.map((feature, idx) => (
+                        <li key={idx} className="management-feature-item-pricing" style={{ color: feature.color }}>
+                          <i className={feature.icon} style={{ marginRight: '8px', color: feature.color }}></i>
+                          <span>
+                            <strong>{feature.type}</strong>
+                            {feature.description && (
+                              <span className="feature-description-pricing">
+                                {feature.description}
+                              </span>
+                            )}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 <button
                   className="btn-register"
                   style={{
                     backgroundColor: plan.color,
                     boxShadow: `0 3px 8px ${plan.color}40`,
                   }}
+                  onClick={() => handleRegisterClick(plan.name)}
                 >
-                  SIÊU SALE
+                  ĐĂNG KÝ NGAY
                 </button>
               </div>
             </div>

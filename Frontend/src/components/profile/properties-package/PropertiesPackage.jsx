@@ -718,7 +718,6 @@ const PropertiesPackage = () => {
 
                 <div className="package-card-body">
                   {(() => {
-
                     // Since renewalPackageName contains the expired package name, we need to match it
                     const packageDetails = packages.find(pkg =>
                       pkg.displayName === renewalPackageName ||
@@ -726,7 +725,29 @@ const PropertiesPackage = () => {
                       pkg._id === expiredPackageId
                     );
 
+                    console.log('Renewal package details:', packageDetails);
+                    console.log('Package category:', packageDetails?.category);
+                    console.log('Package packageFor:', packageDetails?.packageFor);
 
+                    // Check if this is a management-only package
+                    const isManagementOnly = packageDetails?.category === 'management' && packageDetails?.packageFor === 'landlord';
+                    // Check if this is a mixed package
+                    const isMixedPackage = packageDetails?.category === 'mixed' && packageDetails?.packageFor === 'both';
+
+                    if (isManagementOnly) {
+                      // Only show management support for management-only packages
+                      return (
+                        <div>
+                          <h5>Tính năng gói được kích hoạt lại</h5>
+                          <div className="benefit-item-upgrade">
+                            <i className="fa fa-briefcase benefit-icon"></i>
+                            <span>Hỗ trợ quản lý trọ thông minh</span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // For mixed packages or posting packages, show full benefits
                     if (packageDetails?.propertiesLimits) {
                       console.log('Found propertiesLimits for renewal:', packageDetails.propertiesLimits);
                       return (
@@ -749,6 +770,14 @@ const PropertiesPackage = () => {
                               <span>{packageDetails.freePushCount || 0} lượt ĐẨY TIN</span>
                             </div>
                           </div>
+                          
+                          {/* Show management features for mixed packages */}
+                          {isMixedPackage && (
+                            <div className="benefit-item-upgrade">
+                              <i className="fa fa-briefcase benefit-icon"></i>
+                              <span>Hỗ trợ quản lý trọ thông minh</span>
+                            </div>
+                          )}
                         </div>
                       );
                     }
@@ -794,69 +823,98 @@ const PropertiesPackage = () => {
                 </div>
 
                 <div className="package-card-body">
-                  <h5>Quyền lợi gói tin</h5>
-                  <div className="package-benefits">
-                    {/* Find package details from packages array */}
-                    {(() => {
-                      const packageDetails = packages.find(pkg => pkg._id === upgradePackageId);
-                      console.log('Upgrade package details:', packageDetails);
-                      console.log('Looking for packageId:', upgradePackageId);
-                      console.log('Available packages:', packages.map(p => ({ id: p._id, name: p.displayName })));
+                  {(() => {
+                    const packageDetails = packages.find(pkg => pkg._id === upgradePackageId);
+                    console.log('Upgrade package details:', packageDetails);
+                    console.log('Package category:', packageDetails?.category);
+                    console.log('Package packageFor:', packageDetails?.packageFor);
 
-                      if (packageDetails?.propertiesLimits) {
-                        console.log('Found propertiesLimits:', packageDetails.propertiesLimits);
-                        return packageDetails.propertiesLimits.map((limit, index) => {
-                          console.log('Processing limit:', limit);
-                          return (
-                            <div key={index} className="benefit-item-upgrade">
-                              <i className="fa fa-check benefit-icon"></i>
-                              <span>
-                                {limit.limit === -1 ? 'Không giới hạn' : limit.limit} tin {limit.packageType?.displayName || limit.packageType?.name || 'TIN'}
-                              </span>
-                            </div>
-                          );
-                        });
-                      }
+                    // Check if this is a management-only package
+                    const isManagementOnly = packageDetails?.category === 'management' && packageDetails?.packageFor === 'landlord';
+                    // Check if this is a mixed package
+                    const isMixedPackage = packageDetails?.category === 'mixed' && packageDetails?.packageFor === 'both';
 
-                      // Fallback benefits if no package details found
-                      console.log('No package details found, using fallback benefits');
-                      return [
-                        { count: '5', type: 'TIN THƯỜNG' },
-                        { count: '5', type: 'TIN VIP 1' },
-                        { count: '1', type: 'TIN VIP NỔI BẬT' },
-                        { count: '1', type: 'TIN VIP ĐẶC BIỆT' }
-                      ].map((benefit, index) => (
-                        <div key={index} className="benefit-item-upgrade">
-                          <i className="fa fa-check benefit-icon"></i>
-                          <span>{benefit.count} tin {benefit.type}</span>
+                    if (isManagementOnly) {
+                      // Only show management support for management-only packages
+                      return (
+                        <div>
+                          <h5>Tính năng gói</h5>
+                          <div className="benefit-item-upgrade">
+                            <i className="fa fa-briefcase benefit-icon"></i>
+                            <span>Hỗ trợ quản lý trọ thông minh</span>
+                          </div>
                         </div>
-                      ));
-                    })()}
+                      );
+                    }
 
-                    {/* Additional benefits */}
-                    <div className="benefit-item-upgrade">
-                      <i className="fa fa-check benefit-icon"></i>
-                      <span>{(() => {
-                        const packageDetails = packages.find(pkg => pkg._id === upgradePackageId);
-                        console.log('Finding freePushCount for packageId:', upgradePackageId, 'Found:', packageDetails);
-                        return packageDetails?.freePushCount ?? 5;
-                      })()} lượt đẩy tin miễn phí</span>
-                    </div>
+                    // For mixed packages or posting packages, show full benefits
+                    return (
+                      <div>
+                        <h5>Quyền lợi gói tin</h5>
+                        {(packageDetails?.propertiesLimits || !isManagementOnly) && (
+                          <div className="package-benefits">
+                            {(() => {
+                              if (packageDetails?.propertiesLimits) {
+                                console.log('Found propertiesLimits:', packageDetails.propertiesLimits);
+                                return packageDetails.propertiesLimits.map((limit, index) => {
+                                  console.log('Processing limit:', limit);
+                                  return (
+                                    <div key={index} className="benefit-item-upgrade">
+                                      <i className="fa fa-check benefit-icon"></i>
+                                      <span>
+                                        {limit.limit === -1 ? 'Không giới hạn' : limit.limit} tin {limit.packageType?.displayName || limit.packageType?.name || 'TIN'}
+                                      </span>
+                                    </div>
+                                  );
+                                });
+                              }
 
-                    <div className="benefit-item-upgrade">
-                      <i className="fa fa-check benefit-icon"></i>
-                      <span>Tin được ưu tiên hiển thị</span>
-                    </div>
+                              // Fallback benefits if no package details found
+                              console.log('No package details found, using fallback benefits');
+                              return [
+                                { count: '5', type: 'TIN THƯỜNG' },
+                                { count: '5', type: 'TIN VIP 1' },
+                                { count: '1', type: 'TIN VIP NỔI BẬT' },
+                                { count: '1', type: 'TIN VIP ĐẶC BIỆT' }
+                              ].map((benefit, index) => (
+                                <div key={index} className="benefit-item-upgrade">
+                                  <i className="fa fa-check benefit-icon"></i>
+                                  <span>{benefit.count} tin {benefit.type}</span>
+                                </div>
+                              ));
+                            })()}
 
-                    <div className="benefit-item-upgrade">
-                      <i className="fa fa-check benefit-icon"></i>
-                      <span>Hỗ trợ khách hàng ưu tiên</span>
-                    </div>
-                  </div>
+                            {/* Additional benefits */}
+                            <div className="benefit-item-upgrade">
+                              <i className="fa fa-check benefit-icon"></i>
+                              <span>{packageDetails?.freePushCount ?? 5} lượt đẩy tin miễn phí</span>
+                            </div>
+
+                            <div className="benefit-item-upgrade">
+                              <i className="fa fa-check benefit-icon"></i>
+                              <span>Tin được ưu tiên hiển thị</span>
+                            </div>
+
+                            <div className="benefit-item-upgrade">
+                              <i className="fa fa-check benefit-icon"></i>
+                              <span>Hỗ trợ khách hàng ưu tiên</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Show management features for mixed packages */}
+                        {isMixedPackage && (
+                          <div className="benefit-item-upgrade">
+                            <i className="fa fa-briefcase benefit-icon"></i>
+                            <span>Hỗ trợ quản lý trọ thông minh</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             )}
-
 
 
           </div>

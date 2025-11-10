@@ -226,12 +226,17 @@ const Header = () => {
                         <Link to="/profile/account" onClick={() => setUserMenuOpen(false)}>
                           <i className="fa fa-user"></i> {t('header.profile')}
                         </Link>
-                        <Link to="/settings" onClick={() => setUserMenuOpen(false)}>
-                          <i className="fa fa-cog"></i> {t('header.settings')}
+                        <Link to="/profile/pricing-analytics" onClick={() => setUserMenuOpen(false)}>
+                          <i className="fa fa-chart-line"></i> {t('header.pricingAnalytics')}
                         </Link>
                         {user.role === 'admin' && (
                           <Link to="/admin/dashboard" onClick={() => setUserMenuOpen(false)}>
                             <i className="fa fa-dashboard"></i> {t('header.admin')}
+                          </Link>
+                        )}
+                         {user.role === 'landlord' && (
+                          <Link to="/admin/dashboard" onClick={() => setUserMenuOpen(false)}>
+                            <i className="fa fa-briefcase"></i> {t('header.landlord')}
                           </Link>
                         )}
                         <hr />
