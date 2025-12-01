@@ -4,7 +4,7 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 // Create axios instance for chatbot API
 const chatbotAPI = axios.create({
-  baseURL: `${API_BASE_URL}/api/chatbot`,
+  baseURL: `${API_BASE_URL}/chatbot`,
   timeout: 60000, // 60 seconds timeout for AI responses
   headers: {
     'Content-Type': 'application/json',

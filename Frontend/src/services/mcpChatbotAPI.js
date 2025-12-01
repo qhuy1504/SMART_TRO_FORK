@@ -2,7 +2,7 @@
  * MCP Chatbot API Service - Kết nối với Gradio FastAPI server
  */
 
-const MCP_API_BASE_URL = 'http://localhost:7861/api';
+const MCP_API_BASE_URL = process.env.REACT_APP_MCP_API_URL || 'http://localhost:7861/api';
 
 const mcpChatbotAPI = {
   /**
