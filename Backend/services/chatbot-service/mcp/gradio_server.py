@@ -6,6 +6,7 @@ import json
 import asyncio
 import re
 import requests
+import os
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 from fastapi import FastAPI, HTTPException
@@ -13,6 +14,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 import threading
+
+# ====== Config từ ENV cho môi trường Cloud Run ======
+BACKEND_API_BASE_URL = os.getenv(
+    "BACKEND_API_BASE_URL", "http://localhost:5000/api"
+).rstrip("/")
+
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:5000")
+
+ALLOWED_ORIGINS = [
+    FRONTEND_URL,
+    BACKEND_URL,
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5000",
+    "http://127.0.0.1:5000",
+]
 
 # Pydantic models cho API
 class ChatMessage(BaseModel):
@@ -33,9 +51,11 @@ class ChatResponse(BaseModel):
     searchCriteria: Optional[Dict] = None
 class SmartTroMCP:
     def __init__(self):
-        self.property_search_url = "http://localhost:5000/api/search-properties/properties"
+         # base URL backend Node (Cloud Run) - lấy từ ENV
+        base = BACKEND_API_BASE_URL 
+        self.property_search_url = f"{base}/search-properties/properties"
         self.location_api_url = "https://vietnamlabs.com/api"
-        self.amenities_api_url = "http://localhost:5000/api/amenities/all"
+        self.amenities_api_url = f"{base}/amenities/all"
         
         # Cache cho wards data
         self.wards_cache = None
@@ -1140,7 +1160,7 @@ app = FastAPI(title="Smart Tro MCP API", version="1.0.0")
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5000"],  # Frontend và Backend
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -1190,7 +1210,8 @@ async def get_session(session_id: str):
 
 def run_fastapi():
     """Chạy FastAPI server"""
-    uvicorn.run(app, host="localhost", port=7861, log_level="info")
+    port = int(os.getenv("PORT", "8080"))  # Cloud Run set PORT env
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
 
 
 if __name__ == "__main__":
@@ -1213,14 +1234,11 @@ if __name__ == "__main__":
         )
         demo.launch(server_name="localhost", server_port=7860, share=False)
     else:
-        print("Starting FastAPI server on http://localhost:7861")
-        print("API Documentation: http://localhost:7861/docs")
-        print("Health check: http://localhost:7861/api/health")
-        
+        print("Starting FastAPI server...")
         try:
             run_fastapi()
         except Exception as e:
-            print(f"❌ Error starting FastAPI: {e}")
+            print(f"Error starting FastAPI: {e}")
             import traceback
             traceback.print_exc()
 

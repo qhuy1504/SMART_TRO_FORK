@@ -15,6 +15,7 @@ import logging
 import uvicorn
 import time
 import json
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -28,16 +29,22 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:5000")
+
+ALLOWED_ORIGINS = [
+    FRONTEND_URL,
+    BACKEND_URL,
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5000",
+    "http://127.0.0.1:5000",
+]
 
 # CORS middleware for Node.js backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000", 
-        "http://127.0.0.1:3000",
-        "http://localhost:5000",
-        "http://127.0.0.1:5000"
-    ],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -370,13 +377,13 @@ async def batch_extract_features(files: list[UploadFile] = File(...)):
     }
 
 if __name__ == "__main__":
-    # Run with optimized settings for image processing
+    port = int(os.getenv("PORT", "8080"))  # Cloud Run truyền PORT vào env
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8001,
-        # reload=True,
+        port=port,
         log_level="info",
         access_log=True,
-        workers=1  # Single worker for consistent model loading
+        workers=1
     )
+
