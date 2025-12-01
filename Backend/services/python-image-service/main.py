@@ -193,18 +193,11 @@ feature_extractor = ResNet50FeatureExtractor()
 
 @app.on_event("startup")
 async def startup_event():
-    """Load ResNet50 model on service startup"""
-    logger.info("Starting SMART TRO Image Search Service...")
-    logger.info("Google Lens-style visual search for property rentals")
-    
-    # Pre-load model to avoid first request delay
-    success = feature_extractor.load_model()
-    
-    if success:
-        logger.info("Service ready for property image processing!")
-        logger.info(f"API docs available at: http://localhost:8001/docs")
-    else:
-        logger.error("Service startup failed - ResNet50 loading error")
+    """Startup event handler"""
+    logger.info("SMART TRO Image Search Service starting...")
+    logger.info("Model will be loaded lazily on first request.")
+    logger.info("Startup completed successfully.")
+
 
 @app.get("/")
 async def root():
