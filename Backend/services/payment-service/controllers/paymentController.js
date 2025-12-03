@@ -1269,6 +1269,22 @@ const getUserPackageHistory = async (userId) => {
         for (const pkg of expiredPackages) {
             if (!pkg.packagePlanId || !pkg.packageInstanceId) continue;
 
+            // Bỏ qua gói đã được gia hạn (status = 'renewed' hoặc có renewedAt)
+            // Gói renewed không được ghi đè thành expired
+            if (pkg.status === 'renewed' || pkg.renewedAt) {
+                console.log(`Skipping renewed package ${pkg._id} with renewedAt: ${pkg.renewedAt}`);
+                continue;
+            }
+
+            // QUAN TRỌNG: Bỏ qua gói đã được nâng cấp (status = 'upgraded')
+            if (pkg.status === 'upgraded' || pkg.upgradedAt) {
+                console.log(`Skipping upgraded package ${pkg._id}`);
+                continue;
+            }
+
+            // Chỉ xử lý gói THỰC SỰ hết hạn (chưa được gia hạn/nâng cấp)
+            console.log(`Processing truly expired package ${pkg._id}: status=${pkg.status}`);
+
             // Cập nhật properties khi gói hết hạn
             const updateResult = await Property.updateMany(
                 {
@@ -1291,7 +1307,7 @@ const getUserPackageHistory = async (userId) => {
             // Chuẩn bị object cập nhật cho database
             const updateFields = {
                 'packageHistory.$.status': 'expired',
-                'packageHistory.$.updatedAt': new Date(),
+                'packageHistory.$.expiredAt': new Date(), // Set expiredAt thay vì updatedAt
                 'packageHistory.$.freePushCount': 0
             };
 

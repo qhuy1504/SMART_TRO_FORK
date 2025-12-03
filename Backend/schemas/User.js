@@ -205,7 +205,8 @@ const userSchema = new mongoose.Schema({
             transferDate: Date
         }],
         upgradedAt: Date, // Ngày được nâng cấp (nếu status = 'upgraded')
-        expiredAt: Date   // Ngày hết hạn thực tế (nếu status = 'expired')
+        expiredAt: Date,   // Ngày hết hạn thực tế (nếu status = 'expired')
+        renewedAt: Date   // Ngày được gia hạn (nếu status = 'renewed')
     }]
 }, {
     timestamps: true
