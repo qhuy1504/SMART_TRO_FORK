@@ -2640,11 +2640,15 @@ const MyProperties = () => {
                   </div>
 
                   <div className="package-history-list">
-                    {packageHistory.map((historyItem, index) => (
-                      <div key={index} className={`package-history-item ${historyItem.status} ${expandedHistoryItems[index] ? 'expanded' : ''}`}>
-                        <div className="history-item-header">
-                          <div className="package-info">
-                            <div className="package-badge-history">
+                    {packageHistory.map((historyItem, index) => {
+                      // Xác định trạng thái thực tế: nếu có renewedAt thì coi như renewed
+                      const actualStatus = historyItem.renewedAt ? 'renewed' : historyItem.status;
+                      
+                      return (
+                        <div key={index} className={`package-history-item ${actualStatus} ${expandedHistoryItems[index] ? 'expanded' : ''}`}>
+                          <div className="history-item-header">
+                            <div className="package-info">
+                              <div className="package-badge-history">
 
                               <span className='package-history-name'>
                                 <i className="fa fa-star"></i>
@@ -2677,14 +2681,30 @@ const MyProperties = () => {
                               </div>
                             </div>
                             <div className="timeline-item-history">
-                              <i className={`fa fa-clock ${historyItem.status === 'expired' ? 'text-danger' : historyItem.status === 'active' ? 'text-warning' : historyItem.status === 'renewed' ? 'text-success' : 'text-info'}`}></i>
+                              <i className={`fa fa-clock ${
+                                historyItem.status === 'renewed' || historyItem.renewedAt 
+                                  ? 'text-success' 
+                                  : historyItem.status === 'expired' 
+                                    ? 'text-danger' 
+                                    : historyItem.status === 'active' 
+                                      ? 'text-warning' 
+                                      : 'text-info'
+                              }`}></i>
                               <div className="timeline-content-history">
                                 <strong>Trạng thái</strong>
-                                <span className={`status-text ${historyItem.status === 'expired' ? 'text-danger' : historyItem.status === 'active' ? 'text-warning' : historyItem.status === 'renewed' ? 'text-success' : 'text-info'}`}>
-                                  {historyItem.status === 'upgraded'
-                                    ? 'Đã nâng cấp'
-                                    : historyItem.status === 'renewed'
-                                      ? 'Đã gia hạn'
+                                <span className={`status-text ${
+                                  historyItem.status === 'renewed' || historyItem.renewedAt 
+                                    ? 'text-success' 
+                                    : historyItem.status === 'expired' 
+                                      ? 'text-danger' 
+                                      : historyItem.status === 'active' 
+                                        ? 'text-warning' 
+                                        : 'text-info'
+                                }`}>
+                                  {historyItem.status === 'renewed' || historyItem.renewedAt
+                                    ? 'Đã gia hạn'
+                                    : historyItem.status === 'upgraded'
+                                      ? 'Đã nâng cấp'
                                       : historyItem.status === 'expired'
                                         ? 'Đã hết hạn'
                                         : historyItem.status === 'cancelled'
@@ -2818,7 +2838,8 @@ const MyProperties = () => {
                           </div>
                         )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   <div className="package-history-summary">
@@ -2839,7 +2860,10 @@ const MyProperties = () => {
                       </div>
                       <div className="stat-item-package-history">
                         <strong>
-                          {packageHistory.filter(item => item.status === 'renewed').length}
+                          {packageHistory.filter(item => 
+                            item.status === 'renewed' || 
+                            (item.renewedAt && item.renewedAt !== null)
+                          ).length}
                         </strong>
                         <span>Lần gia hạn</span>
                       </div>

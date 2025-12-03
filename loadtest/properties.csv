@@ -1,51 +1,50 @@
-title,description,price,area,bedrooms,bathrooms,city
-Test Property 1,Cozy studio for single,3000000,25,0,1,Hanoi
-Test Property 2,Two-bed apartment near metro,5000000,45,2,1,Ho Chi Minh
-Test Property 3,Spacious room with balcony,3500000,30,1,1,Da Nang
-Test Property 4,Modern loft in center,8000000,60,2,2,Hanoi
-Test Property 5,Affordable room for students,2000000,18,0,1,Ho Chi Minh
-Test Property 6,Quiet studio with kitchen,3200000,28,0,1,Da Nang
-Test Property 7,Sunny apartment near park,4500000,40,1,1,Hanoi
-Test Property 8,Cozy house with yard,12000000,120,3,2,Ho Chi Minh
-Test Property 9,Renovated room close to uni,2800000,22,0,1,Da Nang
-Test Property 10,Cheap long-term rental,2500000,20,0,1,Hanoi
-Test Property 11,City center studio,6000000,35,1,1,Ho Chi Minh
-Test Property 12,Comfortable 2BR,7000000,55,2,1,Da Nang
-Test Property 13,New building apartment,9000000,65,2,2,Hanoi
-Test Property 14,Co-living shared room,1800000,15,0,1,Ho Chi Minh
-Test Property 15,Riverside view apartment,11000000,80,3,2,Da Nang
-Test Property 16,Small & cozy studio,2900000,24,0,1,Hanoi
-Test Property 17,Family home close to school,15000000,140,4,3,Ho Chi Minh
-Test Property 18,Modern 1BR with balcony,4800000,38,1,1,Da Nang
-Test Property 19,Economical room,2100000,16,0,1,Hanoi
-Test Property 20,Luxury penthouse,30000000,200,4,4,Ho Chi Minh
-Test Property 21,Quiet neighborhood 2BR,5200000,50,2,1,Da Nang
-Test Property 22,Studio with shared facilities,2700000,23,0,1,Hanoi
-Test Property 23,Bright 1BR near mall,4700000,36,1,1,Ho Chi Minh
-Test Property 24,Cozy 3BR family apartment,10000000,100,3,2,Da Nang
-Test Property 25,Renovated house,9000000,90,3,2,Hanoi
-Test Property 26,Small apartment near bus stop,3300000,26,1,1,Ho Chi Minh
-Test Property 27,Room with private bathroom,3600000,29,0,1,Da Nang
-Test Property 28,Pet friendly studio,4000000,32,0,1,Hanoi
-Test Property 29,Cheap room in shared house,1900000,14,0,1,Ho Chi Minh
-Test Property 30,Modern condo,9500000,70,2,2,Da Nang
-Test Property 31,Spacious 4BR house,18000000,160,4,3,Hanoi
-Test Property 32,Compact studio ideal for singles,2600000,19,0,1,Ho Chi Minh
-Test Property 33,City view 2BR,7600000,58,2,1,Da Nang
-Test Property 34,Affordable apartment,3400000,27,1,1,Hanoi
-Test Property 35,Family-friendly neighborhood,8200000,85,3,2,Ho Chi Minh
-Test Property 36,Large loft space,13000000,130,2,2,Da Nang
-Test Property 37,Studio with built-in closet,3100000,25,0,1,Hanoi
-Test Property 38,Newly furnished 1BR,5200000,40,1,1,Ho Chi Minh
-Test Property 39,Quiet street 2BR,4700000,48,2,1,Da Nang
-Test Property 40,Small garden house,12500000,110,3,2,Hanoi
-Test Property 41,Central studio close to amenities,5800000,34,1,1,Ho Chi Minh
-Test Property 42,Two-floor townhouse,14000000,150,3,3,Da Nang
-Test Property 43,Affordable 1BR near campus,2400000,21,1,1,Hanoi
-Test Property 44,Spacious living room apartment,8900000,75,2,2,Ho Chi Minh
-Test Property 45,Cozy attic studio,2300000,17,0,1,Da Nang
-Test Property 46,Modern family apartment,10200000,95,3,2,Hanoi
-Test Property 47,Renovated 2BR near river,7600000,60,2,2,Ho Chi Minh
-Test Property 48,Economy room near metro,2050000,18,0,1,Da Nang
-Test Property 49,Bright loft with terrace,16000000,120,3,2,Hanoi
-Test Property 50,Student friendly shared apartment,1700000,12,0,1,Ho Chi Minh
+title,category,contactName,contactPhone,description,rentPrice,promotionPrice,deposit,area,electricPrice,waterPrice,maxOccupants,province,ward,detailAddress,status,approvalStatus
+Phòng trọ sinh viên giá rẻ Q1,phong_tro,Nguyễn Văn An,0901234567,Phòng trọ sạch sẽ gần trường ĐH Bách Khoa. Có ban công thoáng mát.,3000000,2800000,3000000,25,3500,20000,2,Thành phố Hồ Chí Minh,Phường Bến Thành,123 Lý Thái Tổ,available,approved
+Căn hộ mini đầy đủ nội thất,can_ho,Trần Thị Bình,0912345678,Căn hộ 2 phòng ngủ đầy đủ nội thất hiện đại. Gần chợ và siêu thị.,5000000,4700000,5000000,45,4000,25000,3,Thành phố Hồ Chí Minh,Phường Tân Định,456 Điện Biên Phủ,available,approved
+Nhà nguyên căn 3 tầng,nha_nguyen_can,Lê Hoàng Cường,0923456789,Nhà nguyên căn 3 tầng có sân để xe rộng. Thích hợp cho gia đình.,12000000,11500000,24000000,120,5000,30000,5+,Hà Nội,Phường Ô Chợ Dừa,789 Xã Đàn,available,approved
+Chung cư mini gần trung tâm,chung_cu_mini,Phạm Thị Dung,0934567890,Chung cư mini 1 phòng ngủ view đẹp. An ninh tốt có thang máy.,3500000,3300000,3500000,30,3500,22000,2,Đà Nẵng,Phường Hải Châu I,321 Hùng Vương,available,approved
+Homestay gần biển Mỹ Khê,homestay,Võ Văn Em,0945678901,Homestay ấm cúng view biển. Phòng riêng có toilet khép kín.,4000000,3800000,4000000,35,4000,25000,2,Đà Nẵng,Phường Mỹ An,654 Võ Nguyên Giáp,available,pending
+Phòng trọ có gác lửng,phong_tro,Đỗ Thị Phương,0956789012,Phòng rộng có gác lửng. Giờ giấc tự do không chung chủ.,2500000,2400000,2500000,28,3500,20000,2,Hà Nội,Phường Láng Hạ,147 Láng Hạ,available,approved
+Căn hộ cao cấp view sông,can_ho,Hoàng Văn Giang,0967890123,Căn hộ 3PN cao cấp view sông Hàn tuyệt đẹp. Full nội thất.,15000000,14000000,30000000,100,5000,30000,5+,Đà Nẵng,Phường Thuận Phước,258 Trần Hưng Đạo,available,approved
+Nhà trọ sinh viên giá tốt,phong_tro,Ngô Thị Hoa,0978901234,Nhà trọ sạch sẽ an toàn gần ĐH Kinh Tế. Có bếp riêng.,2800000,2600000,2800000,22,3500,18000,2,Thành phố Hồ Chí Minh,Phường Linh Trung,369 Quốc lộ 1A,available,approved
+Phòng trọ cao cấp có máy lạnh,phong_tro,Bùi Văn Khánh,0989012345,Phòng cao cấp máy lạnh nóng lạnh. WC riêng sạch sẽ.,3200000,3000000,3200000,26,3500,20000,2,Hà Nội,Phường Kim Liên,741 Phố Huế,available,approved
+Căn hộ studio hiện đại,can_ho,Lý Thị Lan,0990123456,Studio đầy đủ tiện nghi ban công thoáng. Gần Metro.,4200000,4000000,4200000,32,4000,23000,2,Thành phố Hồ Chí Minh,Phường Bến Nghé,852 Lê Lợi,available,approved
+Nhà 2 tầng có sân vườn,nha_nguyen_can,Trịnh Văn Minh,0901234568,Nhà 2 tầng có sân vườn rộng rãi. Khu yên tĩnh an ninh.,10000000,9500000,20000000,90,5000,28000,4,Hà Nội,Phường Dịch Vọng,963 Cầu Giấy,available,approved
+Chung cư mini mới xây,chung_cu_mini,Đặng Thị Nga,0912345679,Chung cư mini mới 100% đầy đủ đồ. Gần chợ trường học.,4500000,4300000,4500000,38,4000,24000,2,Đà Nẵng,Phường An Hải Bắc,159 Ngô Quyền,available,pending
+Phòng trọ giá rẻ Q.Bình Thạnh,phong_tro,Phan Văn Phúc,0923456780,Phòng giá sinh viên gần bến xe miền Đông. Có ban công.,2300000,2200000,2300000,20,3500,18000,1,Thành phố Hồ Chí Minh,Phường 1,357 Xô Viết Nghệ Tĩnh,available,approved
+Căn hộ dịch vụ full đồ,can_ho,Vũ Thị Quỳnh,0934567891,Căn hộ dịch vụ có máy giặt tủ lạnh. Vệ sinh hàng tuần.,5500000,5200000,5500000,42,4000,25000,2,Hà Nội,Phường Trung Hòa,468 Trần Duy Hưng,available,approved
+Homestay phong cách Nhật,homestay,Lương Văn Sơn,0945678902,Homestay thiết kế phong cách Nhật. Yên tĩnh view đẹp.,6000000,5700000,6000000,50,4500,26000,3,Đà Nẵng,Phường Phước Mỹ,579 Nguyễn Tất Thành,available,approved
+Phòng trọ có gác đẹp,phong_tro,Cao Thị Thanh,0956789013,Phòng có gác rộng thoáng mát. Giờ giấc tự do thoải mái.,2700000,2500000,2700000,24,3500,19000,2,Thành phố Hồ Chí Minh,Phường 14,680 Phan Đăng Lưu,available,approved
+Nhà nguyên căn mới đẹp,nha_nguyen_can,Mai Văn Tuấn,0967890124,Nhà mới xây 4 tầng đầy đủ tiện nghi. Gần trung tâm.,18000000,17000000,36000000,150,6000,35000,5+,Hà Nội,Phường Nhân Chính,791 Giải Phóng,available,approved
+Chung cư mini view hồ,chung_cu_mini,Đinh Thị Uyên,0978901235,Chung cư view hồ Hoàn Kiếm. An ninh 24/7 thang máy.,6500000,6200000,6500000,48,4500,27000,3,Hà Nội,Phường Hàng Bạc,802 Hàng Bài,available,pending
+Căn hộ 2PN gần Aeon Mall,can_ho,Nông Văn Việt,0989012346,Căn hộ 2 phòng ngủ gần Aeon Mall Tân Phú. Đầy đủ nội thất.,7000000,6700000,7000000,60,4500,28000,4,Thành phố Hồ Chí Minh,Phường Tây Thạnh,913 Lũy Bán Bích,available,approved
+Phòng trọ có chỗ để xe,phong_tro,Ông Thị Xuân,0990123457,Phòng rộng có chỗ để xe riêng. WC khép kín sạch sẽ.,3100000,2900000,3100000,27,3500,20000,2,Đà Nẵng,Phường Hòa Cường Bắc,135 Hải Phòng,available,approved
+Homestay gần sân bay,homestay,Tạ Văn Ý,0901234569,Homestay đẹp gần sân bay Đà Nẵng. Phục vụ tận tình.,4800000,4500000,4800000,40,4000,24000,2,Đà Nẵng,Phường Hòa Thuận Tây,246 Điện Biên Phủ,available,approved
+Nhà 1 trệt 1 lầu,nha_nguyen_can,Dương Văn Anh,0912345670,Nhà 1 trệt 1 lầu có sân phơi. Khu dân cư an ninh.,9000000,8500000,18000000,85,5000,28000,4,Thành phố Hồ Chí Minh,Phường 11,357 Lạc Long Quân,available,approved
+Căn hộ mini giá sinh viên,can_ho,Hà Thị Bảo,0923456781,Căn hộ mini 1PN giá tốt cho sinh viên. Gần trường ĐH.,3600000,3400000,3600000,33,3500,22000,2,Hà Nội,Phường Đông Ngạc,468 Âu Cơ,available,approved
+Phòng trọ có ban công,phong_tro,Lâm Văn Cường,0934567892,Phòng có ban công thoáng view đẹp. Giờ giấc tự do.,2900000,2700000,2900000,25,3500,19000,2,Thành phố Hồ Chí Minh,Phường 12,579 Nguyễn Văn Cừ,available,pending
+Chung cư mini trung tâm,chung_cu_mini,Đoàn Thị Diệu,0945678903,Chung cư mini ở trung tâm Q1. Gần công viên 30/4.,5800000,5500000,5800000,44,4000,26000,2,Thành phố Hồ Chí Minh,Phường Bến Thành,680 Lê Duẩn,available,approved
+Nhà nguyên căn có sân,nha_nguyen_can,Lưu Văn Em,0956789014,Nhà có sân rộng để xe thoải mái. 3 phòng ngủ đầy đủ.,11000000,10500000,22000000,95,5000,29000,5+,Đà Nẵng,Phường Thanh Khê,791 Lê Duẩn,available,approved
+Căn hộ view thành phố,can_ho,Trương Thị Phương,0967890125,Căn hộ cao tầng view toàn cảnh TP. Nội thất sang trọng.,13000000,12500000,26000000,88,5000,30000,4,Hà Nội,Phường Trung Tự,802 Phạm Ngọc Thạch,available,approved
+Phòng trọ gần bệnh viện,phong_tro,Nguyễn Văn Giang,0978901236,Phòng gần BV Chợ Rẫy an toàn. Có điều hòa máy nóng lạnh.,3300000,3100000,3300000,29,3500,20000,2,Thành phố Hồ Chí Minh,Phường 12,913 Hồng Bàng,available,approved
+Homestay gần chợ Hàn,homestay,Phạm Thị Hương,0989012347,Homestay đẹp gần chợ Hàn. View sông Hàn tuyệt vời.,5200000,5000000,5200000,45,4000,25000,3,Đà Nẵng,Phường Hải Châu I,135 Bạch Đằng,available,pending
+Chung cư mini có thang máy,chung_cu_mini,Võ Văn Khải,0990123458,Chung cư có thang máy bảo vệ 24/7. Gần Metro Bến Thành.,4900000,4700000,4900000,39,4000,24000,2,Thành phố Hồ Chí Minh,Phường Bến Thành,246 Lê Lai,available,approved
+Nhà mặt phố kinh doanh,nha_nguyen_can,Đỗ Văn Long,0901234560,Nhà mặt phố có thể kinh doanh. Vị trí đắc địa đông người.,20000000,19000000,40000000,130,6000,35000,5+,Hà Nội,Phường Hàng Bồ,357 Hàng Ngang,available,approved
+Phòng trọ cao cấp Q7,phong_tro,Bùi Thị Mai,0912345671,Phòng cao cấp khu Phú Mỹ Hưng. Đầy đủ tiện nghi hiện đại.,3800000,3600000,3800000,31,4000,22000,2,Thành phố Hồ Chí Minh,Phường Tân Phú,468 Nguyễn Lương Bằng,available,approved
+Căn hộ 3PN gia đình,can_ho,Lê Thị Nga,0923456782,Căn hộ 3PN rộng rãi cho gia đình. Gần trường học công viên.,9500000,9000000,19000000,78,5000,28000,5+,Hà Nội,Phường Yên Hòa,579 Trần Cung,available,approved
+Phòng trọ có gác an toàn,phong_tro,Trần Văn Phúc,0934567893,Phòng có gác chắc chắn an toàn. Camera an ninh 24/7.,2600000,2500000,2600000,23,3500,19000,2,Đà Nẵng,Phường Hòa Minh,680 Tôn Đức Thắng,available,approved
+Chung cư mini gần Metro,chung_cu_mini,Nguyễn Thị Quỳnh,0945678904,Chung cư gần ga Metro Thủ Đức. Đi lại thuận tiện.,4300000,4100000,4300000,36,4000,23000,2,Thành phố Hồ Chí Minh,Phường Linh Xuân,791 Xa lộ Hà Nội,available,pending
+Nhà nguyên căn 2 mặt tiền,nha_nguyen_can,Phan Văn Sơn,0956789015,Nhà 2 mặt tiền thoáng mát. Thích hợp ở và kinh doanh.,16000000,15000000,32000000,140,6000,34000,5+,Hà Nội,Phường Văn Chương,802 Tôn Đức Thắng,available,approved
+Căn hộ dịch vụ cao cấp,can_ho,Vũ Văn Tuấn,0967890126,Căn hộ dịch vụ 5 sao đầy đủ tiện nghi. Có bể bơi gym.,12000000,11500000,24000000,72,5000,29000,3,Đà Nẵng,Phường An Hải Đông,913 Võ Văn Kiệt,available,approved
+Phòng trọ giá tốt Q.Gò Vấp,phong_tro,Lý Thị Uyên,0978901237,Phòng giá sinh viên Gò Vấp. Gần ĐH Công Nghệ TP.,2400000,2300000,2400000,21,3500,18000,1,Thành phố Hồ Chí Minh,Phường 3,135 Quang Trung,available,approved
+Homestay view núi,homestay,Cao Văn Việt,0989012348,Homestay view núi Ngũ Hành Sơn. Không gian yên tĩnh.,5500000,5200000,5500000,48,4000,25000,3,Đà Nẵng,Phường Hòa Hải,246 Lê Văn Lương,available,approved
+Chung cư mini mới 100%,chung_cu_mini,Mai Thị Xuân,0990123459,Chung cư mới 100% chưa qua sử dụng. Full nội thất.,5300000,5100000,5300000,41,4000,24000,2,Hà Nội,Phường Mỹ Đình,357 Phạm Hùng,available,approved
+Nhà 4 tầng cho thuê,nha_nguyen_can,Đinh Văn Ý,0901234561,Nhà 4 tầng mới đẹp có thang máy. Gần TTTM Vincom.,22000000,21000000,44000000,160,6000,36000,5+,Thành phố Hồ Chí Minh,Phường Đa Kao,468 Nguyễn Thị Minh Khai,available,approved
+Phòng trọ có máy giặt chung,phong_tro,Nông Thị Anh,0912345672,Phòng sạch sẽ có máy giặt chung. Bếp nấu ăn riêng.,2800000,2700000,2800000,26,3500,19000,2,Hà Nội,Phường Bách Khoa,579 Hai Bà Trưng,available,pending
+Căn hộ studio sang trọng,can_ho,Ông Văn Bình,0923456783,Studio thiết kế sang trọng hiện đại. Nội thất cao cấp.,6200000,6000000,6200000,52,4500,27000,2,Đà Nẵng,Phường Mân Thái,680 Phan Chu Trinh,available,approved
+Phòng trọ gần ĐH Bách Khoa,phong_tro,Tạ Thị Cẩm,0934567894,Phòng gần ĐH Bách Khoa HN. An toàn có camera.,3000000,2800000,3000000,28,3500,20000,2,Hà Nội,Phường Bách Khoa,791 Tạ Quang Bửu,available,approved
+Chung cư mini gần biển,chung_cu_mini,Dương Văn Đức,0945678905,Chung cư gần biển Mỹ Khê 5 phút đi bộ. View đẹp.,5900000,5700000,5900000,46,4000,26000,3,Đà Nẵng,Phường Phước Mỹ,802 Trường Sa,available,approved
+Nhà nguyên căn có hầm,nha_nguyen_can,Hà Văn Em,0956789016,Nhà có hầm để xe rộng. 5 phòng ngủ thích hợp đông người.,14000000,13500000,28000000,125,6000,33000,5+,Thành phố Hồ Chí Minh,Phường Thảo Điền,913 Xuân Thủy,available,approved
+Căn hộ penthouse cao cấp,can_ho,Lâm Thị Phương,0967890127,Penthouse tầng cao view 360 độ. Nội thất siêu sang.,25000000,24000000,50000000,110,6000,35000,4,Hà Nội,Phường Liễu Giai,135 Kim Mã,available,approved
+Phòng trọ Q.Tân Bình,phong_tro,Đoàn Văn Giang,0978901238,Phòng gần sân bay Tân Sơn Nhất. Đi lại thuận tiện.,3400000,3200000,3400000,30,3500,21000,2,Thành phố Hồ Chí Minh,Phường 2,246 Hoàng Văn Thụ,available,approved
+Homestay phong cách vintage,homestay,Lưu Thị Hoa,0989012349,Homestay thiết kế vintage độc đáo. Có sân vườn nhỏ.,4600000,4400000,4600000,43,4000,24000,2,Đà Nẵng,Phường Nam Dương,357 Phan Đăng Lưu,available,pending
