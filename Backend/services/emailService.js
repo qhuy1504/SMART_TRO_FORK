@@ -440,6 +440,146 @@ export const sendInvoiceEmail = async (invoice, tenant, room, landlord) => {
     }
 };
 
+// Gửi email thông báo thanh toán thành công
+export const sendPaymentSuccessEmail = async (invoice, tenant, room, landlord) => {
+    try {
+        if (!tenant.email) {
+            return { success: false, error: 'Tenant has no email' };
+        }
+
+        const transporter = createTransporter();
+        
+        // Format currency
+        const formatCurrency = (amount) => {
+            return new Intl.NumberFormat('vi-VN').format(amount) + 'đ';
+        };
+        
+        // Format date
+        const formatDate = (date) => {
+            return new Date(date).toLocaleDateString('vi-VN');
+        };
+        
+        const formatDateTime = (date) => {
+            return new Date(date).toLocaleString('vi-VN');
+        };
+        
+        // Tạo link Zalo để chat với landlord
+        const zaloLink = landlord.phone ? `https://zalo.me/${landlord.phone}` : '#';
+        
+        // Tạo danh sách charges
+        const chargesHTML = invoice.charges.map((charge, idx) => `
+            <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">${idx + 1}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">${charge.description}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">${formatCurrency(charge.amount)}</td>
+            </tr>
+        `).join('');
+        
+        const mailOptions = {
+            from: process.env.GMAIL_USER,
+            to: tenant.email,
+            subject: `✅ Thanh toán thành công - Hóa đơn ${invoice.invoiceNumber}`,
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+                    <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <div style="text-align: center; margin-bottom: 30px;">
+                            <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+                                <span style="color: white; font-size: 50px;">✓</span>
+                            </div>
+                            <h2 style="color: #28a745; margin: 0;">THANH TOÁN THÀNH CÔNG!</h2>
+                        </div>
+                        
+                        <p style="font-size: 16px;">Xin chào <strong>${tenant.fullName}</strong>,</p>
+                        <p>Chúng tôi đã nhận được khoản thanh toán của bạn cho hóa đơn phòng trọ.</p>
+                        
+                        <div style="background-color: #d4edda; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #28a745;">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <tr>
+                                    <td style="padding: 8px 0; color: #155724;">Mã hóa đơn:</td>
+                                    <td style="padding: 8px 0; font-weight: bold; text-align: right; color: #155724;">${invoice.invoiceNumber}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 0; color: #155724;">Phòng:</td>
+                                    <td style="padding: 8px 0; font-weight: bold; text-align: right; color: #155724;">${room.roomNumber}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 0; color: #155724;">Số tiền:</td>
+                                    <td style="padding: 8px 0; font-weight: bold; text-align: right; color: #155724; font-size: 18px;">${formatCurrency(invoice.totalAmount)}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 0; color: #155724;">Thời gian thanh toán:</td>
+                                    <td style="padding: 8px 0; font-weight: bold; text-align: right; color: #155724;">${formatDateTime(invoice.paidDate)}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 0; color: #155724;">Phương thức:</td>
+                                    <td style="padding: 8px 0; font-weight: bold; text-align: right; color: #155724;">Chuyển khoản ngân hàng</td>
+                                </tr>
+                                ${invoice.transactionId ? `
+                                <tr>
+                                    <td style="padding: 8px 0; color: #155724;">Mã giao dịch:</td>
+                                    <td style="padding: 8px 0; font-weight: bold; text-align: right; color: #155724;">${invoice.transactionId}</td>
+                                </tr>
+                                ` : ''}
+                            </table>
+                        </div>
+                        
+                        <h3 style="color: #333; margin-top: 30px;">Chi tiết thanh toán:</h3>
+                        <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+                            <thead>
+                                <tr style="background-color: #007bff; color: white;">
+                                    <th style="padding: 12px; text-align: left;">STT</th>
+                                    <th style="padding: 12px; text-align: left;">Nội dung</th>
+                                    <th style="padding: 12px; text-align: right;">Số tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${chargesHTML}
+                            </tbody>
+                            <tfoot>
+                                <tr style="background-color: #28a745; color: white; font-weight: bold; font-size: 18px;">
+                                    <td colspan="2" style="padding: 15px;">ĐÃ THANH TOÁN</td>
+                                    <td style="padding: 15px; text-align: right;">${formatCurrency(invoice.totalAmount)}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        
+                        <div style="background-color: #e7f3ff; padding: 15px; border-left: 4px solid #0068FF; margin: 20px 0;">
+                            <p style="margin: 0; color: #004085;">
+                                ℹ️ Kỳ hóa đơn: <strong>${formatDate(invoice.periodStart)} - ${formatDate(invoice.periodEnd)}</strong>
+                            </p>
+                        </div>
+                        
+                        <div style="text-align: center; margin: 30px 0;">
+                            <p style="color: #666; margin-bottom: 15px;">Cảm ơn bạn đã thanh toán đúng hạn!</p>
+                            <a href="${zaloLink}" 
+                               style="display: inline-block; background-color: #0068FF; color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">
+                                💬 Liên hệ qua Zalo
+                            </a>
+                        </div>
+                        
+                        <hr style="border: none; height: 1px; background-color: #eee; margin: 30px 0;">
+                        <p style="color: #666; font-size: 14px; text-align: center;">
+                            Trân trọng,<br>
+                            <strong>${landlord.name || 'Quản lý trọ'}</strong><br>
+                            ${landlord.phone ? `📞 ${landlord.phone}` : ''}
+                        </p>
+                        <p style="color: #999; font-size: 12px; text-align: center; margin-top: 20px;">
+                            Email này được gửi tự động từ hệ thống Smart Trọ.<br>
+                            Vui lòng không trả lời email này.
+                        </p>
+                    </div>
+                </div>
+            `
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error('Error sending payment success email:', error);
+        return { success: false, error: error.message };
+    }
+};
+
 // Generic email sending function
 export const sendEmail = async ({ to, subject, html, text }) => {
     try {
@@ -470,5 +610,6 @@ export default {
     sendWarningEmail,
     sendPropertyHiddenEmail,
     sendInvoiceEmail,
+    sendPaymentSuccessEmail,
     sendEmail
 };

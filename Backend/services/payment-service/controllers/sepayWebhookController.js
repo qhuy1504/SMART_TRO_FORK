@@ -2,6 +2,7 @@
  * Sepay Webhook Controller - Xử lý webhook từ Sepay khi có giao dịch
  */
 import Invoice from '../../../schemas/Invoice.js';
+import { sendPaymentSuccessEmail } from '../../../services/emailService.js';
 import crypto from 'crypto';
 
 /**
@@ -245,7 +246,41 @@ export const handleSepayWebhook = async (req, res) => {
     
     console.log('✅ Invoice updated successfully:', invoice._id);
     
-    // TODO: Gửi email thông báo thanh toán thành công cho tenant
+    // Gửi email thông báo thanh toán thành công
+    try {
+      // Populate thông tin cần thiết
+      await invoice.populate([
+        { path: 'room', select: 'roomNumber' },
+        { path: 'tenant', select: 'email fullName' },
+        { path: 'landlord', select: 'fullName phone' }
+      ]);
+      
+      if (invoice.tenant && invoice.room && invoice.landlord) {
+        console.log('📧 Sending payment success email to:', invoice.tenant.email);
+        
+        const emailResult = await sendPaymentSuccessEmail(
+          invoice,
+          invoice.tenant,
+          invoice.room,
+          invoice.landlord
+        );
+        
+        if (emailResult.success) {
+          console.log('✅ Payment success email sent successfully');
+        } else {
+          console.error('❌ Failed to send payment success email:', emailResult.error);
+        }
+      } else {
+        console.log('⚠️ Missing required data for email:', {
+          hasTenant: !!invoice.tenant,
+          hasRoom: !!invoice.room,
+          hasLandlord: !!invoice.landlord
+        });
+      }
+    } catch (emailError) {
+      console.error('Error sending payment success email:', emailError);
+      // Không throw error để không ảnh hưởng đến webhook response
+    }
     
     return res.status(200).json({
       success: true,
@@ -307,6 +342,32 @@ export const testWebhook = async (req, res) => {
     invoice.transactionId = transactionId || `TEST_${Date.now()}`;
     
     await invoice.save();
+    
+    // Gửi email thông báo thanh toán thành công (test mode)
+    try {
+      await invoice.populate([
+        { path: 'room', select: 'roomNumber' },
+        { path: 'tenant', select: 'email fullName' },
+        { path: 'landlord', select: 'fullName phone' }
+      ]);
+      
+      if (invoice.tenant && invoice.room && invoice.landlord) {
+        console.log('📧 Sending payment success email (test mode) to:', invoice.tenant.email);
+        
+        const emailResult = await sendPaymentSuccessEmail(
+          invoice,
+          invoice.tenant,
+          invoice.room,
+          invoice.landlord
+        );
+        
+        if (emailResult.success) {
+          console.log('✅ Payment success email sent successfully (test mode)');
+        }
+      }
+    } catch (emailError) {
+      console.error('Error sending payment success email (test mode):', emailError);
+    }
     
     return res.status(200).json({
       success: true,
