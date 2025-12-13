@@ -15,7 +15,7 @@ router.post('/create-qr', authenticateToken, createInvoicePaymentQR);
 router.post('/send-invoice-email', authenticateToken, sendInvoiceEmailWithQR);
 
 // Webhook từ Sepay (không cần auth vì từ bên thứ 3)
-router.post('/webhook', handleSepayWebhook);
+router.post('/webhook/room', handleSepayWebhook);
 
 // Test webhook (dev only, cần auth)
 router.post('/test-webhook', authenticateToken, testWebhook);
